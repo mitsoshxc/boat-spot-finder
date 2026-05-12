@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="src/BoatSpotFinder.Web/BoatSpotFinder.Web.csproj" />
+  <Project Path="src/BoatSpotFinder.Core/BoatSpotFinder.Core.csproj" />
+  <Project Path="src/BoatSpotFinder.Infrastructure/BoatSpotFinder.Infrastructure.csproj" />
+  <Project Path="tests/BoatSpotFinder.Tests/BoatSpotFinder.Tests.csproj" />
+</Solution>

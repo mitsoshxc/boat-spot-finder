@@ -6,15 +6,17 @@
 |---|---|---|
 | Tech lead | User + Claude Code (main session) | Architecture, domain design, task breakdown, review |
 | Dev agent | `/dev` skill | Receives spec from tech lead, writes the code, nothing more |
+| Doc agent | `/doc` skill | Updates or creates docs after every approved implementation |
 
-The tech lead never writes implementation code directly. All coding is delegated to `/dev` with a precise spec, then verified with `/verify` before accepting the work.
+The tech lead never writes implementation code or documentation directly. All coding is delegated to `/dev`, verified with `/verify`, then documented with `/doc`.
 
 ## Skills
 
 | Skill | When to invoke |
 |---|---|
-| `/dev <spec>` | Delegate an implementation task to the dev agent |
-| `/verify <spec>` | Tech lead verifies dev agent output — checks spec match, conventions, build, tests |
+| `/dev <spec>` | Delegate an implementation task to the Dev agent |
+| `/verify <spec>` | Verify Dev's output — spec match, conventions, build, tests — returns Approved or Needs rework |
+| `/doc <spec>` | Delegate documentation updates to the Doc agent after an approved verification |
 | `/review` | After completing a feature — full code review before merging |
 | `/security-review` | Before any auth, booking-status, or payment-related change |
 | `/simplify` | After an implementation pass when a file feels too long or complex |
