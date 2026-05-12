@@ -1,6 +1,6 @@
 # Boat Spot Finder
 
-Web application for booking marina/harbour boat spots. Three roles: **BoatOwner**, **PlaceOwner**, **Admin**.
+Web application for booking marina/harbour boat spots. Four roles: **BoatOwner**, **PlaceOwner**, **Admin**, **SuperAdmin**.
 
 Stack: ASP.NET Core 10 MVC · Entity Framework Core 10 · SQL Server · ASP.NET Core Identity
 
@@ -31,9 +31,12 @@ Stack: ASP.NET Core 10 MVC · Entity Framework Core 10 · SQL Server · ASP.NET 
 | `/verify <brief>` | Tech lead | Verify Dev's output against the brief, conventions, build, and tests |
 | `/doc <brief>` | Tech lead | Delegate documentation updates to the Doc agent after an approved verification |
 
+## Implementation Plan
+
+**`PLAN.md` is the single source of truth for what to build and in what order.** All phases, tasks, file lists, and dev brief groupings are defined there. Follow it step by step.
+
+The tech lead reads `PLAN.md` to write `/dev` briefs. Dev reads `PLAN.md` to understand context and file targets. After each approved task, update the task status in `PLAN.md` from `[ ]` to `[x]`.
+
 ## Docs
 
-- [Architecture & solution structure](docs/architecture.md)
-- [Domain model & roles](docs/domain-model.md)
-- [Coding conventions](docs/conventions.md)
-- [Dev workflow & skills](docs/workflow.md)
+The `docs/` folder will be populated via `/doc` as each phase is completed. During implementation, `PLAN.md` is the only reference needed.
