@@ -11,7 +11,7 @@ Rules:
 - Never pass EF entities directly to views — always use a ViewModel
 - Never put business logic in controllers — it belongs in `Core/Services/`
 - Write no comments unless the WHY is non-obvious
-- When done, run `dotnet build` and confirm 0 errors before reporting completion
+- When done, run `dotnet build` and confirm 0 errors before reporting completion. End your response with: "Ready for tech lead review — run `/verify <original spec>` to validate."
 
 ---
 
