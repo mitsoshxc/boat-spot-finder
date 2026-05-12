@@ -1,9 +1,19 @@
 # Development Workflow & Claude Code Skills
 
-## Claude Code Skills
+## Team Structure
+
+| Role | Who | Responsibility |
+|---|---|---|
+| Tech lead | User + Claude Code (main session) | Architecture, domain design, task breakdown, review |
+| Dev agent | `/dev` skill | Receives spec from tech lead, writes the code, nothing more |
+
+The tech lead never writes implementation code directly. All coding is delegated to `/dev` with a precise spec.
+
+## Skills
 
 | Skill | When to invoke |
 |---|---|
+| `/dev <spec>` | Delegate an implementation task to the dev agent |
 | `/review` | After completing a feature — full code review before merging |
 | `/security-review` | Before any auth, booking-status, or payment-related change |
 | `/simplify` | After an implementation pass when a file feels too long or complex |

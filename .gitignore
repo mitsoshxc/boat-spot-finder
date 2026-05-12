@@ -39,8 +39,8 @@ secrets.json
 *.pfx
 *.p12
 
-# Claude Code local settings
-.claude/
+# Claude Code local settings (machine-specific, not shared)
+.claude/settings.local.json
 
 # OS
 .DS_Store
