@@ -1,6 +1,6 @@
 # Boat Spot Finder
 
-Web application for booking marina/harbour boat spots. Four roles: **BoatOwner**, **PlaceOwner**, **Admin**, **SuperAdmin**.
+Web application for booking marina/harbour boat spots. Three roles: **BoatOwner**, **PlaceOwner**, **Admin**. `ApplicationUser.IsSuperAdmin` is a bool flag (not an Identity role) that blocks deletion of the seeded admin account at the service layer.
 
 Stack: ASP.NET Core 10 MVC · Entity Framework Core 10 · SQL Server · ASP.NET Core Identity
 
