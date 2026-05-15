@@ -10,6 +10,16 @@ public class BookingConfiguration : BaseEntityConfiguration<Booking>
     {
         base.Configure(builder);
 
+        builder.HasOne(b => b.Spot)
+            .WithMany()
+            .HasForeignKey(b => b.SpotId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(b => b.BoatOwner)
+            .WithMany()
+            .HasForeignKey(b => b.BoatOwnerId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasOne(b => b.Vessel)
             .WithMany()
             .HasForeignKey(b => b.VesselId)
