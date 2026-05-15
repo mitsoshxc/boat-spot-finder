@@ -23,10 +23,32 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-                        </li>
+                        @if (User.IsInRole("Admin"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" href="/admin/dashboard">Admin panel</a>
+                            </li>
+                        }
+                        @if (User.IsInRole("PlaceOwner"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" href="/placeowner/marinas">My Marinas</a>
+                            </li>
+                        }
+                        @if (User.IsInRole("BoatOwner"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" href="/browse">Browse</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" href="/bookings">My Bookings</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" href="/vessels">My Vessels</a>
+                            </li>
+                        }
                     </ul>
+                    @await Html.PartialAsync("_LoginPartial")
                 </div>
             </div>
         </nav>
