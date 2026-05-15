@@ -41,6 +41,7 @@ secrets.json
 
 # Claude Code local settings (machine-specific, not shared)
 .claude/settings.local.json
+.claude/worktrees/
 
 # OS
 .DS_Store

@@ -39,4 +39,9 @@ The tech lead reads `PLAN.md` to write `/dev` briefs. Dev reads `PLAN.md` to und
 
 ## Docs
 
-The `docs/` folder will be populated via `/doc` as each phase is completed. During implementation, `PLAN.md` is the only reference needed.
+| Doc | Contents |
+|---|---|
+| [`docs/architecture.md`](docs/architecture.md) | Tech stack, solution structure, layer responsibilities, Program.cs wiring, key commands |
+| [`docs/domain-model.md`](docs/domain-model.md) | Entities, fields, relationships, FK delete rules, enums, EF notes |
+| [`docs/conventions.md`](docs/conventions.md) | Layering rules, naming, money/date conventions, soft-delete, controller rules, seed data rules |
+| [`docs/workflow.md`](docs/workflow.md) | Team structure, mandatory step sequence, skills, branch strategy, doc cadence |
