@@ -3,6 +3,7 @@ using BoatSpotFinder.Core.Interfaces;
 using BoatSpotFinder.Core.Settings;
 using BoatSpotFinder.Infrastructure.Data;
 using BoatSpotFinder.Infrastructure.Email;
+using BoatSpotFinder.Infrastructure.Logging;
 using BoatSpotFinder.Infrastructure.Repositories;
 using BoatSpotFinder.Web.Infrastructure;
 using Hangfire;
@@ -10,8 +11,12 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using NLog.Web;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Logging.ClearProviders();
+builder.Host.UseNLog();
 
 builder.Services.Configure<AppSettings>(builder.Configuration.GetSection("AppSettings"));
 builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Smtp"));
@@ -57,6 +62,7 @@ builder.Services.AddDataProtection()
 builder.Services.AddScoped<IAdminSettingsRepository, AdminSettingsRepository>();
 builder.Services.AddScoped<IInvitationRepository, InvitationRepository>();
 builder.Services.AddScoped<IMarinaAdminRepository, MarinaAdminRepository>();
+builder.Services.AddScoped<IAuditLogger, NLogAuditLogger>();
 
 builder.Services.AddHangfire(c =>
     c.UseSqlServerStorage(builder.Configuration.GetConnectionString("DefaultConnection")));
