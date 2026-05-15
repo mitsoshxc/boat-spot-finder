@@ -39,6 +39,8 @@ builder.Services.AddDataProtection()
     .PersistKeysToDbContext<AppDbContext>();
 
 builder.Services.AddScoped<IAdminSettingsRepository, AdminSettingsRepository>();
+builder.Services.AddScoped<IInvitationRepository, InvitationRepository>();
+builder.Services.AddScoped<IMarinaAdminRepository, MarinaAdminRepository>();
 
 builder.Services.AddHangfire(c =>
     c.UseSqlServerStorage(builder.Configuration.GetConnectionString("DefaultConnection")));
