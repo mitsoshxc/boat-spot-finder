@@ -2,6 +2,7 @@ using BoatSpotFinder.Core.Entities;
 using BoatSpotFinder.Core.Interfaces;
 using BoatSpotFinder.Core.Settings;
 using BoatSpotFinder.Infrastructure.Data;
+using BoatSpotFinder.Infrastructure.Email;
 using BoatSpotFinder.Infrastructure.Repositories;
 using BoatSpotFinder.Web.Infrastructure;
 using Hangfire;
@@ -13,6 +14,16 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<AppSettings>(builder.Configuration.GetSection("AppSettings"));
+builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Smtp"));
+
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddScoped<IEmailSender, ConsoleEmailSender>();
+}
+else
+{
+    builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+}
 
 builder.Services.AddControllersWithViews(o =>
     o.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));
