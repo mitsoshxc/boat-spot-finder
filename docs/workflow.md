@@ -45,7 +45,7 @@ Do not call `/doc` after every brief. Call it once per phase, after every task i
 
 - Tech lead reads `PLAN.md` to write `/dev` briefs.
 - Dev reads `PLAN.md` for context and file targets.
-- Doc does not modify `PLAN.md`.
+- Doc modifies `PLAN.md` only when the tech lead's brief provides explicit, row-level edit instructions (treated like a Dev brief). Default: the tech lead updates `PLAN.md`.
 
 Status legend: `[ ]` not started · `[x]` complete · `[~]` in progress.
 

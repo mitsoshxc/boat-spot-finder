@@ -60,7 +60,6 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>, IDataProtectionK
             UserName = "admin@boatspotfinder.com",
             NormalizedUserName = "ADMIN@BOATSPOTFINDER.COM",
             IsSuperAdmin = true,
-            IsActive = true,
             EmailConfirmed = true,
             SecurityStamp = "40000000-0000-0000-0000-000000000001",
             ConcurrencyStamp = "40000000-0000-0000-0000-000000000002",

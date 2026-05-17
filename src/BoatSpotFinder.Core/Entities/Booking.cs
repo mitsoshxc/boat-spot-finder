@@ -2,15 +2,19 @@ namespace BoatSpotFinder.Core.Entities;
 
 public class Booking : BaseEntity
 {
-    public Guid SpotId { get; set; }
-    public Guid? VesselId { get; set; }
-    public string BoatOwnerId { get; set; } = string.Empty;
-    public DateOnly StartDate { get; set; }
-    public DateOnly EndDate { get; set; }
-    public decimal TotalPrice { get; set; }
-    public BookingStatus Status { get; set; }
+    public Guid SpotId { get; init; }
+    public Guid? VesselId { get; init; }
+    public string BoatOwnerId { get; init; } = string.Empty;
+    public DateOnly StartDate { get; init; }
+    public DateOnly EndDate { get; init; }
+    public decimal TotalPrice { get; init; }
+    public BookingStatus Status { get; private set; }
 
-    public Spot Spot { get; set; } = null!;
-    public Vessel? Vessel { get; set; }
-    public ApplicationUser BoatOwner { get; set; } = null!;
+    public Spot Spot { get; init; } = null!;
+    public Vessel? Vessel { get; init; }
+    public ApplicationUser BoatOwner { get; init; } = null!;
+
+    public void Confirm() => Status = BookingStatus.Confirmed;
+    public void Cancel() => Status = BookingStatus.Cancelled;
+    public void Complete() => Status = BookingStatus.Completed;
 }

@@ -38,8 +38,31 @@ These rules apply to every file in the codebase. The Dev agent enforces them on 
 - All entities except `ApplicationUser` and `MarinaAdmin` inherit `BaseEntity` (`Id` Guid, `CreatedAt` DateTime UTC, `UpdatedAt` DateTime UTC).
 - `ApplicationUser` extends `IdentityUser` (string PK). FK columns pointing at `ApplicationUser` are always `string`, never `Guid`.
 - `MarinaAdmin` is a join table with no `BaseEntity` — composite PK `(MarinaId, UserId)`.
-- Navigation properties use collection initializers: `public ICollection<Spot> Spots { get; set; } = [];`
-- Required navigation properties use null-forgiving: `public Marina Marina { get; set; } = null!;`
+- Navigation properties use collection initializers: `public ICollection<Spot> Spots { get; init; } = [];`
+- Required navigation properties use null-forgiving: `public Marina Marina { get; init; } = null!;`
+- Property setters — `init` preferred. Use `init` instead of `set` wherever the value is written only at construction or in an object initialiser and never reassigned afterward. `init` prevents accidental post-construction mutation without sacrificing EF Core compatibility (EF Core 6+ supports `init` setters via reflection).
+- Property setters — `private set` fallback. When a property is mutated by domain logic after construction (e.g., `Booking.Status`, `Marina.IsActive`, `Spot.IsActive`), use `private set` and expose a dedicated public method on the entity to perform the mutation — for example, `public void Confirm() { Status = BookingStatus.Confirmed; }`. Never expose a plain `public set` on a domain entity property that has business rules governing when it changes.
+
+---
+
+## ViewModels and DTOs
+
+All ViewModels, DTOs, request, response, and event objects are declared as `record`, not `class`. Records provide value equality, immutability, and concise syntax. Example: `public record CreateMarinaRequest(string Name, string Address);`. Applies to everything in `Web/Models/` and any DTO/ETO/request/response type defined in `Core` or `Infrastructure`.
+
+---
+
+## Views
+
+**List views — default rendering rule.** Every list view (`Index`/`MyBookings`/`Incoming`/`AllBookings`/`AllMarinas`/`Users`/`MarinaSpots`/`MarinaAdmins`/`MarinaInvitations`/`Vessels/Index`, etc.) renders a Bootstrap-striped `<table class="table table-striped">` with one column per scalar property of its `*ListItemViewModel` in declaration order, followed by an `Actions` column containing any state-changing buttons described in the controller spec.
+
+- Column headers are property names with spaces inserted before capitals (`AverageRatingAsBoatOwner` → `Average Rating As Boat Owner`).
+- `DateOnly`/`DateTimeOffset` rendered with `ToString("yyyy-MM-dd")`.
+- `decimal` price fields rendered with `ToString("F2")`.
+- Booleans rendered as `Yes`/`No`.
+- Empty list: a single full-width row with text `No records yet.`
+- POST action buttons use `<form method="post">` with `@Html.AntiForgeryToken()` and Bootstrap classes `btn btn-sm btn-{outline-primary|outline-danger}`.
+
+**Inline column overrides take precedence**: when a view's brief explicitly defines columns or grouping (e.g. `Users.cshtml` showing `AverageRatingAsBoatOwner` only for BoatOwner-role users), follow the override.
 
 ---
 
@@ -84,6 +107,18 @@ These rules apply to every file in the codebase. The Dev agent enforces them on 
 
 ---
 
+## Routing
+
+- Admin management controllers use `[Route("admin/...")]`.
+- PlaceOwner management controllers use `[Route("placeowner/...")]`.
+- Public and BoatOwner controllers have no route prefix.
+- Hangfire dashboard stays at `/hangfire` (Admin-only auth, no prefix).
+- Layout data endpoint (`GET /browse/marina/{id}/layout-data`) lives on `BrowseController` (no prefix) so it is served by the public pod.
+
+Enables Nginx Ingress to route `/admin/` and `/placeowner/` path prefixes to a dedicated management pod independently of public traffic.
+
+---
+
 ## CSRF
 
 `AutoValidateAntiforgeryTokenAttribute` is registered globally in `Program.cs`. It validates on POST, PUT, PATCH, DELETE and skips GET, HEAD, OPTIONS, TRACE. It reads the token from either the form field or the `RequestVerificationToken` request header. No per-action attribute needed.
@@ -107,6 +142,26 @@ Raw invite tokens are never stored in the database. Only the SHA-256 hash is sto
 ## Comments
 
 Do not add comments unless the reason behind the code is non-obvious. "What" comments are noise. "Why" comments are acceptable when the behavior would otherwise be misread as a bug (e.g. explaining why `Restrict` is used instead of `Cascade` on booking FKs).
+
+---
+
+## Canvas / Visual Layout
+
+| Concern | Rule |
+|---|---|
+| Canvas library | Konva.js via CDN `https://unpkg.com/konva@9/konva.min.js`. Included only on views that use it (`Layout.cshtml`, `Browse/Marina.cshtml`, `Admin/MarinaLayout.cshtml`). |
+| Coordinate system | Logical units 0–`LayoutWidth` × 0–`LayoutHeight` (default 1200×800). JS scales to rendered size client-side. Never store pixel values tied to screen resolution. |
+| Canvas positions nullable | `CanvasX/Y/W/H/Rotation` are all nullable. A spot may exist without being placed. Unplaced spots appear in a sidebar list, not on the canvas. |
+| Background image | Stored under `wwwroot/uploads/marina-backgrounds/{id}.{ext}`. Validate type (jpg/png/webp) and max size (5 MB) in the controller. Serve as static files. |
+| Spot status derivation | Free = active + no overlapping Confirmed/Pending booking. Booked = has overlap. Unavailable = `IsActive=false`. Computed in the repository/service, never stored. |
+| Shared JS | `marina-viewer.js` is used by Browse, Admin, and PlaceOwner read-only views. `marina-editor.js` is PlaceOwner-only. Keep them separate files. |
+| Save positions | The editor POSTs a JSON array to `SavePositions` in bulk on user action — not on every drag event. |
+
+---
+
+## Tooling Triggers
+
+- `/simplify` is run on `BookingsController`, `SpotBookingsController`, and `AdminController` whenever any of them exceeds 150 lines.
 
 ---
 

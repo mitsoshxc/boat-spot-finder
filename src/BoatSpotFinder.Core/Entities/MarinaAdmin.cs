@@ -2,12 +2,12 @@ namespace BoatSpotFinder.Core.Entities;
 
 public class MarinaAdmin
 {
-    public Guid MarinaId { get; set; }
-    public string UserId { get; set; } = string.Empty;
-    public DateTimeOffset InvitedAt { get; set; }
-    public string InvitedById { get; set; } = string.Empty;
+    public Guid MarinaId { get; init; }
+    public string UserId { get; init; } = string.Empty;
+    public DateTimeOffset InvitedAt { get; init; }
+    public string InvitedById { get; init; } = string.Empty;
 
-    public Marina Marina { get; set; } = null!;
-    public ApplicationUser User { get; set; } = null!;
-    public ApplicationUser InvitedBy { get; set; } = null!;
+    public Marina Marina { get; init; } = null!;
+    public ApplicationUser User { get; init; } = null!;
+    public ApplicationUser InvitedBy { get; init; } = null!;
 }

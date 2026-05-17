@@ -46,7 +46,7 @@ namespace BoatSpotFinder.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("AdminSettings");
+                    b.ToTable("AdminSettings", (string)null);
 
                     b.HasData(
                         new
@@ -201,7 +201,7 @@ namespace BoatSpotFinder.Infrastructure.Migrations
 
                     b.HasIndex("VesselId");
 
-                    b.ToTable("Bookings");
+                    b.ToTable("Bookings", (string)null);
                 });
 
             modelBuilder.Entity("BoatSpotFinder.Core.Entities.Invitation", b =>
@@ -251,7 +251,7 @@ namespace BoatSpotFinder.Infrastructure.Migrations
 
                     b.HasIndex("Token");
 
-                    b.ToTable("Invitations");
+                    b.ToTable("Invitations", (string)null);
                 });
 
             modelBuilder.Entity("BoatSpotFinder.Core.Entities.Marina", b =>
@@ -320,7 +320,7 @@ namespace BoatSpotFinder.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Marinas");
+                    b.ToTable("Marinas", (string)null);
                 });
 
             modelBuilder.Entity("BoatSpotFinder.Core.Entities.MarinaAdmin", b =>
@@ -344,7 +344,7 @@ namespace BoatSpotFinder.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("MarinaAdmins");
+                    b.ToTable("MarinaAdmins", (string)null);
                 });
 
             modelBuilder.Entity("BoatSpotFinder.Core.Entities.Spot", b =>
@@ -417,7 +417,7 @@ namespace BoatSpotFinder.Infrastructure.Migrations
 
                     b.HasIndex("MarinaId");
 
-                    b.ToTable("Spots");
+                    b.ToTable("Spots", (string)null);
                 });
 
             modelBuilder.Entity("BoatSpotFinder.Core.Entities.SpotSeasonalRule", b =>
@@ -461,7 +461,7 @@ namespace BoatSpotFinder.Infrastructure.Migrations
                     b.HasIndex("SpotId", "StartDate", "EndDate")
                         .IsUnique();
 
-                    b.ToTable("SpotSeasonalRules");
+                    b.ToTable("SpotSeasonalRules", (string)null);
                 });
 
             modelBuilder.Entity("BoatSpotFinder.Core.Entities.Vessel", b =>
@@ -507,7 +507,7 @@ namespace BoatSpotFinder.Infrastructure.Migrations
 
                     b.HasIndex("OwnerId");
 
-                    b.ToTable("Vessels");
+                    b.ToTable("Vessels", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
@@ -526,7 +526,7 @@ namespace BoatSpotFinder.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("DataProtectionKeys");
+                    b.ToTable("DataProtectionKeys", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>

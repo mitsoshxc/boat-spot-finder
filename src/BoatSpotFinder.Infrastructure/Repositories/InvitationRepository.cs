@@ -35,7 +35,7 @@ public class InvitationRepository : IInvitationRepository
 
     public async Task MarkUsedAsync(Invitation invitation)
     {
-        invitation.IsUsed = true;
+        invitation.MarkUsed();
         await _context.SaveChangesAsync();
     }
 }

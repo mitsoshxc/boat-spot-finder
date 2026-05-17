@@ -10,11 +10,9 @@ public class AdminSettingsConfiguration : BaseEntityConfiguration<AdminSettings>
     {
         base.Configure(builder);
 
-        builder.HasData(new AdminSettings
+        builder.HasData(new AdminSettings(AutoActionType.AutoApprove, 6)
         {
             Id = new Guid("10000000-0000-0000-0000-000000000001"),
-            AutoActionType = AutoActionType.AutoApprove,
-            AutoActionTimeoutHours = 6,
             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
         });

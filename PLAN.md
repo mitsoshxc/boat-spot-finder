@@ -340,11 +340,12 @@ Phases 3 and 4 are independent of each other. Phase 3b must complete before Phas
 
 ## Cross-Cutting Reminders
 
+> Universal conventions — entity setters (`init` / `private set`), `record` for viewmodels/DTOs, route prefixes, list-view rendering defaults, canvas/Konva rules, `/simplify` trigger — live in [`docs/conventions.md`](docs/conventions.md). The rules below are domain/business reminders tied to specific phases.
+
 | Concern | Rule |
 |---------|------|
 | Ownership enforcement | PlaceOwner actions check `MarinaAdmin` table for `(marinaId, currentUserId)` — not a single FK. Return `Forbid()` (403) if no record found — never 404. |
 | RevokeAdmin role cleanup | After removing a `MarinaAdmin` record, check if the user has any remaining `MarinaAdmin` records. If none remain, remove the PlaceOwner role via `UserManager.RemoveFromRoleAsync` — a user with no marinas has no reason to hold the role. |
-| Route prefix scheme | Admin management controllers: `[Route("admin/...")]`. PlaceOwner management controllers: `[Route("placeowner/...")]`. Public + BoatOwner controllers: no prefix. Enables Nginx Ingress to route `/admin/` and `/placeowner/` path prefixes to a dedicated management pod independently of public traffic. Hangfire dashboard stays at `/hangfire` (Admin-only auth, no prefix — still routable via Nginx `location /hangfire` if needed). The layout data endpoint (`GET /browse/marina/{id}/layout-data`) lives on `BrowseController` (no prefix) so it is served by the public pod. |
 | Role-based redirect | `AccountController.Login` POST redirects after auth: Admin → `/admin/dashboard`, PlaceOwner → `/placeowner/marinas`, BoatOwner → `/browse`. |
 | Email confirmation gate | `RequireConfirmedEmail = true` in Identity options. `Login` action explicitly checks `EmailConfirmed` and returns an error if not confirmed. |
 | Account active gate | `ApplicationUser.IsActive` checked on every sign-in by overriding `SignInManager<ApplicationUser>`. Disabled user is rejected with an error message. `IsSuperAdmin = true` blocks deletion at service layer. |
@@ -373,23 +374,6 @@ Phases 3 and 4 are independent of each other. Phase 3b must complete before Phas
 | Review immutability | Reviews cannot be edited or deleted once submitted. No Edit or Delete actions on `ReviewsController`. |
 | Rating recalculation | Recompute the full average from the repository on each new review — never use incremental deltas to avoid drift. Update `Marina.AverageRating`/`ReviewCount` or `ApplicationUser.AverageRatingAsBoatOwner`/`ReviewCountAsBoatOwner` in the same unit of work as `IReviewRepository.AddAsync`. Sync Marina ES document immediately after. |
 | `/security-review` | Required before merging: Phase 5 Tasks 5.5–5.6, Phase 5b Task 5b.6, Phase 6 Task 6.2. |
-| `/simplify` | Run on BookingsController, SpotBookingsController, AdminController when any exceeds 150 lines. |
-| DTOs / request / response types | All standard DTOs, ETOs, and request/response objects must be declared as `record` (not `class`). Records provide value equality, immutability, and concise syntax for these types. Example: `public record CreateMarinaRequest(string Name, string Address);` |
-| Entity property setters — `init` preferred | Domain entity properties must use `init` instead of `set` wherever the value is written only during construction (i.e., can be set in an object initialiser but not reassigned afterward). `init` prevents accidental post-construction mutation without sacrificing EF Core compatibility (EF Core 6+ supports `init` setters via `IProperty.SetValue` reflection). |
-| Entity property setters — `private set` fallback | When a property cannot use `init` (e.g., it is updated across the entity lifetime by domain logic), use `private set` and expose a dedicated public method on the entity to perform the mutation (e.g., `public void Confirm() { Status = BookingStatus.Confirmed; }` instead of a public setter). Never expose a plain `public set` on a domain entity property that has business rules governing when it changes. |
-| List view rendering — default rule | Every list view (`Index`/`MyBookings`/`Incoming`/`AllBookings`/`AllMarinas`/`Users`/`MarinaSpots`/`MarinaAdmins`/`MarinaInvitations`/`Vessels/Index`, etc.) renders a Bootstrap-striped `<table class="table table-striped">` with one column per scalar property of its `*ListItemViewModel` in declaration order, followed by a final `Actions` column containing any state-changing buttons described in the controller spec (e.g. Deactivate, Cancel, Confirm, Reject, Revoke, Toggle). Column headers are the property names with spaces inserted before capitals (`AverageRatingAsBoatOwner` → `Average Rating As Boat Owner`). `DateOnly`/`DateTimeOffset` rendered with `ToString("yyyy-MM-dd")`. `decimal` price fields rendered with `ToString("F2")`. Booleans rendered as `Yes`/`No`. When the list is empty, render a single full-width row with the text `No records yet.` Action buttons that POST use `<form method="post">` with the standard `@Html.AntiForgeryToken()` and Bootstrap `btn btn-sm btn-{outline-primary|outline-danger}` classes. Pagination controls (Phase 8.2) sit below the table. **Inline column overrides take precedence**: when a view's task explicitly defines columns or grouping (e.g. `Users.cshtml` showing `AverageRatingAsBoatOwner` only for BoatOwner-role users — Phase 6.2a), follow the override. |
-
-### Canvas / Visual Layout
-
-| Concern | Rule |
-|---------|------|
-| Canvas library | **Konva.js** via CDN `https://unpkg.com/konva@9/konva.min.js`. Include only on views that use it (`Layout.cshtml`, `Browse/Marina.cshtml`, `Admin/MarinaLayout.cshtml`). |
-| Coordinate system | Logical units 0–LayoutWidth × 0–LayoutHeight (default 1200×800). JS scales to rendered size client-side. Never store pixel values tied to screen resolution. |
-| Canvas position nullable | `CanvasX/Y/W/H/Rotation` are all nullable. A spot may exist without being placed. Unplaced spots appear in a sidebar list, not on the canvas. |
-| Background image | Stored under `wwwroot/uploads/marina-backgrounds/{id}.{ext}`. Validate type (jpg/png/webp) and max size (5 MB) in controller. Serve as static files. |
-| Spot status derivation | Free = active + no overlapping Confirmed/Pending booking. Booked = has overlap. Unavailable = `IsActive=false`. Computed in the repository/service, never stored. |
-| Shared JS | `marina-viewer.js` is used by Browse, Admin, and PlaceOwner read-only views. `marina-editor.js` is PlaceOwner-only. Keep them separate files. |
-| Save positions | The editor POSTs a JSON array to `SavePositions` in bulk on user action — not on every drag event. |
 
 ---
 

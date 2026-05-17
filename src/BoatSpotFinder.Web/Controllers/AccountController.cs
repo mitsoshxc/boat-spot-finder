@@ -101,8 +101,7 @@ public class AccountController : Controller
         var user = new ApplicationUser
         {
             UserName = model.Email,
-            Email = model.Email,
-            IsActive = true
+            Email = model.Email
         };
 
         var result = await _userManager.CreateAsync(user, model.Password);
@@ -208,8 +207,7 @@ public class AccountController : Controller
         {
             UserName = invitation.Email,
             Email = invitation.Email,
-            EmailConfirmed = true,
-            IsActive = true
+            EmailConfirmed = true
         };
 
         var result = await _userManager.CreateAsync(user, model.Password);
