@@ -18,6 +18,7 @@ public class AccountController : Controller
     private readonly IInvitationRepository _invitationRepository;
     private readonly IMarinaAdminRepository _marinaAdminRepository;
     private readonly AppSettings _appSettings;
+    private readonly IAuditLogger _auditLogger;
 
     public AccountController(
         UserManager<ApplicationUser> userManager,
@@ -25,7 +26,8 @@ public class AccountController : Controller
         IEmailSender emailSender,
         IInvitationRepository invitationRepository,
         IMarinaAdminRepository marinaAdminRepository,
-        IOptions<AppSettings> appSettings)
+        IOptions<AppSettings> appSettings,
+        IAuditLogger auditLogger)
     {
         _userManager = userManager;
         _signInManager = signInManager;
@@ -33,6 +35,7 @@ public class AccountController : Controller
         _invitationRepository = invitationRepository;
         _marinaAdminRepository = marinaAdminRepository;
         _appSettings = appSettings.Value;
+        _auditLogger = auditLogger;
     }
 
     [HttpGet]
@@ -52,6 +55,15 @@ public class AccountController : Controller
             var user = await _userManager.FindByEmailAsync(model.Email);
             if (user is null)
                 return View(model);
+
+            _auditLogger.Log(
+                userId: user.Id,
+                userEmail: user.Email ?? string.Empty,
+                action: "Login",
+                entityType: "User",
+                entityId: user.Id,
+                marinaId: null,
+                details: null);
 
             var roles = await _userManager.GetRolesAsync(user);
 
@@ -85,6 +97,18 @@ public class AccountController : Controller
     [Authorize]
     public async Task<IActionResult> Logout()
     {
+        var userId = _userManager.GetUserId(User)!;
+        var userEmail = _userManager.GetUserName(User) ?? string.Empty;
+
+        _auditLogger.Log(
+            userId: userId,
+            userEmail: userEmail,
+            action: "Logout",
+            entityType: "User",
+            entityId: userId,
+            marinaId: null,
+            details: null);
+
         await _signInManager.SignOutAsync();
         return RedirectToAction("Index", "Home");
     }
