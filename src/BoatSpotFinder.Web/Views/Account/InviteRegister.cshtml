@@ -1,36 +1,58 @@
 @model InviteRegisterViewModel
 @{
-    ViewData["Title"] = "Create your account";
+    ViewData["Title"] = "Set up your marina account";
 }
 
-<h2>Create your account</h2>
+<section class="auth">
+    <article class="auth-card">
+        <header class="auth-card__head">
+            <span class="eyebrow">By invitation</span>
+            <span class="ornament" aria-hidden="true">
+                <svg viewBox="0 0 64 12" fill="none" stroke="currentColor" stroke-width="0.7">
+                    <line x1="0" y1="6" x2="22" y2="6"/>
+                    <circle cx="32" cy="6" r="0.8" fill="currentColor" stroke="none"/>
+                    <path d="M32 1 L33.5 6 L32 11 L30.5 6 Z" fill="currentColor" stroke="none" opacity="0.6"/>
+                    <path d="M26 6 L32 5 L38 6 L32 7 Z" fill="currentColor" stroke="none" opacity="0.6"/>
+                    <line x1="42" y1="6" x2="64" y2="6"/>
+                </svg>
+            </span>
+            <h1 class="auth-card__title">Set up your marina account.</h1>
+            <p class="auth-card__lede">You've been invited to manage a marina on Boat Spot Finder. Choose a password to get started.</p>
+        </header>
 
-<div class="row">
-    <div class="col-md-4">
-        <form asp-action="InviteRegister" method="post">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+        <form asp-action="InviteRegister" method="post" class="form" novalidate>
+            <div asp-validation-summary="ModelOnly" class="auth-errors"></div>
             <input asp-for="Token" type="hidden" />
-            <div class="form-group mb-3">
-                <label asp-for="Email"></label>
-                <input asp-for="Email" class="form-control" readonly />
+
+            <div class="field">
+                <label asp-for="Email" class="field__label">Email</label>
+                <input asp-for="Email" type="email" autocomplete="email" class="field__input field__input--locked" readonly />
+                <span class="field__meta">This is the address your invitation was sent to.</span>
             </div>
-            <div class="alert alert-info mb-3">
-                Password must be at least 6 characters and contain an uppercase letter, a lowercase letter, a digit, and a special character (e.g. !&#64;#$%).
+
+            <aside class="hint">
+                <span class="hint__pip" aria-hidden="true"></span>
+                <p class="hint__body">
+                    Password must be at least 6 characters and contain an uppercase letter, a lowercase letter, a digit, and a special character (e.g. !&#64;#$%).
+                </p>
+            </aside>
+
+            <div class="field">
+                <label asp-for="Password" class="field__label">Password</label>
+                <input asp-for="Password" type="password" autocomplete="new-password" class="field__input" />
+                <span asp-validation-for="Password" class="field__error"></span>
             </div>
-            <div class="form-group mb-3">
-                <label asp-for="Password"></label>
-                <input asp-for="Password" class="form-control" />
-                <span asp-validation-for="Password" class="text-danger"></span>
+
+            <div class="field">
+                <label asp-for="ConfirmPassword" class="field__label">Confirm password</label>
+                <input asp-for="ConfirmPassword" type="password" autocomplete="new-password" class="field__input" />
+                <span asp-validation-for="ConfirmPassword" class="field__error"></span>
             </div>
-            <div class="form-group mb-3">
-                <label asp-for="ConfirmPassword"></label>
-                <input asp-for="ConfirmPassword" class="form-control" />
-                <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
-            </div>
-            <button type="submit" class="btn btn-primary">Create account</button>
+
+            <button type="submit" class="btn btn--primary btn--block">Create account</button>
         </form>
-    </div>
-</div>
+    </article>
+</section>
 
 @section Scripts {
     @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }

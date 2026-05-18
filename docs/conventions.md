@@ -53,16 +53,18 @@ All ViewModels, DTOs, request, response, and event objects are declared as `reco
 
 ## Views
 
-**List views — default rendering rule.** Every list view (`Index`/`MyBookings`/`Incoming`/`AllBookings`/`AllMarinas`/`Users`/`MarinaSpots`/`MarinaAdmins`/`MarinaInvitations`/`Vessels/Index`, etc.) renders a Bootstrap-striped `<table class="table table-striped">` with one column per scalar property of its `*ListItemViewModel` in declaration order, followed by an `Actions` column containing any state-changing buttons described in the controller spec.
+**Every view is designed via `/frontend-design` before `/dev`.** Razor views must use the custom CSS components defined in `wwwroot/css/site.css` — never Bootstrap classes. Custom CSS only, no framework. List views, form views, detail pages: all generated through `/frontend-design` first so markup and styling are coherent across the app. The tech lead embeds the generated markup verbatim in the `/dev` brief.
+
+**Data formatting rules** (apply in all views regardless of layout):
 
 - Column headers are property names with spaces inserted before capitals (`AverageRatingAsBoatOwner` → `Average Rating As Boat Owner`).
 - `DateOnly`/`DateTimeOffset` rendered with `ToString("yyyy-MM-dd")`.
 - `decimal` price fields rendered with `ToString("F2")`.
 - Booleans rendered as `Yes`/`No`.
-- Empty list: a single full-width row with text `No records yet.`
-- POST action buttons use `<form method="post">` with `@Html.AntiForgeryToken()` and Bootstrap classes `btn btn-sm btn-{outline-primary|outline-danger}`.
+- Empty list: a single full-width row or block with text `No records yet.`
+- POST action buttons use `<form method="post">` with `@Html.AntiForgeryToken()`. Button classes come from the design produced by `/frontend-design` (e.g. `btn btn--sm btn--ghost`).
 
-**Inline column overrides take precedence**: when a view's brief explicitly defines columns or grouping (e.g. `Users.cshtml` showing `AverageRatingAsBoatOwner` only for BoatOwner-role users), follow the override.
+**Brief overrides take precedence**: when a brief specifies columns, layout, or copy, that overrides any generic component pattern.
 
 ---
 

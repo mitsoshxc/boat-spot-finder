@@ -1,41 +1,67 @@
 @model LoginViewModel
 @{
-    ViewData["Title"] = "Login";
+    ViewData["Title"] = "Sign in";
 }
 
-<h2>Login</h2>
+<section class="auth">
+    <article class="auth-card">
+        <header class="auth-card__head">
+            <span class="ornament" aria-hidden="true">
+                <svg viewBox="0 0 64 12" fill="none" stroke="currentColor" stroke-width="0.7">
+                    <line x1="0" y1="6" x2="22" y2="6"/>
+                    <circle cx="32" cy="6" r="0.8" fill="currentColor" stroke="none"/>
+                    <path d="M32 1 L33.5 6 L32 11 L30.5 6 Z" fill="currentColor" stroke="none" opacity="0.6"/>
+                    <path d="M26 6 L32 5 L38 6 L32 7 Z" fill="currentColor" stroke="none" opacity="0.6"/>
+                    <line x1="42" y1="6" x2="64" y2="6"/>
+                </svg>
+            </span>
+            <h1 class="auth-card__title">Welcome back.</h1>
+            <p class="auth-card__lede">Sign in to manage your marina or your bookings.</p>
+        </header>
 
-<div class="row">
-    <div class="col-md-4">
-        <form asp-action="Login" method="post">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+        <form asp-action="Login" method="post" class="form" novalidate>
+            <div asp-validation-summary="ModelOnly" class="auth-errors"></div>
             @if (ViewData.ModelState.ContainsKey("unconfirmed_email") &&
                  ViewData.ModelState["unconfirmed_email"]!.Errors.Any())
             {
-                <div class="alert alert-warning">
-                    You must confirm your email before logging in.
-                    <a href="/account/resend-confirmation?email=@Model.Email">Resend confirmation email</a>
+                <div class="notice notice--warning">
+                    <p class="notice__title">Please confirm your email before signing in.</p>
+                    <p class="notice__body">
+                        We sent you a verification link when you registered.
+                        <a class="link" href="/account/resend-confirmation?email=@Model.Email">Resend confirmation email</a>.
+                    </p>
                 </div>
             }
-            <div class="form-group mb-3">
-                <label asp-for="Email"></label>
-                <input asp-for="Email" class="form-control" />
-                <span asp-validation-for="Email" class="text-danger"></span>
+
+            <div class="field">
+                <label asp-for="Email" class="field__label">Email</label>
+                <input asp-for="Email" type="email" autocomplete="email" class="field__input" />
+                <span asp-validation-for="Email" class="field__error"></span>
             </div>
-            <div class="form-group mb-3">
-                <label asp-for="Password"></label>
-                <input asp-for="Password" class="form-control" />
-                <span asp-validation-for="Password" class="text-danger"></span>
-                <a asp-action="ForgotPassword">Forgot your password?</a>
+
+            <div class="field">
+                <div class="field__row">
+                    <label asp-for="Password" class="field__label">Password</label>
+                    <a asp-action="ForgotPassword" class="field__hint-link">Forgot password?</a>
+                </div>
+                <input asp-for="Password" type="password" autocomplete="current-password" class="field__input" />
+                <span asp-validation-for="Password" class="field__error"></span>
             </div>
-            <div class="form-check mb-3">
-                <input asp-for="RememberMe" class="form-check-input" />
-                <label asp-for="RememberMe" class="form-check-label"></label>
-            </div>
-            <button type="submit" class="btn btn-primary">Login</button>
+
+            <label class="check">
+                <input asp-for="RememberMe" type="checkbox" class="check__input" />
+                <span class="check__box" aria-hidden="true"></span>
+                <span class="check__label">Keep me signed in</span>
+            </label>
+
+            <button type="submit" class="btn btn--primary btn--block">Sign in</button>
         </form>
-    </div>
-</div>
+    </article>
+
+    <p class="auth-aside">
+        New here? <a class="link" asp-action="Register">Create an account</a>
+    </p>
+</section>
 
 @section Scripts {
     @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }

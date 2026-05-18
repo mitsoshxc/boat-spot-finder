@@ -1,10 +1,20 @@
 @{
-    ViewData["Title"] = "Email Confirmation Failed";
+    ViewData["Title"] = "This link can't be used";
 }
 
-<h2>Email Confirmation Failed</h2>
+<section class="auth">
+    <article class="auth-card auth-card--narrow">
+        <header class="auth-card__head">
+            <span class="vignette vignette--muted" aria-hidden="true">
+                <svg viewBox="0 0 48 40" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="24" cy="20" r="14"/>
+                    <line x1="14" y1="10" x2="34" y2="30"/>
+                </svg>
+            </span>
+            <h1 class="auth-card__title">This link can't be used.</h1>
+            <p class="auth-card__lede">The confirmation link is invalid or has expired. Request a fresh one and try again.</p>
+        </header>
 
-<p>
-    The confirmation link is invalid or has expired.
-    <a href="/account/resend-confirmation">Resend confirmation email</a>.
-</p>
+        <a href="/account/resend-confirmation" class="btn btn--primary btn--block">Resend confirmation email</a>
+    </article>
+</section>

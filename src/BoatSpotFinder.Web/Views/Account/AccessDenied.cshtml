@@ -1,9 +1,21 @@
 @{
-    ViewData["Title"] = "Access Denied";
+    ViewData["Title"] = "Access denied";
 }
 
-<h2>Access Denied</h2>
+<section class="auth">
+    <article class="auth-card auth-card--narrow">
+        <header class="auth-card__head">
+            <span class="vignette vignette--muted" aria-hidden="true">
+                <svg viewBox="0 0 48 40" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M24 4 L42 36 L6 36 Z"/>
+                    <line x1="24" y1="17" x2="24" y2="26"/>
+                    <circle cx="24" cy="31" r="0.9" fill="currentColor" stroke="none"/>
+                </svg>
+            </span>
+            <h1 class="auth-card__title">Access denied.</h1>
+            <p class="auth-card__lede">Your account doesn't have permission to view this page. If you think this is a mistake, contact your marina administrator.</p>
+        </header>
 
-<p>You do not have permission to view this page.</p>
-
-<a asp-controller="Home" asp-action="Index" class="btn btn-secondary">Return to Home</a>
+        <a asp-controller="Home" asp-action="Index" class="btn btn--ghost btn--block">Return home</a>
+    </article>
+</section>

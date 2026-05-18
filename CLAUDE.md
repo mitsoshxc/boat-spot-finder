@@ -8,8 +8,12 @@ Stack: ASP.NET Core 10 MVC · Entity Framework Core 10 · SQL Server · ASP.NET 
 
 | Agent | Role | Color | Model |
 |---|---|---|---|
-| **Dev** | Full-stack developer. Implements task briefs from the tech lead across C#, Razor, and EF Core. Enforces conventions from `docs/`. Runs `dotnet build` to verify. **All code goes through Dev.** | Green | Sonnet |
-| **Doc** | Documentation specialist. Exclusive owner of `docs/*.md`. Updates or creates docs after every verified implementation. Never touches production code. **All doc updates go through Doc.** | Blue | Sonnet |
+| **Dev** | Full-stack developer. Implements task briefs from the tech lead across C#, Razor, and EF Core. Enforces conventions from `docs/`. Runs `dotnet build` to verify. **All code goes through Dev.** | Green | Sonnet (default) · Haiku for narrow mechanical briefs |
+| **Doc** | Documentation specialist. Exclusive owner of `docs/*.md`. Updates or creates docs after every verified implementation. Never touches production code. **All doc updates go through Doc.** | Blue | Sonnet (default) · Haiku for fully-specified row-level briefs |
+
+**Dev model selection.** Default Sonnet. Tech lead may override to Haiku for narrow, mechanical briefs — small refactors, view tweaks, single-method repo additions, rename-only changes. Stay on Sonnet for anything touching the domain model, controllers, multi-file changes, or convention-sensitive work.
+
+**Doc model selection.** Default Sonnet. Tech lead may override to Haiku only when the brief is fully specified at the row level — exact section placement, exact rule rewrite, what to preserve, what to drop, no synthesis required from Doc. Stay on Sonnet for open-ended briefs, multi-doc synthesis, or feature docs that require judging tone and structure.
 
 ### Workflow — MANDATORY, NO EXCEPTIONS
 

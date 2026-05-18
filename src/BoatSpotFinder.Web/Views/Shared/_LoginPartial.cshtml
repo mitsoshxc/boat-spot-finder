@@ -4,25 +4,20 @@
 
 @if (SignInManager.IsSignedIn(User))
 {
-    <ul class="navbar-nav ms-auto">
-        <li class="nav-item">
-            <span class="nav-link text-dark">Hello, @UserManager.GetUserName(User)</span>
-        </li>
-        <li class="nav-item">
-            <form asp-controller="Account" asp-action="Logout" method="post">
-                <button type="submit" class="btn btn-link nav-link text-dark">Logout</button>
-            </form>
-        </li>
-    </ul>
+    <div class="auth-strip auth-strip--signed-in">
+        <span class="auth-strip__greeting">
+            <span class="auth-strip__greeting-label">Signed in as</span>
+            <span class="auth-strip__greeting-name">@UserManager.GetUserName(User)</span>
+        </span>
+        <form asp-controller="Account" asp-action="Logout" method="post" class="auth-strip__form">
+            <button type="submit" class="link link--quiet">Sign out</button>
+        </form>
+    </div>
 }
 else
 {
-    <ul class="navbar-nav ms-auto">
-        <li class="nav-item">
-            <a class="nav-link text-dark" asp-controller="Account" asp-action="Register">Register</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link text-dark" asp-controller="Account" asp-action="Login">Login</a>
-        </li>
-    </ul>
+    <div class="auth-strip">
+        <a class="link link--quiet" asp-controller="Account" asp-action="Register">Register</a>
+        <a class="btn btn--sm" asp-controller="Account" asp-action="Login">Sign in</a>
+    </div>
 }
