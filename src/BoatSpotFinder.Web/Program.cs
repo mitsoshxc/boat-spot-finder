@@ -65,6 +65,7 @@ builder.Services.AddScoped<IInvitationRepository, InvitationRepository>();
 builder.Services.AddScoped<IMarinaAdminRepository, MarinaAdminRepository>();
 builder.Services.AddScoped<IAuditLogger, NLogAuditLogger>();
 builder.Services.AddScoped<IMarinaRepository, MarinaRepository>();
+builder.Services.AddScoped<ISpotRepository, SpotRepository>();
 builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 
 builder.Services.AddHangfire(c =>
