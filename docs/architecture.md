@@ -117,7 +117,7 @@ Endpoint: `GET /health`. Always includes an EF Core `DbContextCheck<AppDbContext
 
 ## Frontend / Design System
 
-No CSS framework is used. All views use only custom CSS defined in `wwwroot/css/site.css` — no Bootstrap classes remain in any production view. (`wwwroot/lib/bootstrap/` still exists on disk pending a follow-up cleanup pass; jQuery is still loaded by `_Layout.cshtml` because `_ValidationScriptsPartial.cshtml` depends on jquery.validate.unobtrusive — both are queued for that pass.)
+No CSS framework, no client-side validation library, no jQuery. All views use only custom CSS defined in `wwwroot/css/site.css`. `wwwroot/lib/` is empty — Bootstrap, jQuery, jquery-validation, and jquery-validation-unobtrusive have been removed.
 
 **Single stylesheet:** `src/BoatSpotFinder.Web/wwwroot/css/site.css` (~744 lines).
 
@@ -135,6 +135,8 @@ No CSS framework is used. All views use only custom CSS defined in `wwwroot/css/
 **Accessibility.** `@media (prefers-reduced-motion: reduce)` at the end of the animation section sets `opacity: 1; transform: none; animation: none` on `.auth-card__head > *`, `.form > *`, `.hero > *`, and `.prose > *`, and collapses all transitions to `0.01ms`.
 
 **Responsive.** A single breakpoint at `max-width: 720px` at the end of `site.css` adjusts the header layout, hides `.brand__tag` and `.auth-strip__greeting`, reduces padding on `.auth-card`, `.site-main`, `.site-footer`, `.hero`, and `.prose`, and stacks `.hero__actions` vertically.
+
+**Validation.** Forms validate server-side only via ASP.NET Core ModelState. Each `<form>` carries the `novalidate` attribute to suppress the browser's default tooltip-style errors, so all errors render through `asp-validation-summary` (top-of-form `.auth-errors` block) and `asp-validation-for` (per-field `.field__error` span) on the next page load after a failed POST. No client-side JavaScript validation runs.
 
 ---
 
