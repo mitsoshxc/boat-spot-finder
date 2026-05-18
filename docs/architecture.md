@@ -119,7 +119,7 @@ Endpoint: `GET /health`. Always includes an EF Core `DbContextCheck<AppDbContext
 
 No CSS framework, no client-side validation library, no jQuery. All views use only custom CSS defined in `wwwroot/css/site.css`. `wwwroot/lib/` is empty — Bootstrap, jQuery, jquery-validation, and jquery-validation-unobtrusive have been removed.
 
-**Single stylesheet:** `src/BoatSpotFinder.Web/wwwroot/css/site.css` (~744 lines).
+**Single stylesheet:** `src/BoatSpotFinder.Web/wwwroot/css/site.css`.
 
 **Token system.** The top of `site.css` defines CSS custom properties on `:root` for:
 - Palette — `--ink`, `--brass`, `--sand`, `--cream`, `--slate`, `--alert`, `--notice-bg`, and their variants.
@@ -134,7 +134,7 @@ No CSS framework, no client-side validation library, no jQuery. All views use on
 
 **Accessibility.** `@media (prefers-reduced-motion: reduce)` at the end of the animation section sets `opacity: 1; transform: none; animation: none` on `.auth-card__head > *`, `.form > *`, `.hero > *`, and `.prose > *`, and collapses all transitions to `0.01ms`.
 
-**Responsive.** A single breakpoint at `max-width: 720px` at the end of `site.css` adjusts the header layout, hides `.brand__tag` and `.auth-strip__greeting`, reduces padding on `.auth-card`, `.site-main`, `.site-footer`, `.hero`, and `.prose`, and stacks `.hero__actions` vertically.
+**Responsive.** Mobile-first. Default rules target small viewports. Two `@media (min-width: 720px)` blocks layer on tablet enhancements (the header nav goes inline, `.brand__tag` and `.auth-strip__greeting` become visible, paddings on `.auth-card` / `.site-main` / `.site-footer` / `.hero` / `.prose` expand, `.hero__actions` switches from stacked column to row). A `@media (min-width: 960px)` block covers the workspace editor's two-column layout and sticky sidebar. No `max-width` media queries remain in `site.css`. See [`conventions.md`](conventions.md) § Responsive design for the full ruleset.
 
 **Validation.** Forms validate server-side only via ASP.NET Core ModelState. Each `<form>` carries the `novalidate` attribute to suppress the browser's default tooltip-style errors, so all errors render through `asp-validation-summary` (top-of-form `.auth-errors` block) and `asp-validation-for` (per-field `.field__error` span) on the next page load after a failed POST. No client-side JavaScript validation runs.
 

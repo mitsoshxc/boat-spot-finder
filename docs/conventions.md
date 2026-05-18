@@ -68,6 +68,26 @@ All ViewModels, DTOs, request, response, and event objects are declared as `reco
 
 ---
 
+## Responsive design
+
+1. **Mobile-first principle.** Default CSS targets small viewports. Use `@media (min-width: …)` queries to progressively enhance for larger screens. Never write desktop defaults that collapse via `@media (max-width: …)`. As of 2026-05-18 `wwwroot/css/site.css` contains zero `max-width` media queries — keep it that way.
+
+2. **Breakpoints.** Use only these two breakpoints; do not introduce custom ones without tech-lead sign-off:
+   - `@media (min-width: 720px)` — tablet enhancements (side-by-side fields, larger card padding, navigation goes inline).
+   - `@media (min-width: 960px)` — desktop enhancements (two-column editor grids, sticky sidebars).
+
+3. **Media query placement and the cascade.** A `@media` block has the same specificity as a non-media rule with the same selector. When two rules tie on specificity, the *later* rule in document order wins. Therefore: a `@media (min-width: 720px) { .foo { … } }` block must appear **after** the `.foo` base rule, otherwise the base rule will override the media query at desktop widths. Two `min-width: 720px` blocks exist in `site.css` for exactly this reason — one early (covers selectors defined above it: header, nav, auth-card), one late (covers `.hero` and `.prose` which are defined later).
+
+4. **Touch targets.** Interactive elements on mobile (buttons, file-input cues, action links in stacked rows) must be at least 44px tall. Add `min-height: 44px` explicitly on `.btn` instances that appear inside stacked mobile action rows.
+
+5. **Form actions on mobile.** Stacked form action rows use `flex-direction: column-reverse` so the primary submit button sits visually above the secondary cancel/back link. At ≥720px the row reverts to `flex-direction: row` with `justify-content: space-between`.
+
+6. **Modal pattern.** Modals are bottom sheets on mobile (`align-items: flex-end`, rounded only on top corners, slide up from bottom via `@keyframes modal-panel-in-mobile`) and centered cards at ≥720px (rounded all corners, slide+scale fade-in via `@keyframes modal-panel-in`).
+
+7. **Grid collapse rule.** Multi-column grids (`.field-row`, `.marina-grid`, `.editor-grid`) default to `grid-template-columns: 1fr` (single column). The min-width queries expand them. Do not invert this — never default to multi-column.
+
+---
+
 ## Money and Decimals
 
 - All price/money columns: `decimal` with `.HasPrecision(18, 2)` in the EF configuration.
