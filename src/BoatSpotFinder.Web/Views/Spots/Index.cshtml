@@ -1,0 +1,141 @@
+@model IEnumerable<SpotListItemViewModel>
+@{
+    ViewData["Title"] = "Spots";
+    var marinaName = ViewData["MarinaName"] as string ?? "Marina";
+    var marinaId = ViewData["MarinaId"];
+}
+
+<section class="workspace">
+    <header class="workspace__head workspace__head--editor">
+        <div class="workspace__head-titles">
+            <span class="workspace__mark" aria-hidden="true">
+                <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="0.9">
+                    <rect x="3" y="13" width="26" height="6" rx="2" />
+                    <line x1="3" y1="16" x2="29" y2="16" opacity="0.35" />
+                    <path d="M9 13 Q9 9 13 9 Q17 9 17 13" />
+                    <path d="M19 19 Q19 23 23 23 Q27 23 27 19" />
+                    <circle cx="7" cy="16" r="1" fill="currentColor" stroke="none"/>
+                    <circle cx="25" cy="16" r="1" fill="currentColor" stroke="none"/>
+                </svg>
+            </span>
+            <span class="workspace__eyebrow">Place owner &middot; Spots</span>
+            <h1 class="workspace__title">Manage spots</h1>
+            <p class="workspace__subtitle">@marinaName</p>
+        </div>
+        <div class="toolbar">
+            <a class="link--quiet"
+               asp-controller="Marinas"
+               asp-action="Layout"
+               asp-route-id="@marinaId">&larr; Marina layout</a>
+            <a class="btn btn--ghost btn--sm"
+               asp-controller="Marinas"
+               asp-action="Edit"
+               asp-route-id="@marinaId">Marina details</a>
+            <a class="btn btn--primary btn--sm" asp-action="Create">
+                <span class="btn__sigil" aria-hidden="true">+</span> Create new spot
+            </a>
+        </div>
+    </header>
+
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <span class="vignette vignette--muted" aria-hidden="true">
+                <svg viewBox="0 0 64 48" fill="none" stroke="currentColor" stroke-width="0.7">
+                    <rect x="6" y="10" width="52" height="28" rx="1" />
+                    <rect x="14" y="18" width="14" height="12" rx="1" opacity="0.5" />
+                    <rect x="36" y="18" width="14" height="12" rx="1" opacity="0.5" />
+                    <line x1="32" y1="10" x2="32" y2="38" opacity="0.35" />
+                </svg>
+            </span>
+            <p class="empty-state__title">No spots yet.</p>
+            <p class="empty-state__body">Start by creating one &mdash; you can place it on the marina layout afterwards.</p>
+        </div>
+    }
+    else
+    {
+        <ul class="spot-grid">
+            @foreach (var item in Model)
+            {
+                var hasRestrictions = item.AllowedVesselTypes != VesselType.None;
+                var allowedNames = hasRestrictions
+                    ? Enum.GetValues<VesselType>()
+                        .Where(v => v != VesselType.None && item.AllowedVesselTypes.HasFlag(v))
+                        .Select(v => v.ToString())
+                        .ToList()
+                    : new List<string>();
+
+                <li class="spot-card @(item.IsActive ? "" : "spot-card--inactive")">
+                    <div class="spot-card__head">
+                        <h2 class="spot-card__name">@item.Name</h2>
+                        @if (item.IsActive)
+                        {
+                            <span class="pill pill--active"><span class="pill__dot" aria-hidden="true"></span>Active</span>
+                        }
+                        else
+                        {
+                            <span class="pill pill--inactive"><span class="pill__dot" aria-hidden="true"></span>Inactive</span>
+                        }
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(item.Description))
+                    {
+                        <p class="spot-card__description">@item.Description</p>
+                    }
+                    <dl class="spot-card__stats">
+                        <div class="spot-card__stat">
+                            <dt class="spot-card__stat-label">Dimensions</dt>
+                            <dd class="spot-card__stat-value">
+                                @item.LengthMeters.ToString("0.#")<span class="spot-card__stat-sep">&times;</span>@item.WidthMeters.ToString("0.#")<span class="spot-card__stat-sep">&times;</span>@item.DepthMeters.ToString("0.#") m
+                            </dd>
+                        </div>
+                        <div class="spot-card__stat">
+                            <dt class="spot-card__stat-label">Price</dt>
+                            <dd class="spot-card__stat-value">
+                                @if (item.PricePerDay.HasValue)
+                                {
+                                    <span>&euro;@item.PricePerDay.Value.ToString("F2") / day</span>
+                                }
+                                else
+                                {
+                                    <span class="spot-card__stat-value--muted">Uses marina default</span>
+                                }
+                            </dd>
+                        </div>
+                        <div class="spot-card__stat">
+                            <dt class="spot-card__stat-label">Min stay</dt>
+                            <dd class="spot-card__stat-value">@item.DefaultMinBookingDays @(item.DefaultMinBookingDays == 1 ? "day" : "days")</dd>
+                        </div>
+                    </dl>
+                    <div class="vessel-chips">
+                        @if (!hasRestrictions)
+                        {
+                            <span class="vessel-chips__chip vessel-chips__chip--any">Any vessel</span>
+                        }
+                        else
+                        {
+                            @foreach (var name in allowedNames)
+                            {
+                                <span class="vessel-chips__chip">@name</span>
+                            }
+                        }
+                    </div>
+                    <div class="spot-card__actions">
+                        <a class="btn btn--ghost btn--sm"
+                           asp-action="Edit"
+                           asp-route-id="@item.Id">Edit details</a>
+                        @if (item.IsActive)
+                        {
+                            <form asp-action="Deactivate" asp-route-id="@item.Id" method="post">
+                                <button type="submit" class="btn btn--danger btn--sm">Deactivate</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <button type="button" class="btn btn--disabled btn--sm" disabled>Deactivated</button>
+                        }
+                    </div>
+                </li>
+            }
+        </ul>
+    }
+</section>

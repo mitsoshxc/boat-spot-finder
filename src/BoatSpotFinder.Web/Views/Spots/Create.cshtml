@@ -1,0 +1,136 @@
+@model SpotCreateViewModel
+@{
+    ViewData["Title"] = "Create spot";
+    var marinaName = ViewData["MarinaName"] as string ?? "Marina";
+}
+
+<section class="workspace workspace--narrow">
+    <header class="workspace__head">
+        <span class="workspace__mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="0.9">
+                <circle cx="16" cy="6" r="2" />
+                <line x1="16" y1="8" x2="16" y2="24" />
+                <line x1="10" y1="11" x2="22" y2="11" />
+                <path d="M16 24 Q6 24 6 17" />
+                <path d="M16 24 Q26 24 26 17" />
+                <path d="M3.5 17 L6 17 L8 19" />
+                <path d="M28.5 17 L26 17 L24 19" />
+            </svg>
+        </span>
+        <span class="workspace__eyebrow">New spot</span>
+        <h1 class="workspace__title">Create a spot</h1>
+        <p class="workspace__subtitle">@marinaName</p>
+    </header>
+
+    <article class="plate">
+        <form asp-action="Create" method="post" class="plate-form" novalidate>
+            <div asp-validation-summary="ModelOnly" class="auth-errors"></div>
+
+            <section class="plate-section">
+                <h2 class="plate-section__title">
+                    <span class="plate-section__numeral">I</span>
+                    Identity
+                </h2>
+                <div class="plate-section__body">
+                    <div class="field">
+                        <label asp-for="Name" class="field__label">Name</label>
+                        <input asp-for="Name" class="field__input" autocomplete="off" />
+                        <span asp-validation-for="Name" class="field__error"></span>
+                    </div>
+                    <div class="field">
+                        <label asp-for="Description" class="field__label">Description</label>
+                        <textarea asp-for="Description" rows="4" class="field__input field__input--area"></textarea>
+                        <span asp-validation-for="Description" class="field__error"></span>
+                        <span class="field__meta">Optional. Visible to boat owners browsing your marina.</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="plate-section">
+                <h2 class="plate-section__title">
+                    <span class="plate-section__numeral">II</span>
+                    Dimensions
+                </h2>
+                <div class="plate-section__body">
+                    <div class="field-row field-row--three">
+                        <div class="field">
+                            <label asp-for="LengthMeters" class="field__label">Length &middot; m</label>
+                            <input asp-for="LengthMeters" type="number" step="0.1" min="0" class="field__input field__input--mono" />
+                            <span asp-validation-for="LengthMeters" class="field__error"></span>
+                        </div>
+                        <div class="field">
+                            <label asp-for="WidthMeters" class="field__label">Width &middot; m</label>
+                            <input asp-for="WidthMeters" type="number" step="0.1" min="0" class="field__input field__input--mono" />
+                            <span asp-validation-for="WidthMeters" class="field__error"></span>
+                        </div>
+                        <div class="field">
+                            <label asp-for="DepthMeters" class="field__label">Depth &middot; m</label>
+                            <input asp-for="DepthMeters" type="number" step="0.1" min="0" class="field__input field__input--mono" />
+                            <span asp-validation-for="DepthMeters" class="field__error"></span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="plate-section">
+                <h2 class="plate-section__title">
+                    <span class="plate-section__numeral">III</span>
+                    Pricing &amp; policy
+                </h2>
+                <div class="plate-section__body">
+                    <div class="field">
+                        <label asp-for="PricePerDay" class="field__label">Price per day</label>
+                        <div class="field-currency">
+                            <span class="field-currency__symbol" aria-hidden="true">&euro;</span>
+                            <input asp-for="PricePerDay" type="number" step="0.01" min="0" class="field__input field__input--currency" />
+                            <span class="field-currency__suffix" aria-hidden="true">/ day</span>
+                        </div>
+                        <span asp-validation-for="PricePerDay" class="field__error"></span>
+                        <span class="field__meta">Leave empty to use the marina default.</span>
+                    </div>
+                    <div class="field">
+                        <label asp-for="DefaultMinBookingDays" class="field__label">Minimum booking</label>
+                        <input asp-for="DefaultMinBookingDays" type="number" step="1" min="1" class="field__input field__input--mono" />
+                        <span asp-validation-for="DefaultMinBookingDays" class="field__error"></span>
+                        <span class="field__meta">Minimum nights any booking must cover.</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="plate-section">
+                <h2 class="plate-section__title">
+                    <span class="plate-section__numeral">IV</span>
+                    Vessel types allowed
+                </h2>
+                <div class="plate-section__body">
+                    <div class="field">
+                        <div class="vessel-types" role="group" aria-labelledby="vessel-types-label">
+                            <span id="vessel-types-label" class="visually-hidden" hidden>Allowed vessel types</span>
+                            @foreach (var option in Model.VesselTypeOptions)
+                            {
+                                var vesselValue = (VesselType)int.Parse(option.Value);
+                                var isChecked = Model.AllowedVesselTypes.Contains(vesselValue);
+                                <label class="vessel-types__option">
+                                    <input class="vessel-types__input"
+                                           type="checkbox"
+                                           name="AllowedVesselTypes"
+                                           value="@option.Value"
+                                           @(isChecked ? "checked" : "") />
+                                    <span class="vessel-types__indicator" aria-hidden="true"></span>
+                                    <span class="vessel-types__label-text">@option.Text</span>
+                                </label>
+                            }
+                        </div>
+                        <span asp-validation-for="AllowedVesselTypes" class="field__error"></span>
+                        <span class="field__meta">Leave all unchecked to allow any vessel type.</span>
+                    </div>
+                </div>
+            </section>
+
+            <div class="plate-form__actions">
+                <a class="link--quiet" asp-action="Index">&larr; Back to spots</a>
+                <button type="submit" class="btn btn--primary">Create spot</button>
+            </div>
+        </form>
+    </article>
+</section>
