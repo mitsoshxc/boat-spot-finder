@@ -1,8 +1,92 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+@{
+    ViewData["Title"] = "Boat Spot Finder";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+<section class="hero">
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <span class="hero__eyebrow">Welcome back</span>
+        <span class="hero__ornament" aria-hidden="true">
+            <svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="0.7" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="60" cy="60" r="54" opacity="0.4"/>
+                <circle cx="60" cy="60" r="50" opacity="0.25"/>
+                <circle cx="60" cy="60" r="34" opacity="0.45"/>
+                <g opacity="0.6">
+                    <line x1="60" y1="6" x2="60" y2="11"/>
+                    <line x1="60" y1="114" x2="60" y2="109"/>
+                    <line x1="6" y1="60" x2="11" y2="60"/>
+                    <line x1="114" y1="60" x2="109" y2="60"/>
+                </g>
+                <g opacity="0.35" stroke-width="0.5">
+                    <line x1="22.2" y1="22.2" x2="25.7" y2="25.7"/>
+                    <line x1="97.8" y1="22.2" x2="94.3" y2="25.7"/>
+                    <line x1="22.2" y1="97.8" x2="25.7" y2="94.3"/>
+                    <line x1="97.8" y1="97.8" x2="94.3" y2="94.3"/>
+                </g>
+                <path d="M60 14 L63 56 L60 60 L57 56 Z" fill="currentColor" stroke="none"/>
+                <path d="M60 60 L63 64 L60 106 L57 64 Z" fill="currentColor" stroke="none" opacity="0.6"/>
+                <path d="M106 60 L64 63 L60 60 L64 57 Z" fill="currentColor" stroke="none" opacity="0.55"/>
+                <path d="M14 60 L56 63 L60 60 L56 57 Z" fill="currentColor" stroke="none" opacity="0.55"/>
+                <g opacity="0.4">
+                    <line x1="32" y1="32" x2="88" y2="88"/>
+                    <line x1="88" y1="32" x2="32" y2="88"/>
+                </g>
+                <circle cx="60" cy="60" r="2.2" fill="currentColor" stroke="none"/>
+            </svg>
+        </span>
+        <h1 class="hero__title">Steady as she goes.</h1>
+        <p class="hero__lede">Pick up where you left off.</p>
+        <div class="hero__actions">
+            @if (User.IsInRole("BoatOwner"))
+            {
+                <a href="/browse" class="btn btn--primary">Browse marinas</a>
+            }
+            else if (User.IsInRole("PlaceOwner"))
+            {
+                <a href="/placeowner/marinas" class="btn btn--primary">My marinas</a>
+            }
+            else if (User.IsInRole("Admin"))
+            {
+                <a href="/admin/dashboard" class="btn btn--primary">Admin panel</a>
+            }
+        </div>
+    }
+    else
+    {
+        <span class="hero__eyebrow">Marinas &middot; Moorings &middot; Reservations</span>
+        <span class="hero__ornament" aria-hidden="true">
+            <svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="0.7" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="60" cy="60" r="54" opacity="0.4"/>
+                <circle cx="60" cy="60" r="50" opacity="0.25"/>
+                <circle cx="60" cy="60" r="34" opacity="0.45"/>
+                <g opacity="0.6">
+                    <line x1="60" y1="6" x2="60" y2="11"/>
+                    <line x1="60" y1="114" x2="60" y2="109"/>
+                    <line x1="6" y1="60" x2="11" y2="60"/>
+                    <line x1="114" y1="60" x2="109" y2="60"/>
+                </g>
+                <g opacity="0.35" stroke-width="0.5">
+                    <line x1="22.2" y1="22.2" x2="25.7" y2="25.7"/>
+                    <line x1="97.8" y1="22.2" x2="94.3" y2="25.7"/>
+                    <line x1="22.2" y1="97.8" x2="25.7" y2="94.3"/>
+                    <line x1="97.8" y1="97.8" x2="94.3" y2="94.3"/>
+                </g>
+                <path d="M60 14 L63 56 L60 60 L57 56 Z" fill="currentColor" stroke="none"/>
+                <path d="M60 60 L63 64 L60 106 L57 64 Z" fill="currentColor" stroke="none" opacity="0.6"/>
+                <path d="M106 60 L64 63 L60 60 L64 57 Z" fill="currentColor" stroke="none" opacity="0.55"/>
+                <path d="M14 60 L56 63 L60 60 L56 57 Z" fill="currentColor" stroke="none" opacity="0.55"/>
+                <g opacity="0.4">
+                    <line x1="32" y1="32" x2="88" y2="88"/>
+                    <line x1="88" y1="32" x2="32" y2="88"/>
+                </g>
+                <circle cx="60" cy="60" r="2.2" fill="currentColor" stroke="none"/>
+            </svg>
+        </span>
+        <h1 class="hero__title">Book a spot for your boat.</h1>
+        <p class="hero__lede">Discover marinas along the coast, reserve your mooring in advance, and skip the dock-side waiting list.</p>
+        <div class="hero__actions">
+            <a asp-controller="Account" asp-action="Register" class="btn btn--primary">Create an account</a>
+            <a asp-controller="Account" asp-action="Login" class="btn btn--ghost">Sign in</a>
+        </div>
+    }
+</section>

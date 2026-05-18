@@ -563,7 +563,9 @@ ul { list-style: none; padding: 0; margin: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
     .auth-card__head > *,
-    .form > * {
+    .form > *,
+    .hero > *,
+    .prose > * {
         opacity: 1;
         transform: none;
         animation: none;
@@ -594,4 +596,148 @@ ul { list-style: none; padding: 0; margin: 0; }
     .auth-card__head { margin-bottom: 24px; }
     .ornament { width: 56px; margin-bottom: 16px; }
     .vignette { margin-bottom: 16px; }
+
+    .hero { padding: 40px 0 64px; }
+    .hero__ornament { width: 96px; margin-bottom: 24px; }
+    .hero__eyebrow { margin-bottom: 20px; letter-spacing: 0.24em; }
+    .hero__actions { flex-direction: column; align-items: stretch; width: 100%; max-width: 320px; gap: 10px; }
+    .hero__actions .btn { width: 100%; }
+    .prose { padding: 40px 0 64px; }
+}
+
+/* --- Hero (landing) --- */
+.hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 72px 0 96px;
+    max-width: 720px;
+    margin: 0 auto;
+}
+.hero > * {
+    opacity: 0;
+    transform: translateY(10px);
+    animation: lift 680ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.hero > *:nth-child(1) { animation-delay: 80ms; }
+.hero > *:nth-child(2) { animation-delay: 180ms; }
+.hero > *:nth-child(3) { animation-delay: 300ms; }
+.hero > *:nth-child(4) { animation-delay: 420ms; }
+.hero > *:nth-child(5) { animation-delay: 540ms; }
+.hero__eyebrow {
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.28em;
+    color: var(--brass-deep);
+    margin-bottom: 28px;
+}
+.hero__ornament {
+    color: var(--brass);
+    display: inline-block;
+    width: 128px;
+    height: auto;
+    margin-bottom: 32px;
+}
+.hero__title {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(2.375rem, 1.5rem + 3vw, 3.625rem);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    margin: 0 0 20px;
+}
+.hero__lede {
+    font-size: 1.0625rem;
+    line-height: 1.55;
+    color: var(--slate);
+    max-width: 44ch;
+    margin: 0 0 36px;
+}
+.hero__actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* --- Prose (long-form text column, no card chrome) --- */
+.prose {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 64px 0 96px;
+}
+.prose > * {
+    opacity: 0;
+    transform: translateY(8px);
+    animation: lift 600ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.prose > *:nth-child(1) { animation-delay: 80ms; }
+.prose > *:nth-child(2) { animation-delay: 180ms; }
+.prose > *:nth-child(3) { animation-delay: 280ms; }
+.prose > *:nth-child(4) { animation-delay: 380ms; }
+.prose > *:nth-child(5) { animation-delay: 480ms; }
+.prose__title {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(2rem, 1.5rem + 1.8vw, 2.625rem);
+    line-height: 1.1;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+    margin: 14px 0 16px;
+}
+.prose__lede {
+    font-size: 1rem;
+    line-height: 1.65;
+    color: var(--slate);
+    margin: 0 0 32px;
+    max-width: 56ch;
+}
+.prose__rule {
+    height: 1px;
+    background: linear-gradient(to right, var(--hairline-deep), transparent);
+    margin-bottom: 24px;
+}
+.prose__placeholder {
+    font-size: 0.875rem;
+    color: var(--slate-soft);
+    font-style: italic;
+    margin: 0;
+}
+
+/* --- Vignette: alert variant (for Error page) --- */
+.vignette--alert { color: var(--alert); }
+
+/* --- Request ID block (Error page) --- */
+.req-id {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 0 0 20px;
+    font-size: 0.75rem;
+    color: var(--slate-soft);
+}
+.req-id__label {
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+}
+.req-id__value {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.75rem;
+    color: var(--ink);
+    background: var(--cream-deep);
+    padding: 4px 8px;
+    border-radius: var(--r-xs);
+    border: 1px solid var(--hairline-ink);
+}
+.hint__body code {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.75rem;
+    background: rgba(11, 31, 53, 0.06);
+    padding: 1px 5px;
+    border-radius: var(--r-xs);
+    color: var(--ink);
 }

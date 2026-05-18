@@ -1,25 +1,38 @@
-﻿@model ErrorViewModel
+@model ErrorViewModel
 @{
-    ViewData["Title"] = "Error";
+    ViewData["Title"] = "Something went wrong";
 }
 
-<h1 class="text-danger">Error.</h1>
-<h2 class="text-danger">An error occurred while processing your request.</h2>
+<section class="auth">
+    <article class="auth-card auth-card--narrow">
+        <header class="auth-card__head">
+            <span class="vignette vignette--alert" aria-hidden="true">
+                <svg viewBox="0 0 48 40" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M24 6 A14 14 0 0 1 38 20 A14 14 0 0 1 30 32"/>
+                    <path d="M24 34 A14 14 0 0 1 10 20 A14 14 0 0 1 17 8.5"/>
+                    <path d="M32 12 L20 22 L24 26 L14 30"/>
+                    <line x1="24" y1="14" x2="24" y2="20"/>
+                </svg>
+            </span>
+            <h1 class="auth-card__title">Something went wrong.</h1>
+            <p class="auth-card__lede">We hit an unexpected error processing your request. The team has been notified.</p>
+        </header>
 
-@if (Model.ShowRequestId)
-{
-    <p>
-        <strong>Request ID:</strong> <code>@Model.RequestId</code>
-    </p>
-}
+        @if (Model.ShowRequestId)
+        {
+            <p class="req-id">
+                <span class="req-id__label">Request ID</span>
+                <code class="req-id__value">@Model.RequestId</code>
+            </p>
+        }
 
-<h3>Development Mode</h3>
-<p>
-    Swapping to <strong>Development</strong> environment will display more detailed information about the error that occurred.
-</p>
-<p>
-    <strong>The Development environment shouldn't be enabled for deployed applications.</strong>
-    It can result in displaying sensitive information from exceptions to end users.
-    For local debugging, enable the <strong>Development</strong> environment by setting the <strong>ASPNETCORE_ENVIRONMENT</strong> environment variable to <strong>Development</strong>
-    and restarting the app.
-</p>
+        <aside class="hint">
+            <span class="hint__pip" aria-hidden="true"></span>
+            <p class="hint__body">
+                <strong>Development mode.</strong> Set the <code>ASPNETCORE_ENVIRONMENT</code> environment variable to <code>Development</code> and restart the app to see detailed error information. Do not enable this in production &mdash; exception details may expose sensitive data.
+            </p>
+        </aside>
+
+        <a asp-controller="Home" asp-action="Index" class="btn btn--ghost btn--block">Return home</a>
+    </article>
+</section>

@@ -117,9 +117,9 @@ Endpoint: `GET /health`. Always includes an EF Core `DbContextCheck<AppDbContext
 
 ## Frontend / Design System
 
-No CSS framework is used. All views designed via `/frontend-design` use only custom CSS — Bootstrap classes are not referenced in any view produced by the design workflow. (`wwwroot/lib/bootstrap/` still exists on disk pending a cleanup pass; `Home/Index.cshtml`, `Home/Privacy.cshtml`, and `Shared/Error.cshtml` still carry Bootstrap classes and are queued for that pass.)
+No CSS framework is used. All views use only custom CSS defined in `wwwroot/css/site.css` — no Bootstrap classes remain in any production view. (`wwwroot/lib/bootstrap/` still exists on disk pending a follow-up cleanup pass; jQuery is still loaded by `_Layout.cshtml` because `_ValidationScriptsPartial.cshtml` depends on jquery.validate.unobtrusive — both are queued for that pass.)
 
-**Single stylesheet:** `src/BoatSpotFinder.Web/wwwroot/css/site.css` (~598 lines).
+**Single stylesheet:** `src/BoatSpotFinder.Web/wwwroot/css/site.css` (~744 lines).
 
 **Token system.** The top of `site.css` defines CSS custom properties on `:root` for:
 - Palette — `--ink`, `--brass`, `--sand`, `--cream`, `--slate`, `--alert`, `--notice-bg`, and their variants.
@@ -132,9 +132,9 @@ No CSS framework is used. All views designed via `/frontend-design` use only cus
 
 **Component naming.** BEM-style: block (`auth-card`), element (`auth-card__head`), modifier (`auth-card--narrow`). Block names reflect the component's role, not its visual style.
 
-**Accessibility.** `@media (prefers-reduced-motion: reduce)` at the end of the animation section sets `opacity: 1; transform: none; animation: none` on `.auth-card__head > *` and `.form > *`, and collapses all transitions to `0.01ms`.
+**Accessibility.** `@media (prefers-reduced-motion: reduce)` at the end of the animation section sets `opacity: 1; transform: none; animation: none` on `.auth-card__head > *`, `.form > *`, `.hero > *`, and `.prose > *`, and collapses all transitions to `0.01ms`.
 
-**Responsive.** A single breakpoint at `max-width: 720px` at the end of `site.css` adjusts the header layout, hides `.brand__tag` and `.auth-strip__greeting`, and reduces padding on `.auth-card`, `.site-main`, and `.site-footer`.
+**Responsive.** A single breakpoint at `max-width: 720px` at the end of `site.css` adjusts the header layout, hides `.brand__tag` and `.auth-strip__greeting`, reduces padding on `.auth-card`, `.site-main`, `.site-footer`, `.hero`, and `.prose`, and stacks `.hero__actions` vertically.
 
 ---
 
