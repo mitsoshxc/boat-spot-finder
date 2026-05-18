@@ -1,0 +1,68 @@
+@model IEnumerable<MarinaListItemViewModel>
+@{
+    ViewData["Title"] = "My Marinas";
+}
+
+<section class="workspace">
+    <header class="workspace__head">
+        <span class="workspace__mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="0.9">
+                <circle cx="16" cy="16" r="12" />
+                <path d="M16 4 L17.5 14 L16 16 L14.5 14 Z" fill="currentColor" stroke="none" opacity="0.6"/>
+                <path d="M16 28 L14.5 18 L16 16 L17.5 18 Z" fill="currentColor" stroke="none" opacity="0.6"/>
+                <path d="M4 16 L14 14.5 L16 16 L14 17.5 Z" fill="currentColor" stroke="none" opacity="0.6"/>
+                <path d="M28 16 L18 17.5 L16 16 L18 14.5 Z" fill="currentColor" stroke="none" opacity="0.6"/>
+                <circle cx="16" cy="16" r="1" fill="currentColor" stroke="none"/>
+            </svg>
+        </span>
+        <span class="workspace__eyebrow">Place owner · Portfolio</span>
+        <h1 class="workspace__title">My Marinas</h1>
+        <p class="workspace__lede">Marinas you administer. Edit details or open the layout editor to place spots.</p>
+    </header>
+
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <span class="vignette vignette--muted" aria-hidden="true">
+                <svg viewBox="0 0 64 48" fill="none" stroke="currentColor" stroke-width="0.7">
+                    <rect x="6" y="10" width="52" height="32" rx="1" />
+                    <path d="M6 12 L32 30 L58 12" />
+                    <path d="M6 42 L24 26" opacity="0.5" />
+                    <path d="M58 42 L40 26" opacity="0.5" />
+                </svg>
+            </span>
+            <p class="empty-state__title">No marinas assigned yet.</p>
+            <p class="empty-state__body">An administrator will invite you to manage a marina via email.</p>
+        </div>
+    }
+    else
+    {
+        <ul class="marina-grid">
+            @foreach (var m in Model)
+            {
+                <li class="marina-card @(m.IsActive ? "" : "marina-card--inactive")">
+                    <div class="marina-card__head">
+                        <span class="marina-card__region">@m.Region</span>
+                        @if (m.IsActive)
+                        {
+                            <span class="pill pill--active"><span class="pill__dot" aria-hidden="true"></span>Active</span>
+                        }
+                        else
+                        {
+                            <span class="pill pill--inactive"><span class="pill__dot" aria-hidden="true"></span>Inactive</span>
+                        }
+                    </div>
+                    <h2 class="marina-card__name">@m.Name</h2>
+                    <p class="marina-card__meta">
+                        <span class="marina-card__metric">@m.SpotCount</span>
+                        <span class="marina-card__metric-label">@(m.SpotCount == 1 ? "spot" : "spots")</span>
+                    </p>
+                    <div class="marina-card__actions">
+                        <a class="btn btn--ghost btn--sm" asp-action="Edit" asp-route-id="@m.Id">Edit details</a>
+                        <a class="btn btn--primary btn--sm" asp-action="Layout" asp-route-id="@m.Id">Open layout editor</a>
+                    </div>
+                </li>
+            }
+        </ul>
+    }
+</section>

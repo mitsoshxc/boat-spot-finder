@@ -1,0 +1,114 @@
+@model MarinaEditViewModel
+@{
+    ViewData["Title"] = $"Edit · {Model.Name}";
+}
+
+<section class="workspace workspace--narrow">
+    <header class="workspace__head">
+        <span class="workspace__mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="0.9">
+                <circle cx="16" cy="7" r="2.5" />
+                <line x1="16" y1="9.5" x2="16" y2="28" />
+                <line x1="12" y1="13" x2="20" y2="13" />
+                <path d="M6 21 C 6 25 11 28 16 28 C 21 28 26 25 26 21" />
+                <line x1="6" y1="21" x2="3" y2="21" />
+                <line x1="26" y1="21" x2="29" y2="21" />
+            </svg>
+        </span>
+        <span class="workspace__eyebrow">Marina record</span>
+        <h1 class="workspace__title">Edit marina</h1>
+        <p class="workspace__subtitle">@Model.Name &middot; @Model.Region</p>
+    </header>
+
+    <article class="plate">
+        <form asp-action="Edit" method="post" class="plate-form" novalidate>
+            @Html.HiddenFor(m => m.Id)
+            <div asp-validation-summary="ModelOnly" class="auth-errors"></div>
+
+            <section class="plate-section">
+                <h2 class="plate-section__title">
+                    <span class="plate-section__numeral">I</span>
+                    Identity
+                </h2>
+                <div class="plate-section__body">
+                    <div class="field">
+                        <label asp-for="Name" class="field__label">Name</label>
+                        <input asp-for="Name" class="field__input" autocomplete="off" />
+                        <span asp-validation-for="Name" class="field__error"></span>
+                    </div>
+
+                    <div class="field">
+                        <label asp-for="Description" class="field__label">Description</label>
+                        <textarea asp-for="Description" rows="5" class="field__input field__input--area"></textarea>
+                        <span asp-validation-for="Description" class="field__error"></span>
+                        <span class="field__meta">Visible to boat owners browsing your marina.</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="plate-section">
+                <h2 class="plate-section__title">
+                    <span class="plate-section__numeral">II</span>
+                    Location
+                </h2>
+                <div class="plate-section__body">
+                    <div class="field">
+                        <label asp-for="Address" class="field__label">Address</label>
+                        <input asp-for="Address" class="field__input" autocomplete="street-address" />
+                        <span asp-validation-for="Address" class="field__error"></span>
+                    </div>
+
+                    <div class="field-row">
+                        <div class="field">
+                            <label asp-for="Region" class="field__label">Region</label>
+                            <input asp-for="Region" class="field__input" />
+                            <span asp-validation-for="Region" class="field__error"></span>
+                        </div>
+                        <div class="field">
+                            <label asp-for="Phone" class="field__label">Phone</label>
+                            <input asp-for="Phone" type="tel" class="field__input" autocomplete="tel" />
+                            <span asp-validation-for="Phone" class="field__error"></span>
+                        </div>
+                    </div>
+
+                    <div class="field-row">
+                        <div class="field">
+                            <label asp-for="Latitude" class="field__label">Latitude</label>
+                            <input asp-for="Latitude" type="number" step="0.000001" class="field__input field__input--mono" />
+                            <span asp-validation-for="Latitude" class="field__error"></span>
+                        </div>
+                        <div class="field">
+                            <label asp-for="Longitude" class="field__label">Longitude</label>
+                            <input asp-for="Longitude" type="number" step="0.000001" class="field__input field__input--mono" />
+                            <span asp-validation-for="Longitude" class="field__error"></span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="plate-section">
+                <h2 class="plate-section__title">
+                    <span class="plate-section__numeral">III</span>
+                    Pricing
+                </h2>
+                <div class="plate-section__body">
+                    <div class="field">
+                        <label asp-for="DefaultPricePerDay" class="field__label">Default price per day</label>
+                        <div class="field-currency">
+                            <span class="field-currency__symbol" aria-hidden="true">&euro;</span>
+                            <input asp-for="DefaultPricePerDay" type="number" step="0.01" min="0" class="field__input field__input--currency" />
+                            <span class="field-currency__suffix" aria-hidden="true">/ day</span>
+                        </div>
+                        <span asp-validation-for="DefaultPricePerDay" class="field__error"></span>
+                        <span class="field__meta">Fallback when a specific spot has no price set.</span>
+                    </div>
+                </div>
+            </section>
+
+            <div class="plate-form__actions">
+                <a class="link--quiet" asp-action="Index">&larr; Back to marinas</a>
+                <button type="submit" class="btn btn--primary">Save changes</button>
+            </div>
+        </form>
+    </article>
+</section>
