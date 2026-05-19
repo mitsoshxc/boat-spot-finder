@@ -13,15 +13,18 @@ public class MarinasController : Controller
     private readonly IMarinaRepository _marinaRepository;
     private readonly IMarinaAdminRepository _marinaAdminRepository;
     private readonly IFileStorageService _fileStorageService;
+    private readonly IAuditLogger _auditLogger;
 
     public MarinasController(
         IMarinaRepository marinaRepository,
         IMarinaAdminRepository marinaAdminRepository,
-        IFileStorageService fileStorageService)
+        IFileStorageService fileStorageService,
+        IAuditLogger auditLogger)
     {
         _marinaRepository = marinaRepository;
         _marinaAdminRepository = marinaAdminRepository;
         _fileStorageService = fileStorageService;
+        _auditLogger = auditLogger;
     }
 
     [HttpGet("")]
@@ -101,6 +104,15 @@ public class MarinasController : Controller
             marina.LayoutHeight);
 
         await _marinaRepository.UpdateAsync(marina);
+
+        _auditLogger.Log(
+            userId: userId,
+            userEmail: User.Identity!.Name!,
+            action: "MarinaEdited",
+            entityType: "Marina",
+            entityId: marina.Id.ToString(),
+            marinaId: marina.Id.ToString(),
+            details: null);
 
         return RedirectToAction(nameof(Index));
     }

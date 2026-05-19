@@ -9,7 +9,7 @@ Stack: ASP.NET Core 10 MVC · Entity Framework Core 10 · SQL Server · ASP.NET 
 | Agent | Role | Color | Model |
 |---|---|---|---|
 | **Dev** | Full-stack developer. Implements task briefs from the tech lead across C#, Razor, and EF Core. Enforces conventions from `docs/`. Runs `dotnet build` to verify. **All code goes through Dev.** | Green | Sonnet (default) · Haiku for narrow mechanical briefs |
-| **Doc** | Documentation specialist. Exclusive owner of `docs/*.md`. Updates or creates docs after every verified implementation. Never touches production code. **All doc updates go through Doc.** | Blue | Sonnet (default) · Haiku for fully-specified row-level briefs |
+| **Doc** | Documentation specialist. Exclusive owner of `docs/*.md`. Updates or creates docs once per phase, after every task in the phase is approved. Never touches production code. **All doc updates go through Doc.** | Blue | Sonnet (default) · Haiku for fully-specified row-level briefs |
 
 **Dev model selection.** Default Sonnet. Tech lead may override to Haiku for narrow, mechanical briefs — small refactors, view tweaks, single-method repo additions, rename-only changes. Stay on Sonnet for anything touching the domain model, controllers, multi-file changes, or convention-sensitive work.
 
@@ -21,11 +21,12 @@ Stack: ASP.NET Core 10 MVC · Entity Framework Core 10 · SQL Server · ASP.NET 
 
 | Step | Action |
 |---|---|
-| New feature or entity | Tech lead designs the approach → writes a concrete brief → `/dev <brief>` → review Dev's report → `/verify <brief>` → if approved: `/doc <brief>` → commit |
-| Bug fix | Tech lead identifies root cause → writes a scoped brief → `/dev <brief>` → `/verify <brief>` → if approved: `/doc <brief>` → commit |
-| Rework | Tech lead writes a correction brief → `/dev <brief>` → `/verify <brief>` → if approved: `/doc <brief>` → commit |
+| New feature or entity | Tech lead designs the approach → writes a concrete brief → `/dev <brief>` → review Dev's report → `/verify <brief>` → if approved: flip `PLAN.md` task `[ ]` → `[x]` → commit |
+| Bug fix | Tech lead identifies root cause → writes a scoped brief → `/dev <brief>` → `/verify <brief>` → if approved: flip `PLAN.md` task `[ ]` → `[x]` → commit |
+| Rework | Tech lead writes a correction brief → `/dev <brief>` → `/verify <brief>` → if approved: flip `PLAN.md` task `[ ]` → `[x]` → commit |
+| Phase complete | When every task in a phase is `[x]`: `/doc <phase summary>` — one Doc call covering the whole phase |
 
-**NEVER skip Dev for code. NEVER skip Doc after approval. NEVER make architecture decisions inside Dev — bring them back to the tech lead.**
+**NEVER skip Dev for code. NEVER skip Doc after a phase is fully approved. NEVER make architecture decisions inside Dev — bring them back to the tech lead.**
 
 ## Skills
 
@@ -33,7 +34,7 @@ Stack: ASP.NET Core 10 MVC · Entity Framework Core 10 · SQL Server · ASP.NET 
 |---|---|---|
 | `/dev <brief>` | Tech lead | Delegate an implementation task to the Dev agent |
 | `/verify <brief>` | Tech lead | Verify Dev's output against the brief, conventions, build, and tests |
-| `/doc <brief>` | Tech lead | Delegate documentation updates to the Doc agent after an approved verification |
+| `/doc <phase summary>` | Tech lead | Delegate phase-level documentation updates to the Doc agent after every task in the phase is approved |
 
 ## Implementation Plan
 

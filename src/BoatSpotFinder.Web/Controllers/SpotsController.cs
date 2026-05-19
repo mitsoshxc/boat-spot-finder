@@ -16,15 +16,18 @@ public class SpotsController : Controller
     private readonly ISpotRepository _spotRepository;
     private readonly IMarinaRepository _marinaRepository;
     private readonly IMarinaAdminRepository _marinaAdminRepository;
+    private readonly IAuditLogger _auditLogger;
 
     public SpotsController(
         ISpotRepository spotRepository,
         IMarinaRepository marinaRepository,
-        IMarinaAdminRepository marinaAdminRepository)
+        IMarinaAdminRepository marinaAdminRepository,
+        IAuditLogger auditLogger)
     {
         _spotRepository = spotRepository;
         _marinaRepository = marinaRepository;
         _marinaAdminRepository = marinaAdminRepository;
+        _auditLogger = auditLogger;
     }
 
     [HttpGet("")]
@@ -116,6 +119,15 @@ public class SpotsController : Controller
 
         await _spotRepository.AddAsync(spot);
 
+        _auditLogger.Log(
+            userId: userId,
+            userEmail: User.Identity!.Name!,
+            action: "SpotCreated",
+            entityType: "Spot",
+            entityId: spot.Id.ToString(),
+            marinaId: marinaId.ToString(),
+            details: new { spotName = spot.Name });
+
         if (isJson) return Json(new { id = spot.Id, name = spot.Name });
 
         return RedirectToAction(nameof(Index), new { marinaId });
@@ -196,6 +208,15 @@ public class SpotsController : Controller
 
         await _spotRepository.UpdateAsync(spot);
 
+        _auditLogger.Log(
+            userId: userId,
+            userEmail: User.Identity!.Name!,
+            action: "SpotEdited",
+            entityType: "Spot",
+            entityId: spot.Id.ToString(),
+            marinaId: marinaId.ToString(),
+            details: null);
+
         return RedirectToAction(nameof(Index), new { marinaId });
     }
 
@@ -211,6 +232,15 @@ public class SpotsController : Controller
 
         spot.Deactivate();
         await _spotRepository.UpdateAsync(spot);
+
+        _auditLogger.Log(
+            userId: userId,
+            userEmail: User.Identity!.Name!,
+            action: "SpotDeactivated",
+            entityType: "Spot",
+            entityId: id.ToString(),
+            marinaId: marinaId.ToString(),
+            details: null);
 
         return RedirectToAction(nameof(Index), new { marinaId });
     }
