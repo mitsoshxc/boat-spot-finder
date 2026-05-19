@@ -119,6 +119,17 @@ All ViewModels, DTOs, request, response, and event objects are declared as `reco
 - `Spot` has a global EF query filter (`s => s.IsActive`). All queries exclude inactive spots by default. Use `IgnoreQueryFilters()` in admin contexts that need to see inactive spots.
 - Deactivating a marina or spot does not cancel existing bookings.
 
+### GetByIdAsync vs GetActiveByIdAsync
+
+`ISpotRepository` exposes two single-entity lookup methods with different filter behaviour:
+
+| Method | Filter | Use case |
+|---|---|---|
+| `GetByIdAsync(id)` | Calls `IgnoreQueryFilters()` — returns active and inactive spots | Owner/admin contexts: editing, layout, ownership verification |
+| `GetActiveByIdAsync(id)` | Respects the global `IsActive` filter — returns active spots only | Consumer contexts: `BookingService`, availability checks |
+
+Always use `GetByIdAsync` in PlaceOwner and Admin controllers. Always use `GetActiveByIdAsync` in booking-related services that must not act on inactive spots.
+
 ---
 
 ## Controllers
@@ -127,6 +138,48 @@ All ViewModels, DTOs, request, response, and event objects are declared as `reco
 - No per-action `[ValidateAntiForgeryToken]` — the global `AutoValidateAntiforgeryTokenAttribute` registered in `Program.cs` covers all state-changing verbs.
 - No business logic in controllers. Read input, call a service, redirect or return a view.
 - Return `NotFound()` / `Forbid()` / `BadRequest()` from controllers, not raw status codes.
+
+### Ownership checks
+
+Every PlaceOwner controller action that operates on a specific marina must call `IMarinaAdminRepository.ExistsAsync(marinaId, userId)` as the **first** thing it does, before loading any entity. Return `Forbid()` immediately if the check fails. For spot actions, a second check follows: load the spot via `ISpotRepository.GetByIdAsync` (which ignores the `IsActive` filter) and verify `spot.MarinaId == marinaId` before proceeding. Return `Forbid()` if the spot does not belong to the marina.
+
+### Controller → service layering
+
+When a service interface exists for a domain operation (e.g. `ISpotSeasonalRuleService`), controllers must call the service — never the underlying repository directly for that operation. The service owns validation and business rules. Calling the repository directly bypasses the overlap check and violates the layering contract.
+
+### JSON vs form content-negotiation in Create POST
+
+When a Create POST action must be callable both from a standard HTML form and from JavaScript (e.g. the canvas editor modal), the controller inspects `Request.Headers.Accept`:
+
+```csharp
+var isJson = Request.Headers.Accept.ToString().Contains("application/json");
+```
+
+- If `isJson` is true and the request is valid: return `Json(new { id = ..., name = ... })`.
+- If `isJson` is true and ModelState is invalid: return `BadRequest(ModelState)`.
+- If `isJson` is false: use the standard redirect-or-view pattern.
+
+The JS caller sets `Accept: application/json` and includes the `RequestVerificationToken` header (read from the hidden `__RequestVerificationToken` form input on the page).
+
+### Flag enum aggregation from checkbox lists
+
+`[Flags]` enum properties bound via a checkbox list (e.g. `Spot.AllowedVesselTypes`) are not model-bound as a bitmask by the MVC framework — they arrive as a `List<VesselType>` of individually checked values. Aggregate them manually:
+
+```csharp
+var allowedFlags = model.AllowedVesselTypes.Count > 0
+    ? model.AllowedVesselTypes.Aggregate(VesselType.None, (acc, v) => acc | v)
+    : VesselType.None;
+```
+
+Never rely on the default model binder to combine flag values.
+
+### Explicit UpdateAsync
+
+Repositories call `_context.{DbSet}.Update(entity)` explicitly before `SaveChangesAsync()`. EF Core change tracking is not assumed — the entity may have been constructed or detached outside the tracked context. Always call `UpdateAsync` after mutating an entity, even when the entity was loaded from the same `DbContext` instance in the same request.
+
+### File upload validation
+
+When accepting uploaded files, validate both the MIME type (`IFormFile.ContentType`) and the file extension (`Path.GetExtension(file.FileName).ToLowerInvariant()`) — one check alone is insufficient. Allowed types for background images: `image/jpeg`, `image/png`, `image/webp`; allowed extensions: `.jpg`, `.jpeg`, `.png`, `.webp`. Enforce a 5 MB maximum (`file.Length > 5 * 1024 * 1024`). No pixel-dimension check is performed. On re-upload, delete the old file via `IFileStorageService.DeleteAsync` before saving the new one.
 
 ---
 
