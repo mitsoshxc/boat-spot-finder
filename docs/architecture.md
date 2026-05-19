@@ -38,7 +38,9 @@ Project references: `Web` → `Infrastructure` → `Core`. `Core` has no project
 - **Interfaces** (`Core/Interfaces/`) — repository and service contracts.
 - **Settings** (`Core/Settings/`) — strongly-typed options classes bound from `appsettings.json` (e.g. `AppSettings`).
 - **Helpers** (`Core/Helpers/`) — pure static utilities (e.g. `TokenHasher`).
-- **Services** (`Core/Services/`) — business logic. Added from Phase 2 onwards.
+- **Services** (`Core/Services/`) — business logic. `SpotSeasonalRuleService` is the first concrete service (Phase 3). All services return `ServiceResult` from `Core/Common/`.
+- **Common** (`Core/Common/`) — cross-cutting types shared across services. Currently contains `ServiceResult`.
+- **Models** (`Core/Models/`) — input/transfer records passed across layer boundaries (e.g. `SpotPositionUpdate`, `SpotSeasonalRuleInput`). Not ViewModels — these live in `Web/Models/`.
 
 NuGet dependency: `Microsoft.Extensions.Identity.Core` only.
 
@@ -56,7 +58,7 @@ NuGet dependencies: `Microsoft.AspNetCore.Identity.EntityFrameworkCore`, `Micros
 - **`Program.cs`** — DI registration and middleware pipeline (see below).
 - **`Controllers/`** — MVC controllers. Added from Phase 2 onwards.
 - **`Views/`** — Razor views. Added from Phase 2 onwards.
-- **`Infrastructure/`** — web-layer infrastructure (e.g. `HangfireAdminAuthFilter`).
+- **`Infrastructure/`** — web-layer infrastructure: `HangfireAdminAuthFilter`, `CustomSignInManager`, and `Storage/LocalFileStorageService` (writes marina background images to `wwwroot/uploads/marina-backgrounds/`).
 
 NuGet dependencies: `Hangfire.Core`, `Hangfire.SqlServer`, `Hangfire.AspNetCore`, `AspNetCore.HealthChecks.Elasticsearch`, `Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore`, `Microsoft.AspNetCore.Identity.EntityFrameworkCore`.
 
@@ -65,13 +67,16 @@ NuGet dependencies: `Hangfire.Core`, `Hangfire.SqlServer`, `Hangfire.AspNetCore`
 ## Program.cs — DI Registration Order
 
 1. `Configure<AppSettings>(...)` — bind `AppSettings:BaseUrl`.
-2. `AddControllersWithViews(o => o.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()))` — MVC + global CSRF on all state-changing verbs.
-3. `AddDbContext<AppDbContext>(UseSqlServer)` — reads `ConnectionStrings:DefaultConnection`.
-4. `AddIdentity<ApplicationUser, IdentityRole>().AddEntityFrameworkStores<AppDbContext>().AddDefaultTokenProviders()` — uses `AddIdentity` (not `AddDefaultIdentity`) so that Phase 2's `CustomSignInManager` can be chained.
-5. `AddDataProtection().PersistKeysToDbContext<AppDbContext>()`.
-6. `AddScoped<IAdminSettingsRepository, AdminSettingsRepository>()`.
-7. `AddHangfire(c => c.UseSqlServerStorage(...))` + `AddHangfireServer()`.
-8. `AddHealthChecks().AddDbContextCheck<AppDbContext>()` + conditional `AddElasticsearch(esUri)` when `Elasticsearch:Uri` is configured.
+2. `Configure<SmtpOptions>(...)` — bind `Smtp` section.
+3. `AddScoped<IEmailSender, ConsoleEmailSender>()` (Development) or `SmtpEmailSender` (other environments).
+4. `AddControllersWithViews(o => o.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()))` — MVC + global CSRF on all state-changing verbs.
+5. `AddDbContext<AppDbContext>(UseSqlServer)` — reads `ConnectionStrings:DefaultConnection`.
+6. `AddIdentity<ApplicationUser, IdentityRole>().AddEntityFrameworkStores<AppDbContext>().AddDefaultTokenProviders().AddSignInManager<CustomSignInManager>()` — uses `AddIdentity` (not `AddDefaultIdentity`) to allow the custom sign-in manager chain.
+7. `ConfigureApplicationCookie(...)` — sets `LoginPath` and `AccessDeniedPath`.
+8. `AddDataProtection().PersistKeysToDbContext<AppDbContext>()`.
+9. Scoped repository and service registrations: `IAdminSettingsRepository`, `IInvitationRepository`, `IMarinaAdminRepository`, `IAuditLogger`, `IMarinaRepository`, `ISpotRepository`, `ISpotSeasonalRuleRepository`, `ISpotSeasonalRuleService`, `IFileStorageService`.
+10. `AddHangfire(c => c.UseSqlServerStorage(...))` + `AddHangfireServer()`.
+11. `AddHealthChecks().AddDbContextCheck<AppDbContext>()` + conditional `AddElasticsearch(esUri)` when `Elasticsearch:Uri` is configured.
 
 ---
 

@@ -1,5 +1,6 @@
 using BoatSpotFinder.Core.Entities;
 using BoatSpotFinder.Core.Interfaces;
+using BoatSpotFinder.Core.Services;
 using BoatSpotFinder.Core.Settings;
 using BoatSpotFinder.Infrastructure.Data;
 using BoatSpotFinder.Infrastructure.Email;
@@ -66,6 +67,8 @@ builder.Services.AddScoped<IMarinaAdminRepository, MarinaAdminRepository>();
 builder.Services.AddScoped<IAuditLogger, NLogAuditLogger>();
 builder.Services.AddScoped<IMarinaRepository, MarinaRepository>();
 builder.Services.AddScoped<ISpotRepository, SpotRepository>();
+builder.Services.AddScoped<ISpotSeasonalRuleRepository, SpotSeasonalRuleRepository>();
+builder.Services.AddScoped<ISpotSeasonalRuleService, SpotSeasonalRuleService>();
 builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 
 builder.Services.AddHangfire(c =>

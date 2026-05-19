@@ -149,5 +149,14 @@
                 <button type="submit" class="btn btn--danger btn--sm" style="width: 100%; min-height: 44px;">Deactivate this spot</button>
             </form>
         }
+
+        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--hairline-ink); display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <span class="field__meta" style="margin: 0;">Override the base price for specific date windows.</span>
+            <a class="btn btn--ghost btn--sm"
+               asp-controller="SpotSeasonalRules"
+               asp-action="Index"
+               asp-route-marinaId="@(ViewData["MarinaId"])"
+               asp-route-spotId="@Model.Id">Manage seasonal rules &rarr;</a>
+        </div>
     </article>
 </section>

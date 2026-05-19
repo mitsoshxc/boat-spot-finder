@@ -1,0 +1,108 @@
+@model SpotSeasonalRuleEditViewModel
+@{
+    ViewData["Title"] = "Edit seasonal rule";
+    var spotName = ViewData["SpotName"] as string ?? "Spot";
+    var marinaName = ViewData["MarinaName"] as string ?? "Marina";
+    var marinaId = ViewData["MarinaId"];
+    var spotId = ViewData["SpotId"];
+}
+
+<section class="workspace workspace--narrow">
+    <header class="workspace__head">
+        <span class="workspace__mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="0.9">
+                <rect x="4" y="8" width="24" height="20" rx="1.5" />
+                <line x1="4" y1="14" x2="28" y2="14" opacity="0.6" />
+                <line x1="10" y1="5" x2="10" y2="10" />
+                <line x1="22" y1="5" x2="22" y2="10" />
+                <path d="M11 22 L15 18 L23 22" opacity="0.7" />
+                <circle cx="15" cy="18" r="0.9" fill="currentColor" stroke="none" />
+            </svg>
+        </span>
+        <span class="workspace__eyebrow">Editing seasonal rule</span>
+        <h1 class="workspace__title">Edit seasonal rule</h1>
+        <p class="workspace__subtitle">@spotName &middot; @marinaName</p>
+    </header>
+
+    <article class="plate">
+        <form asp-action="Edit"
+              asp-route-marinaId="@marinaId"
+              asp-route-spotId="@spotId"
+              asp-route-id="@Model.Id"
+              method="post"
+              class="plate-form"
+              novalidate>
+            <div asp-validation-summary="ModelOnly" class="auth-errors"></div>
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="SpotId" />
+
+            <section class="plate-section">
+                <h2 class="plate-section__title">
+                    <span class="plate-section__numeral">I</span>
+                    Identity
+                </h2>
+                <div class="plate-section__body">
+                    <div class="field">
+                        <label asp-for="Name" class="field__label">Name</label>
+                        <input asp-for="Name" class="field__input" autocomplete="off" />
+                        <span asp-validation-for="Name" class="field__error"></span>
+                        <span class="field__meta">A short label for this window. Shown only to you.</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="plate-section">
+                <h2 class="plate-section__title">
+                    <span class="plate-section__numeral">II</span>
+                    Date window
+                </h2>
+                <div class="plate-section__body">
+                    <div class="field-row">
+                        <div class="field">
+                            <label asp-for="StartDate" class="field__label">Start date</label>
+                            <input asp-for="StartDate" type="date" class="field__input field__input--mono" />
+                            <span asp-validation-for="StartDate" class="field__error"></span>
+                        </div>
+                        <div class="field">
+                            <label asp-for="EndDate" class="field__label">End date</label>
+                            <input asp-for="EndDate" type="date" class="field__input field__input--mono" />
+                            <span asp-validation-for="EndDate" class="field__error"></span>
+                        </div>
+                    </div>
+                    <span class="field__meta">Rules cannot overlap. A new window must fall entirely outside every other window for this spot.</span>
+                </div>
+            </section>
+
+            <section class="plate-section">
+                <h2 class="plate-section__title">
+                    <span class="plate-section__numeral">III</span>
+                    Pricing &amp; policy
+                </h2>
+                <div class="plate-section__body">
+                    <div class="field">
+                        <label asp-for="PricePerDay" class="field__label">Price per day</label>
+                        <div class="field-currency">
+                            <span class="field-currency__symbol" aria-hidden="true">&euro;</span>
+                            <input asp-for="PricePerDay" type="number" step="0.01" min="0" class="field__input field__input--currency" />
+                            <span class="field-currency__suffix" aria-hidden="true">/ day</span>
+                        </div>
+                        <span asp-validation-for="PricePerDay" class="field__error"></span>
+                    </div>
+                    <div class="field">
+                        <label asp-for="MinBookingDays" class="field__label">Minimum booking</label>
+                        <input asp-for="MinBookingDays" type="number" step="1" min="1" class="field__input field__input--mono" />
+                        <span asp-validation-for="MinBookingDays" class="field__error"></span>
+                    </div>
+                </div>
+            </section>
+
+            <div class="plate-form__actions">
+                <a class="link--quiet"
+                   asp-action="Index"
+                   asp-route-marinaId="@marinaId"
+                   asp-route-spotId="@spotId">&larr; Cancel</a>
+                <button type="submit" class="btn btn--primary">Save changes</button>
+            </div>
+        </form>
+    </article>
+</section>

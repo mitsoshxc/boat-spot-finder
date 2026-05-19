@@ -1,0 +1,118 @@
+@model IEnumerable<SpotSeasonalRuleListItemViewModel>
+@{
+    ViewData["Title"] = "Seasonal rules";
+    var spotName = ViewData["SpotName"] as string ?? "Spot";
+    var marinaName = ViewData["MarinaName"] as string ?? "Marina";
+    var marinaId = ViewData["MarinaId"];
+    var spotId = ViewData["SpotId"];
+}
+
+<section class="workspace">
+    <header class="workspace__head workspace__head--editor">
+        <div class="workspace__head-titles">
+            <span class="workspace__mark" aria-hidden="true">
+                <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="0.9">
+                    <rect x="4" y="8" width="24" height="20" rx="1.5" />
+                    <line x1="4" y1="14" x2="28" y2="14" opacity="0.6" />
+                    <line x1="10" y1="5" x2="10" y2="10" />
+                    <line x1="22" y1="5" x2="22" y2="10" />
+                    <rect x="9" y="18" width="14" height="4" rx="0.5" fill="currentColor" stroke="none" opacity="0.18" />
+                    <line x1="9" y1="20" x2="23" y2="20" opacity="0.7" />
+                </svg>
+            </span>
+            <span class="workspace__eyebrow">Place owner &middot; Seasonal pricing</span>
+            <h1 class="workspace__title">Seasonal rules</h1>
+            <p class="workspace__subtitle">@spotName &middot; @marinaName</p>
+        </div>
+        <div class="toolbar">
+            <a class="link--quiet"
+               asp-controller="Spots"
+               asp-action="Edit"
+               asp-route-marinaId="@marinaId"
+               asp-route-id="@spotId">&larr; Back to spot</a>
+            <a class="btn btn--primary btn--sm"
+               asp-action="Create"
+               asp-route-marinaId="@marinaId"
+               asp-route-spotId="@spotId">
+                <span class="btn__sigil" aria-hidden="true">+</span> Add seasonal rule
+            </a>
+        </div>
+    </header>
+
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <span class="vignette vignette--muted" aria-hidden="true">
+                <svg viewBox="0 0 64 48" fill="none" stroke="currentColor" stroke-width="0.7">
+                    <rect x="8" y="12" width="48" height="28" rx="1.5" />
+                    <line x1="8" y1="20" x2="56" y2="20" opacity="0.5" />
+                    <line x1="20" y1="8" x2="20" y2="15" />
+                    <line x1="44" y1="8" x2="44" y2="15" />
+                    <rect x="18" y="26" width="28" height="6" rx="0.5" opacity="0.35" />
+                    <line x1="18" y1="29" x2="46" y2="29" opacity="0.6" />
+                </svg>
+            </span>
+            <p class="empty-state__title">No seasonal rules yet.</p>
+            <p class="empty-state__body">Create one to override this spot&rsquo;s base price for a specific date window &mdash; summer rates, off-season discounts, holiday surcharges.</p>
+        </div>
+    }
+    else
+    {
+        <ul class="rule-grid">
+            @foreach (var item in Model.OrderBy(r => r.StartDate))
+            {
+                <li class="rule-card">
+                    <div class="rule-card__head">
+                        <span class="rule-card__eyebrow">Seasonal rule</span>
+                        <h2 class="rule-card__name">@item.Name</h2>
+                    </div>
+
+                    <div class="rule-card__range" aria-label="@($"From {item.StartDate.ToString("d MMM yyyy")} to {item.EndDate.ToString("d MMM yyyy")}")">
+                        <div class="rule-card__date">
+                            <span class="rule-card__date-label">Start</span>
+                            <span class="rule-card__date-value">@item.StartDate.ToString("d MMM yyyy")</span>
+                        </div>
+                        <span class="rule-card__divider" aria-hidden="true"></span>
+                        <div class="rule-card__date">
+                            <span class="rule-card__date-label">End</span>
+                            <span class="rule-card__date-value">@item.EndDate.ToString("d MMM yyyy")</span>
+                        </div>
+                    </div>
+
+                    <dl class="rule-card__stats">
+                        <div class="rule-card__stat">
+                            <dt class="rule-card__stat-label">Price</dt>
+                            <dd class="rule-card__stat-value">
+                                <span>&euro;@item.PricePerDay.ToString("F2")</span>
+                                <span class="rule-card__stat-unit">/ day</span>
+                            </dd>
+                        </div>
+                        <div class="rule-card__stat">
+                            <dt class="rule-card__stat-label">Min stay</dt>
+                            <dd class="rule-card__stat-value">
+                                <span>@item.MinBookingDays</span>
+                                <span class="rule-card__stat-unit">@(item.MinBookingDays == 1 ? "day" : "days")</span>
+                            </dd>
+                        </div>
+                    </dl>
+
+                    <div class="rule-card__actions">
+                        <a class="btn btn--ghost btn--sm"
+                           asp-action="Edit"
+                           asp-route-marinaId="@marinaId"
+                           asp-route-spotId="@spotId"
+                           asp-route-id="@item.Id">Edit</a>
+                        <form asp-action="Delete"
+                              asp-route-marinaId="@marinaId"
+                              asp-route-spotId="@spotId"
+                              asp-route-id="@item.Id"
+                              method="post"
+                              onsubmit="return confirm('Delete this seasonal rule?');">
+                            <button type="submit" class="btn btn--danger btn--sm">Delete</button>
+                        </form>
+                    </div>
+                </li>
+            }
+        </ul>
+    }
+</section>

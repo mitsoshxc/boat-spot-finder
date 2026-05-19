@@ -11,6 +11,7 @@ These rules apply to every file in the codebase. The Dev agent enforces them on 
 | Entities live only in `Core/Entities/` | No EF attributes on entity classes. |
 | Repository interfaces live in `Core/Interfaces/` | Concrete implementations in `Infrastructure/Repositories/`. |
 | Service interfaces live in `Core/Interfaces/` | Concrete implementations in `Core/Services/`. |
+| Shared result/DTO types live in `Core/Common/` or `Core/Models/` | `Core/Common/` for cross-cutting types (e.g. `ServiceResult`); `Core/Models/` for input/transfer objects. |
 | EF configurations live in `Infrastructure/Data/Configurations/` | One file per entity; inherit `BaseEntityConfiguration<T>` for entities that extend `BaseEntity`. |
 | `AppDbContext` lives in `Infrastructure/Data/` | Never in `Core` or `Web`. |
 | Controllers and views live in `Web` | No business logic in controllers — delegate to service layer. |
@@ -126,6 +127,26 @@ All ViewModels, DTOs, request, response, and event objects are declared as `reco
 - No per-action `[ValidateAntiForgeryToken]` — the global `AutoValidateAntiforgeryTokenAttribute` registered in `Program.cs` covers all state-changing verbs.
 - No business logic in controllers. Read input, call a service, redirect or return a view.
 - Return `NotFound()` / `Forbid()` / `BadRequest()` from controllers, not raw status codes.
+
+---
+
+## Service Return Values
+
+Services return `ServiceResult` (`Core/Common/ServiceResult.cs`) rather than throwing exceptions for validation failures or business rule violations.
+
+```csharp
+public record ServiceResult(bool Success, IEnumerable<string> Errors)
+{
+    public static ServiceResult Ok() => new(true, Array.Empty<string>());
+    public static ServiceResult Fail(params string[] errors) => new(false, errors);
+}
+```
+
+- A successful operation returns `ServiceResult.Ok()`.
+- A failed operation returns `ServiceResult.Fail(...)` with one or more human-readable error messages.
+- Controllers check `result.Success`; on failure they add each error to `ModelState` and return the view.
+- Do not throw for expected validation failures. Reserve exceptions for unexpected infrastructure errors.
+- All future services must follow this pattern.
 
 ---
 
