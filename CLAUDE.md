@@ -42,6 +42,10 @@ Stack: ASP.NET Core 10 MVC · Entity Framework Core 10 · SQL Server · ASP.NET 
 
 The tech lead reads `PLAN.md` to write `/dev` briefs. Dev reads `PLAN.md` to understand context and file targets. After each approved task, update the task status in `PLAN.md` from `[ ]` to `[x]`.
 
+## Testing
+
+**[`TESTING.md`](TESTING.md)** tracks automated test cases to add to `tests/BoatSpotFinder.Tests/` and manual smoke tests to run, organized by phase. Updated at phase milestones — not after every task.
+
 ## Docs
 
 | Doc | Contents |
