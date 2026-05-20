@@ -4,14 +4,76 @@
 
 @if (SignInManager.IsSignedIn(User))
 {
-    <div class="auth-strip auth-strip--signed-in">
-        <span class="auth-strip__greeting">
-            <span class="auth-strip__greeting-label">Signed in as</span>
-            <span class="auth-strip__greeting-name">@UserManager.GetUserName(User)</span>
-        </span>
-        <form asp-controller="Account" asp-action="Logout" method="post" class="auth-strip__form">
-            <button type="submit" class="link link--quiet">Sign out</button>
-        </form>
+    <div class="user-menu" data-user-menu>
+        <button type="button"
+                class="user-menu__trigger"
+                data-user-menu-trigger
+                aria-haspopup="menu"
+                aria-expanded="false"
+                aria-controls="userMenuPanel">
+            <span class="user-menu__trigger-text">
+                <span class="user-menu__trigger-label">Signed in as</span>
+                <span class="user-menu__trigger-name">@UserManager.GetUserName(User)</span>
+            </span>
+            <svg class="user-menu__chevron" viewBox="0 0 10 6" aria-hidden="true">
+                <path d="M1 1 L5 5 L9 1" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="user-menu__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="8.5" r="3.4"/>
+                    <path d="M4.5 19.5 C 6 15.5, 9 14.4, 12 14.4 C 15 14.4, 18 15.5, 19.5 19.5"/>
+                </svg>
+            </span>
+        </button>
+
+        <div class="user-menu__panel"
+             id="userMenuPanel"
+             data-user-menu-panel>
+            <div class="user-menu__sheet" role="menu" aria-label="Account menu">
+                <div class="user-menu__sheet-header">
+                    <span class="user-menu__sheet-label">Signed in as</span>
+                    <span class="user-menu__sheet-name">@UserManager.GetUserName(User)</span>
+                    <button type="button"
+                            class="user-menu__sheet-close"
+                            data-user-menu-close
+                            aria-label="Close menu">
+                        <svg viewBox="0 0 14 14" aria-hidden="true">
+                            <path d="M2 2 L12 12 M12 2 L2 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                </div>
+                <ul class="user-menu__list">
+                    <li class="user-menu__item">
+                        <a class="user-menu__action" href="#" role="menuitem">
+                            <span class="user-menu__label">My Bookings</span>
+                            <span class="user-menu__caret" aria-hidden="true">
+                                <svg viewBox="0 0 6 10">
+                                    <path d="M1 1 L5 5 L1 9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </span>
+                        </a>
+                    </li>
+                    <li class="user-menu__item">
+                        <a class="user-menu__action" href="#" role="menuitem">
+                            <span class="user-menu__label">Favorites</span>
+                            <span class="user-menu__caret" aria-hidden="true">
+                                <svg viewBox="0 0 6 10">
+                                    <path d="M1 1 L5 5 L1 9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </span>
+                        </a>
+                    </li>
+                    <li class="user-menu__divider" role="separator" aria-hidden="true"></li>
+                    <li class="user-menu__item">
+                        <form asp-controller="Account" asp-action="Logout" method="post" class="user-menu__form">
+                            <button type="submit" class="user-menu__action user-menu__action--destructive" role="menuitem">
+                                <span class="user-menu__label">Sign out</span>
+                            </button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+        </div>
     </div>
 }
 else
