@@ -53,3 +53,6 @@ TestResults/
 coverage/
 *.coverage
 *.coveragexml
+
+# Top-level logs directory (config-driven NLog output)
+/logs/

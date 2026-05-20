@@ -23,7 +23,8 @@ builder.Host.UseNLog();
 builder.Services.Configure<AppSettings>(builder.Configuration.GetSection("AppSettings"));
 builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Smtp"));
 
-if (builder.Environment.IsDevelopment())
+var smtpHost = builder.Configuration["Smtp:Host"];
+if (string.IsNullOrWhiteSpace(smtpHost))
 {
     builder.Services.AddScoped<IEmailSender, ConsoleEmailSender>();
 }
@@ -75,14 +76,8 @@ builder.Services.AddHangfire(c =>
     c.UseSqlServerStorage(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddHangfireServer();
 
-var healthBuilder = builder.Services.AddHealthChecks()
+builder.Services.AddHealthChecks()
     .AddDbContextCheck<AppDbContext>();
-
-var esUri = builder.Configuration["Elasticsearch:Uri"];
-if (!string.IsNullOrEmpty(esUri))
-{
-    healthBuilder.AddElasticsearch(esUri);
-}
 
 var app = builder.Build();
 
