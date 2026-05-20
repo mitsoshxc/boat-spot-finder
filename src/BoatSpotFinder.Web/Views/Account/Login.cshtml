@@ -21,6 +21,12 @@
 
         <form asp-action="Login" method="post" class="form" novalidate>
             <div asp-validation-summary="ModelOnly" class="auth-errors"></div>
+            @if (TempData["LoginSuccessMessage"] is string successMessage)
+            {
+                <div class="notice notice--success">
+                    <p class="notice__title">@successMessage</p>
+                </div>
+            }
             @if (ViewData.ModelState.ContainsKey("unconfirmed_email") &&
                  ViewData.ModelState["unconfirmed_email"]!.Errors.Any())
             {

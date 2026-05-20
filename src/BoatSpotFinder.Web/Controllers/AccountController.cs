@@ -164,6 +164,7 @@ public class AccountController : Controller
         if (!result.Succeeded)
             return View("ConfirmEmail");
 
+        TempData["LoginSuccessMessage"] = "Your email has been confirmed. You can now sign in.";
         return RedirectToAction(nameof(Login));
     }
 
