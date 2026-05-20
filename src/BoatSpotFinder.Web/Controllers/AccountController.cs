@@ -80,15 +80,54 @@ public class AccountController : Controller
             var user = await _userManager.FindByEmailAsync(model.Email);
             if (user is not null && !user.IsActive)
             {
+                _auditLogger.Log(
+                    userId: user.Id,
+                    userEmail: user.Email ?? string.Empty,
+                    action: "LoginFailed_Deactivated",
+                    entityType: "User",
+                    entityId: user.Id,
+                    marinaId: null,
+                    details: null);
                 ModelState.AddModelError(string.Empty, "Your account has been deactivated.");
             }
             else
             {
+                _auditLogger.Log(
+                    userId: user?.Id ?? string.Empty,
+                    userEmail: user?.Email ?? model.Email,
+                    action: "LoginFailed_EmailUnconfirmed",
+                    entityType: "User",
+                    entityId: user?.Id ?? string.Empty,
+                    marinaId: null,
+                    details: null);
                 ModelState.AddModelError("unconfirmed_email", "You must confirm your email before logging in.");
             }
             return View(model);
         }
 
+        var failedUser = await _userManager.FindByEmailAsync(model.Email);
+        if (failedUser is null)
+        {
+            _auditLogger.Log(
+                userId: string.Empty,
+                userEmail: model.Email,
+                action: "LoginFailed_UserNotFound",
+                entityType: "User",
+                entityId: string.Empty,
+                marinaId: null,
+                details: null);
+        }
+        else
+        {
+            _auditLogger.Log(
+                userId: failedUser.Id,
+                userEmail: failedUser.Email ?? string.Empty,
+                action: "LoginFailed_InvalidPassword",
+                entityType: "User",
+                entityId: failedUser.Id,
+                marinaId: null,
+                details: null);
+        }
         ModelState.AddModelError(string.Empty, "Invalid login attempt.");
         return View(model);
     }
