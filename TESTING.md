@@ -118,35 +118,34 @@ Verifiable with a `ListLogger` test sink or by configuring NLog to write to memo
 
 Run against `dotnet run --project src/BoatSpotFinder.Web`. Email confirmation/reset/invite links print to the **console** (`ConsoleEmailSender` is registered in Development).
 
-Audit log file: `src/BoatSpotFinder.Web/bin/Debug/net10.0/logs/audit-YYYY-MM-DD.log`.
+Audit log file: `logs/audit-YYYY-MM-DD.log` (at repo root).
 
 ### Prerequisite for PlaceOwner flows
 
-`AdminController` is not yet implemented (Phase 6), so there is no UI to create marinas or send PlaceOwner invitations. To smoke-test PlaceOwner flows you must seed manually:
+`AdminController` is not yet implemented (Phase 6), so there is no UI to create marinas or send PlaceOwner invitations. Run the idempotent seed script:
 
-1. `INSERT` a `Marina` row in SQL (LocalDB).
-2. `INSERT` an `Invitation` row with:
-   - `Email` = the invitee's email
-   - `Token` = `SHA-256(rawToken)` (use `TokenHasher.Hash` in a scratch console app, or compute externally)
-   - `MarinaId` = the marina ID from step 1
-   - `ExpiresAt` = 48 hours from now
-   - `InvitedById` = the seeded admin ID `30000000-0000-0000-0000-000000000001`
-3. Visit `/account/invite-register?token={rawToken}` to register the PlaceOwner.
+```
+sqlcmd -S localhost\SQLEXPRESS -E -i scripts\seed-placeowners.sql
+```
 
-If this is too much friction, skip §6–§9 below and limit smoke testing to BoatOwner + Admin auth flows (§1–§5).
+(or paste the script into SSMS / Azure Data Studio against the `BoatSpotFinder` DB). It inserts two Marinas + two Invitations using fixed GUIDs, hashes the invite tokens via SHA-256 to match `TokenHasher.Hash`, and refreshes `ExpiresAt` on re-runs. Raw tokens (used in the invite-register URL) are `smoke-marinaA-2026-05-20` and `smoke-marinaB-2026-05-20`.
+
+Then visit `/account/invite-register?token=smoke-marinaA-2026-05-20` to register PlaceOwner A, and the corresponding URL for B to enable §10 ownership checks.
+
+If you don't want to seed, skip §6–§10 and limit smoke testing to BoatOwner + Admin auth flows (§1–§5, §11).
 
 ### 1. BoatOwner self-registration
 
 - [ ] Visit `/account/register`, submit valid registration → "check your inbox" page
-- [ ] Console shows confirmation email → click link → success → redirects to login
+- [ ] Console shows confirmation email → click link → success → redirects to login with a green `.notice--success` flash ("Your email has been confirmed. You can now sign in.") that disappears on Ctrl+R (TempData consume-on-read)
 - [ ] Login with the new account → redirects to `/browse` (Phase 7 hasn't shipped Browse yet, so a 404 there is expected — the redirect target is what's being verified)
 - [ ] Top nav shows BoatOwner links (Browse / My Bookings / My Vessels — links 404, expected)
 - [ ] Logout via top nav → redirects to home
 
 ### 2. Email confirmation edge cases
 
-- [ ] Try to login before confirming → "Please confirm your email" error with a "Resend confirmation" link
-- [ ] Click resend → new email in console; new link works
+- [ ] Try to login before confirming → "You must confirm your email before logging in." warning notice with a "Resend confirmation email" link; audit log gains a `LoginFailed_EmailUnconfirmed` entry
+- [ ] Click resend → fresh email in console; new link confirms successfully → login again shows the green flash on success
 - [ ] Re-register with the same email → Identity blocks (duplicate email error in the form)
 
 ### 3. Password reset
@@ -158,13 +157,20 @@ If this is too much friction, skip §6–§9 below and limit smoke testing to Bo
 ### 4. Login error paths
 
 - [ ] Wrong password → "Invalid login attempt"
-- [ ] In SQL, set `AspNetUsers.IsActive = 0` for a user → login shows "Your account has been deactivated. Please contact support."
+- [ ] Unknown email → same "Invalid login attempt" (anti-enumeration — must NOT distinguish from wrong-password)
+- [ ] In SQL, set `AspNetUsers.IsActive = 0` for a user → login shows "Your account has been deactivated." Re-activate (`IsActive = 1`) after.
 
 ### 5. Audit log inspection
 
-- [ ] After any login, tail `src/BoatSpotFinder.Web/bin/Debug/net10.0/logs/audit-YYYY-MM-DD.log` → see a JSON entry with `action=Login`, correct `userId`/`userEmail`
-- [ ] After logout → see `action=Logout`
-- [ ] (After §6/§7) see `SpotCreated`/`SpotEdited`/`SpotDeactivated`/`MarinaEdited` entries
+Tail `logs/audit-YYYY-MM-DD.log` (repo root) and confirm structured JSON entries for:
+
+- [ ] Successful login: `"action":"Login"` with correct `userId` / `userEmail`
+- [ ] Logout: `"action":"Logout"` with same identifiers
+- [ ] Wrong password (real user): `"action":"LoginFailed_InvalidPassword"` with the real `userId` / `userEmail`
+- [ ] Unknown email: `"action":"LoginFailed_UserNotFound"` with empty `userId` and the typed email in `userEmail`
+- [ ] Deactivated user: `"action":"LoginFailed_Deactivated"` with the user's identifiers
+- [ ] Login attempt before email confirmed: `"action":"LoginFailed_EmailUnconfirmed"` with the user's identifiers
+- [ ] (After §6/§7) `SpotCreated` / `SpotEdited` / `SpotDeactivated` / `MarinaEdited` entries
 
 ### 6. PlaceOwner marina edit (requires seeded invitation)
 
