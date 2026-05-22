@@ -56,3 +56,6 @@ coverage/
 
 # Top-level logs directory (config-driven NLog output)
 /logs/
+
+# Uploads
+/src/BoatSpotFinder.Web/wwwroot/uploads/**

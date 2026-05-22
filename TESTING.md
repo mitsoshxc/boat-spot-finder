@@ -128,7 +128,7 @@ Audit log file: `logs/audit-YYYY-MM-DD.log` (at repo root).
 sqlcmd -S localhost\SQLEXPRESS -E -i scripts\seed-placeowners.sql
 ```
 
-(or paste the script into SSMS / Azure Data Studio against the `BoatSpotFinder` DB). It inserts two Marinas + two Invitations using fixed GUIDs, hashes the invite tokens via SHA-256 to match `TokenHasher.Hash`, and refreshes `ExpiresAt` on re-runs. Raw tokens (used in the invite-register URL) are `smoke-marinaA-2026-05-20` and `smoke-marinaB-2026-05-20`.
+(or paste the script into SSMS / Azure Data Studio against the `BoatSpotFinder` DB). It inserts two Marinas + two Invitations using fixed GUIDs, hashes the invite tokens via SHA-256 to match `TokenHasher.Hash`, and refreshes `ExpiresAt` on re-runs. Note: `AccountController.InviteRegister` is now reachable at `/account/invite-register` (hyphenated) thanks to the explicit `[Route]` attribute shipped this session — the URL in the seed script comments works as documented. Raw tokens (used in the invite-register URL) are `smoke-marinaA-2026-05-20` and `smoke-marinaB-2026-05-20`.
 
 Then visit `/account/invite-register?token=smoke-marinaA-2026-05-20` to register PlaceOwner A, and the corresponding URL for B to enable §10 ownership checks.
 
@@ -136,59 +136,61 @@ If you don't want to seed, skip §6–§10 and limit smoke testing to BoatOwner 
 
 ### 1. BoatOwner self-registration
 
-- [ ] Visit `/account/register`, submit valid registration → "check your inbox" page
-- [ ] Console shows confirmation email → click link → success → redirects to login with a green `.notice--success` flash ("Your email has been confirmed. You can now sign in.") that disappears on Ctrl+R (TempData consume-on-read)
-- [ ] Login with the new account → redirects to `/browse` (Phase 7 hasn't shipped Browse yet, so a 404 there is expected — the redirect target is what's being verified)
-- [ ] Top nav shows BoatOwner links (Browse / My Bookings / My Vessels — links 404, expected)
-- [ ] Logout via top nav → redirects to home
+- [x] Visit `/account/register`, submit valid registration → "check your inbox" page
+- [x] Console shows confirmation email → click link → success → redirects to login with a green `.notice--success` flash ("Your email has been confirmed. You can now sign in.") that disappears on Ctrl+R (TempData consume-on-read)
+- [x] Login with the new account → redirects to `/browse` (Phase 7 hasn't shipped Browse yet, so a 404 there is expected — the redirect target is what's being verified)
+- [x] Top nav shows BoatOwner links (Browse / My Bookings / My Vessels — links 404, expected)
+- [x] Logout via top nav → redirects to home
 
 ### 2. Email confirmation edge cases
 
-- [ ] Try to login before confirming → "You must confirm your email before logging in." warning notice with a "Resend confirmation email" link; audit log gains a `LoginFailed_EmailUnconfirmed` entry
-- [ ] Click resend → fresh email in console; new link confirms successfully → login again shows the green flash on success
-- [ ] Re-register with the same email → Identity blocks (duplicate email error in the form)
+- [x] Try to login before confirming → "You must confirm your email before logging in." warning notice with a "Resend confirmation email" link; audit log gains a `LoginFailed_EmailUnconfirmed` entry
+- [x] Click resend → fresh email in console; new link confirms successfully → login again shows the green flash on success
+- [x] Re-register with the same email → Identity blocks (duplicate email error in the form)
 
 ### 3. Password reset
 
-- [ ] `/account/forgot-password` with a registered email → "check your email" confirmation page
-- [ ] Console shows reset email → click link → reset form rendered with email + token pre-filled
-- [ ] Submit new password → success page; old password fails, new works
+- [x] `/account/forgot-password` with a registered email → "check your email" confirmation page
+- [x] Console shows reset email → click link → reset form rendered with email + token pre-filled
+- [x] Submit new password → success page; old password fails, new works
 
 ### 4. Login error paths
 
-- [ ] Wrong password → "Invalid login attempt"
-- [ ] Unknown email → same "Invalid login attempt" (anti-enumeration — must NOT distinguish from wrong-password)
-- [ ] In SQL, set `AspNetUsers.IsActive = 0` for a user → login shows "Your account has been deactivated." Re-activate (`IsActive = 1`) after.
+- [x] Wrong password → "Invalid login attempt"
+- [x] Unknown email → same "Invalid login attempt" (anti-enumeration — must NOT distinguish from wrong-password)
+- [x] In SQL, set `AspNetUsers.IsActive = 0` for a user → login shows "Your account has been deactivated." Re-activate (`IsActive = 1`) after.
 
 ### 5. Audit log inspection
 
 Tail `logs/audit-YYYY-MM-DD.log` (repo root) and confirm structured JSON entries for:
 
-- [ ] Successful login: `"action":"Login"` with correct `userId` / `userEmail`
-- [ ] Logout: `"action":"Logout"` with same identifiers
-- [ ] Wrong password (real user): `"action":"LoginFailed_InvalidPassword"` with the real `userId` / `userEmail`
-- [ ] Unknown email: `"action":"LoginFailed_UserNotFound"` with empty `userId` and the typed email in `userEmail`
-- [ ] Deactivated user: `"action":"LoginFailed_Deactivated"` with the user's identifiers
-- [ ] Login attempt before email confirmed: `"action":"LoginFailed_EmailUnconfirmed"` with the user's identifiers
+- [x] Successful login: `"action":"Login"` with correct `userId` / `userEmail`
+- [x] Logout: `"action":"Logout"` with same identifiers
+- [x] Wrong password (real user): `"action":"LoginFailed_InvalidPassword"` with the real `userId` / `userEmail`
+- [x] Unknown email: `"action":"LoginFailed_UserNotFound"` with empty `userId` and the typed email in `userEmail`
+- [x] Deactivated user: `"action":"LoginFailed_Deactivated"` with the user's identifiers
+- [x] Login attempt before email confirmed: `"action":"LoginFailed_EmailUnconfirmed"` with the user's identifiers
 - [ ] (After §6/§7) `SpotCreated` / `SpotEdited` / `SpotDeactivated` / `MarinaEdited` entries
 
 ### 6. PlaceOwner marina edit (requires seeded invitation)
 
-- [ ] Visit `/account/invite-register?token={rawToken}` → form, email pre-filled and read-only
-- [ ] Submit → redirects to `/placeowner/marinas/{marinaId}/edit`
-- [ ] Fill description/address/region/phone/lat/long/default price → save → redirects to `/placeowner/marinas`
-- [ ] List shows the marina with its spot count
+- [x] Visit `/account/invite-register?token={rawToken}` → form, email pre-filled and read-only
+- [x] Submit → redirects to `/account/login` showing the green `.notice--success` flash "Your account has been created. You can now sign in."; sign in as the invited PlaceOwner → lands on `/placeowner/marinas`
+- [x] From the marina list, click the marina → fill description/address/region/phone/lat/long/default price → save → redirects to `/placeowner/marinas` with updated values
+- [x] List shows the marina with its spot count
 
 ### 7. Marina Layout Editor + Spots
 
-- [ ] Open Layout for the marina → canvas appears (solid `#e0e0e0` fill if no background)
-- [ ] Upload a background image (jpg/png/webp under 5 MB) → page reloads, image visible behind canvas
-- [ ] Try uploading a `.txt` file renamed to `.jpg` → `BadRequest("Invalid file type.")` (MIME check)
-- [ ] Try uploading a 10 MB image → `BadRequest("File exceeds 5 MB.")`
-- [ ] Click "Add Spot" → modal opens (bottom sheet on mobile, centered on ≥720px)
-- [ ] Submit name/description/dimensions/price → spot appears in the unplaced sidebar
-- [ ] Drag the unplaced spot onto the canvas, resize, rotate → click Save Layout
-- [ ] Reload page → positions and rotation persisted; spot now rendered on canvas in blue
+- [x] Open Layout for the marina → canvas appears (solid `#e0e0e0` fill if no background)
+- [x] Upload a background image (jpg/png/webp under 5 MB) → page reloads, image visible behind canvas
+- [x] Try uploading a `.txt` file renamed to `.jpg` → JS validation blocks submit, inline error "Please choose a JPG, PNG, or WebP image." (or the extension error) shown below the upload row. Server-side validation in `MarinasController.UploadBackground` is kept as defense-in-depth (returns `BadRequest` if JS is bypassed).
+- [x] Try uploading a > 5 MB image → JS validation blocks submit, inline error "File size must be 5 MB or less." shown below the upload row.
+- [x] Try uploading a real `.png` renamed to `.bmp` (extension fake-out) → JS blocks submit, error "File extension must be .jpg, .jpeg, .png, or .webp."
+- [x] Click "Add Spot" → modal opens (bottom sheet on mobile, centered card on ≥720px)
+- [x] Modal includes a `Minimum booking · days` field (default 1, range 1–365). Submit name/description/dimensions/price/min-booking → spot appears in the unplaced sidebar with an `Unplaced` pill; sidebar count badge increments live (no reload); empty-state paragraph removed automatically.
+- [x] Spots on the canvas render in dock grey (`#6B7684` slate-soft fill, `#3C4654` slate stroke). Unplaced spots have a dashed stroke; placed-Active spots are solid; placed-Inactive stay neutral grey.
+- [ ] Drag the unplaced spot onto the canvas, resize, rotate → click Save Layout → "Saved ✓" flash appears for ~2 seconds on the button
+- [ ] Reload page → positions and rotation persisted; spot now rendered solid (Active) on canvas; sidebar pill flips from `Unplaced` to `Active`
 
 ### 8. Spot CRUD
 
@@ -196,7 +198,10 @@ Tail `logs/audit-YYYY-MM-DD.log` (repo root) and confirm structured JSON entries
 - [ ] Edit a spot → toggle vessel-type checkboxes, change price → save → updated
 - [ ] Re-open Edit → the previously-checked vessel-type checkboxes are checked again (flag round-trip)
 - [ ] Deactivate a spot → list now shows it as inactive (gray)
-- [ ] Audit log shows `SpotCreated` / `SpotEdited` / `SpotDeactivated` entries with correct `marinaId` and `entityId`
+- [ ] On the Edit page, scroll past the Save/Deactivate buttons to find "Delete this spot permanently" (red `.btn--danger`). For a spot with **no bookings**: click → browser `confirm()` dialog → OK → redirects to `/placeowner/marinas/{marinaId}/spots`, spot is gone from the DB (verify with `SELECT * FROM Spots WHERE Id = '<id>'`).
+- [ ] For a spot **with bookings** (hand-insert a Booking row via SQL if needed to test): click Delete → redirects back to Edit, `.notice notice--warning` shows "Cannot delete a spot that has bookings. Deactivate it instead..."; spot remains in DB.
+- [ ] Inactive spots are also deletable: Deactivate first, then Delete works the same as active. Confirm both the Deactivate and Delete forms POST to `/placeowner/marinas/{marinaId}/spots/{id}/{deactivate|delete}` (the explicit `asp-route-marinaId` ensures URL generation doesn't fall back to the conventional `/Spots/{action}/{id}` 404).
+- [ ] Audit log shows `SpotCreated` / `SpotEdited` / `SpotDeactivated` / `SpotDeleted` entries with correct `marinaId` and `entityId`
 
 ### 9. Seasonal rules
 
@@ -219,7 +224,7 @@ Requires a second seeded PlaceOwner (Option A above, second invitation for a dif
 
 ### 11. CSRF
 
-- [ ] View source on any form page — confirm `<input name="__RequestVerificationToken" ...>` is present in every `<form>` (tag helper auto-injects it)
+- [x] View source on any form page — confirm `<input name="__RequestVerificationToken" ...>` is present in every `<form>` (tag helper auto-injects it)
 - [ ] (Optional) `curl -X POST http://localhost:5000/placeowner/marinas/{id}/edit` without the token → 400 Bad Request
 
 ---
