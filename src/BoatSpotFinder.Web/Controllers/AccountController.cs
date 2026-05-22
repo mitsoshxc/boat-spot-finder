@@ -238,6 +238,7 @@ public class AccountController : Controller
     }
 
     [HttpGet]
+    [Route("account/invite-register")]
     public async Task<IActionResult> InviteRegister(string token)
     {
         var tokenHash = TokenHasher.Hash(token);
@@ -256,6 +257,7 @@ public class AccountController : Controller
     }
 
     [HttpPost]
+    [Route("account/invite-register")]
     public async Task<IActionResult> InviteRegister(InviteRegisterViewModel model)
     {
         var tokenHash = TokenHasher.Hash(model.Token);
@@ -295,7 +297,8 @@ public class AccountController : Controller
         await _marinaAdminRepository.AddAsync(marinaAdmin);
         await _invitationRepository.MarkUsedAsync(invitation);
 
-        return RedirectToAction("Edit", "Marinas", new { id = invitation.MarinaId });
+        TempData["LoginSuccessMessage"] = "Your account has been created. You can now sign in.";
+        return RedirectToAction(nameof(Login));
     }
 
     [HttpGet]
@@ -354,5 +357,6 @@ public class AccountController : Controller
     public IActionResult ResetPasswordConfirmation() => View();
 
     [HttpGet]
+    [Route("account/access-denied")]
     public IActionResult AccessDenied() => View();
 }
