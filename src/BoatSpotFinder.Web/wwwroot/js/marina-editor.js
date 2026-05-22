@@ -294,9 +294,22 @@
             if (modal) modal.removeAttribute('hidden');
         }
 
+        function clearModalFieldErrors() {
+            if (!addSpotForm) return;
+            var inputs = addSpotForm.querySelectorAll('[aria-invalid]');
+            for (var i = 0; i < inputs.length; i++) {
+                inputs[i].removeAttribute('aria-invalid');
+            }
+            var fieldErrors = addSpotForm.querySelectorAll('.field__error');
+            for (var j = 0; j < fieldErrors.length; j++) {
+                fieldErrors[j].parentNode.removeChild(fieldErrors[j]);
+            }
+        }
+
         function closeModal() {
             if (modal) modal.setAttribute('hidden', '');
             if (addSpotForm) addSpotForm.reset();
+            clearModalFieldErrors();
             if (modalErrors) {
                 modalErrors.setAttribute('hidden', '');
                 modalErrors.innerHTML = '';
@@ -320,7 +333,21 @@
             addSpotForm.addEventListener('submit', function (e) {
                 e.preventDefault();
 
-                var payload = new URLSearchParams(new FormData(addSpotForm));
+                clearModalFieldErrors();
+                if (modalErrors) {
+                    modalErrors.setAttribute('hidden', '');
+                    modalErrors.innerHTML = '';
+                }
+
+                var fd = new FormData(addSpotForm);
+                var decimalFields = ['LengthMeters', 'WidthMeters', 'DepthMeters', 'PricePerDay'];
+                decimalFields.forEach(function (name) {
+                    var v = fd.get(name);
+                    if (typeof v === 'string' && v.indexOf(',') !== -1) {
+                        fd.set(name, v.replace(/,/g, '.'));
+                    }
+                });
+                var payload = new URLSearchParams(fd);
 
                 fetch(spotCreateUrl, {
                     method: 'POST',
@@ -349,19 +376,36 @@
                             });
                         } else {
                             return r.json().then(function (errors) {
-                                var messages = [];
+                                var fallbackMessages = [];
                                 if (errors && typeof errors === 'object') {
                                     Object.keys(errors).forEach(function (key) {
                                         var errs = errors[key];
-                                        if (Array.isArray(errs)) {
-                                            errs.forEach(function (msg) { messages.push(msg); });
+                                        var firstMsg = '';
+                                        if (Array.isArray(errs) && errs.length > 0) {
+                                            firstMsg = errs[0];
                                         } else if (typeof errs === 'string') {
-                                            messages.push(errs);
+                                            firstMsg = errs;
+                                        }
+                                        if (!firstMsg) return;
+
+                                        var input = addSpotForm.querySelector('[name="' + key + '"]');
+                                        if (input) {
+                                            input.setAttribute('aria-invalid', 'true');
+                                            var errorEl = document.createElement('p');
+                                            errorEl.className = 'field__error';
+                                            errorEl.textContent = firstMsg;
+                                            input.parentNode.insertBefore(errorEl, input.nextSibling);
+                                        } else {
+                                            fallbackMessages.push(firstMsg);
                                         }
                                     });
                                 }
-                                if (messages.length === 0) messages.push('An error occurred. Please try again.');
-                                showModalErrors(messages);
+                                if (fallbackMessages.length === 0 && !addSpotForm.querySelector('[aria-invalid]')) {
+                                    fallbackMessages.push('An error occurred. Please try again.');
+                                }
+                                if (fallbackMessages.length > 0) {
+                                    showModalErrors(fallbackMessages);
+                                }
                             }).catch(function () {
                                 showModalErrors(['An error occurred. Please try again.']);
                             });
