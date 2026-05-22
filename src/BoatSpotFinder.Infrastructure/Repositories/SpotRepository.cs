@@ -62,6 +62,17 @@ public class SpotRepository : ISpotRepository
         await _context.SaveChangesAsync();
     }
 
+    public async Task<bool> HasBookingsAsync(Guid spotId)
+    {
+        return await _context.Bookings.AnyAsync(b => b.SpotId == spotId);
+    }
+
+    public async Task DeleteAsync(Spot spot)
+    {
+        _context.Spots.Remove(spot);
+        await _context.SaveChangesAsync();
+    }
+
     public async Task UpdatePositionsAsync(IEnumerable<SpotPositionUpdate> updates)
     {
         var ids = updates.Select(u => u.Id).ToList();

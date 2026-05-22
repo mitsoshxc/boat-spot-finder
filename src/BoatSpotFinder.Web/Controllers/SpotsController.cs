@@ -220,6 +220,36 @@ public class SpotsController : Controller
         return RedirectToAction(nameof(Index), new { marinaId });
     }
 
+    [HttpPost("{id:guid}/delete")]
+    public async Task<IActionResult> Delete(Guid marinaId, Guid id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId)) return Forbid();
+
+        var spot = await _spotRepository.GetByIdAsync(id);
+        if (spot is null || spot.MarinaId != marinaId) return NotFound();
+
+        if (await _spotRepository.HasBookingsAsync(id))
+        {
+            TempData["DeleteError"] = "Cannot delete a spot that has bookings. Deactivate it instead to hide it from new bookings while preserving history.";
+            return RedirectToAction(nameof(Edit), new { marinaId, id });
+        }
+
+        var spotName = spot.Name;
+        await _spotRepository.DeleteAsync(spot);
+
+        _auditLogger.Log(
+            userId: userId,
+            userEmail: User.Identity!.Name!,
+            action: "SpotDeleted",
+            entityType: "Spot",
+            entityId: id.ToString(),
+            marinaId: marinaId.ToString(),
+            details: new { spotName });
+
+        return RedirectToAction(nameof(Index), new { marinaId });
+    }
+
     [HttpPost("{id:guid}/deactivate")]
     public async Task<IActionResult> Deactivate(Guid marinaId, Guid id)
     {

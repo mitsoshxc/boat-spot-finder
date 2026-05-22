@@ -32,6 +32,13 @@
             </div>
         }
 
+        @if (TempData["DeleteError"] is string deleteError)
+        {
+            <div class="notice notice--warning" style="margin-bottom: 24px;">
+                <p class="notice__title">@deleteError</p>
+            </div>
+        }
+
         <form asp-action="Edit" method="post" class="plate-form" novalidate>
             <input type="hidden" asp-for="Id" />
             <div asp-validation-summary="ModelOnly" class="auth-errors"></div>
@@ -145,10 +152,16 @@
 
         @if (Model.IsActive)
         {
-            <form asp-action="Deactivate" asp-route-id="@Model.Id" method="post" class="deactivate-form" style="margin-top: 16px;">
+            <form asp-action="Deactivate" asp-route-marinaId="@(ViewData["MarinaId"])" asp-route-id="@Model.Id" method="post" class="deactivate-form" style="margin-top: 16px;">
                 <button type="submit" class="btn btn--danger btn--sm" style="width: 100%; min-height: 44px;">Deactivate this spot</button>
             </form>
         }
+
+        <form asp-action="Delete" asp-route-marinaId="@(ViewData["MarinaId"])" asp-route-id="@Model.Id" method="post" class="delete-form"
+              style="margin-top: 8px;"
+              onsubmit="return confirm('Permanently delete this spot? This cannot be undone.');">
+            <button type="submit" class="btn btn--danger btn--sm" style="width: 100%; min-height: 44px;">Delete this spot permanently</button>
+        </form>
 
         <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--hairline-ink); display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
             <span class="field__meta" style="margin: 0;">Override the base price for specific date windows.</span>

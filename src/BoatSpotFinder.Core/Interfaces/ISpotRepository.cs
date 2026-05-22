@@ -11,5 +11,7 @@ public interface ISpotRepository
     Task<IReadOnlyList<Spot>> GetAllAsync(bool includeInactive);
     Task AddAsync(Spot spot);
     Task UpdateAsync(Spot spot);
+    Task<bool> HasBookingsAsync(Guid spotId);
+    Task DeleteAsync(Spot spot);
     Task UpdatePositionsAsync(IEnumerable<SpotPositionUpdate> updates);
 }
