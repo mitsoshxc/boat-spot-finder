@@ -275,6 +275,31 @@ public class SpotsController : Controller
         return RedirectToAction(nameof(Index), new { marinaId });
     }
 
+    [HttpPost("{id:guid}/activate")]
+    public async Task<IActionResult> Activate(Guid marinaId, Guid id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId)) return Forbid();
+
+        var spot = await _spotRepository.GetByIdAsync(id);
+        if (spot is null) return NotFound();
+        if (spot.MarinaId != marinaId) return Forbid();
+
+        spot.Activate();
+        await _spotRepository.UpdateAsync(spot);
+
+        _auditLogger.Log(
+            userId: userId,
+            userEmail: User.Identity!.Name!,
+            action: "SpotActivated",
+            entityType: "Spot",
+            entityId: id.ToString(),
+            marinaId: marinaId.ToString(),
+            details: null);
+
+        return RedirectToAction(nameof(Index), new { marinaId });
+    }
+
     [HttpPost("save-positions")]
     public async Task<IActionResult> SavePositions(Guid marinaId, [FromBody] List<SpotPositionUpdateViewModel> updates)
     {

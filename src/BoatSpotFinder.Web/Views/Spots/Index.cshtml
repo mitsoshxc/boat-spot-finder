@@ -132,7 +132,9 @@
                         }
                         else
                         {
-                            <button type="button" class="btn btn--disabled btn--sm" disabled>Deactivated</button>
+                            <form asp-action="Activate" asp-route-marinaId="@marinaId" asp-route-id="@item.Id" method="post">
+                                <button type="submit" class="btn btn--primary btn--sm">Activate</button>
+                            </form>
                         }
                     </div>
                 </li>
