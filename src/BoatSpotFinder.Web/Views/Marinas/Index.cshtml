@@ -58,8 +58,6 @@
                         <span class="marina-card__metric-label">@(m.SpotCount == 1 ? "spot" : "spots")</span>
                     </p>
                     <div class="marina-card__actions">
-                        <a class="btn btn--ghost btn--sm" asp-action="Edit" asp-route-id="@m.Id">Edit details</a>
-                        <a class="btn btn--ghost btn--sm" asp-controller="Spots" asp-action="Index" asp-route-marinaId="@m.Id">Manage spots</a>
                         <a class="btn btn--primary btn--sm" asp-action="Layout" asp-route-id="@m.Id">Open layout editor</a>
                     </div>
                 </li>
