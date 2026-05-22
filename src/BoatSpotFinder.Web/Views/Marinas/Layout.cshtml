@@ -47,6 +47,7 @@
                     <div id="canvas-container"
                          data-marina-id="@Model.Id"
                          data-spot-create-url="@Url.Action("Create", "Spots", new { marinaId = Model.Id })"
+                         data-spot-edit-url-template="@Url.Action("Edit", "Spots", new { marinaId = Model.Id, id = "__ID__" })"
                          style="width:@(Model.LayoutWidth)px; height:@(Model.LayoutHeight)px;">
                         @if (string.IsNullOrEmpty(Model.BackgroundImagePath))
                         {
@@ -68,7 +69,8 @@
                   asp-route-id="@Model.Id"
                   method="post"
                   enctype="multipart/form-data"
-                  class="upload-row">
+                  class="upload-row"
+                  id="background-upload-form">
                 <input type="file"
                        name="backgroundImage"
                        accept="image/jpeg,image/png,image/webp"
@@ -76,10 +78,11 @@
                        required />
                 <button type="submit" class="btn btn--ghost btn--sm">Upload background</button>
                 <span class="upload-row__hint">JPG, PNG, or WebP &middot; up to 5&nbsp;MB.</span>
+                <p class="upload-row__error" id="background-upload-error" role="alert" hidden></p>
             </form>
         </article>
 
-        <aside class="spot-sidebar">
+        <aside class="spot-sidebar" id="spot-sidebar">
             <header class="spot-sidebar__head">
                 <h2 class="spot-sidebar__title">Spots</h2>
                 <span class="spot-sidebar__count">@Model.Spots.Count</span>
@@ -156,6 +159,10 @@
                     <input id="add-spot-price" name="PricePerDay" type="number" step="0.01" min="0" required class="field__input field__input--currency" />
                     <span class="field-currency__suffix" aria-hidden="true">/ day</span>
                 </div>
+            </div>
+            <div class="field">
+                <label for="add-spot-min-booking" class="field__label">Minimum booking &middot; days</label>
+                <input id="add-spot-min-booking" name="DefaultMinBookingDays" type="number" step="1" min="1" max="365" value="1" required class="field__input field__input--mono" />
             </div>
             <div class="modal__errors" hidden></div>
             <div class="modal__actions">

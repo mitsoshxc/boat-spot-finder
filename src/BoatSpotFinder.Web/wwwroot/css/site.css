@@ -1635,6 +1635,14 @@ ul { list-style: none; padding: 0; margin: 0; }
     letter-spacing: 0.04em;
     width: 100%;
 }
+.upload-row__error {
+    flex-basis: 100%;
+    font-size: 0.75rem;
+    color: var(--alert);
+    letter-spacing: 0.04em;
+    margin: 0;
+    width: 100%;
+}
 
 /* --- Spot sidebar (mobile: static below canvas) --- */
 .spot-sidebar {

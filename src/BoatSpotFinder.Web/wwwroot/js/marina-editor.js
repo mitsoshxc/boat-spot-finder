@@ -2,6 +2,51 @@
     'use strict';
 
     document.addEventListener('DOMContentLoaded', function () {
+        var uploadForm = document.getElementById('background-upload-form');
+        var uploadInput = uploadForm ? uploadForm.querySelector('input[name="backgroundImage"]') : null;
+        var uploadError = document.getElementById('background-upload-error');
+
+        if (uploadForm && uploadInput && uploadError) {
+            uploadInput.addEventListener('change', function () {
+                uploadError.textContent = '';
+                uploadError.hidden = true;
+            });
+
+            uploadForm.addEventListener('submit', function (e) {
+                var file = uploadInput.files && uploadInput.files[0];
+                if (!file) { return; }
+
+                var allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+                var allowedExts = ['.jpg', '.jpeg', '.png', '.webp'];
+                var maxSize = 5 * 1024 * 1024;
+                var errorMsg = '';
+
+                if (allowedTypes.indexOf(file.type) === -1) {
+                    errorMsg = 'Please choose a JPG, PNG, or WebP image.';
+                } else {
+                    var nameLower = file.name.toLowerCase();
+                    var extOk = false;
+                    for (var i = 0; i < allowedExts.length; i++) {
+                        if (nameLower.slice(-allowedExts[i].length) === allowedExts[i]) {
+                            extOk = true;
+                            break;
+                        }
+                    }
+                    if (!extOk) {
+                        errorMsg = 'File extension must be .jpg, .jpeg, .png, or .webp.';
+                    } else if (file.size > maxSize) {
+                        errorMsg = 'File size must be 5 MB or less.';
+                    }
+                }
+
+                if (errorMsg) {
+                    e.preventDefault();
+                    uploadError.textContent = errorMsg;
+                    uploadError.hidden = false;
+                }
+            });
+        }
+
         var container = document.getElementById('canvas-container');
         if (!container) return;
 
@@ -42,8 +87,8 @@
                 rotation = spot.canvasRotation != null ? spot.canvasRotation : 0;
                 dashed = false;
                 if (spot.isActive) {
-                    fill = '#4a90e2';
-                    stroke = '#1f4e96';
+                    fill = '#6B7684';
+                    stroke = '#3C4654';
                     opacity = 0.55;
                 } else {
                     fill = '#9a9a9a';
@@ -57,9 +102,9 @@
                 h = 50;
                 rotation = 0;
                 dashed = true;
-                fill = 'transparent';
-                stroke = '#1f4e96';
-                opacity = 1;
+                fill = '#6B7684';
+                stroke = '#3C4654';
+                opacity = 0.55;
                 unplacedCount++;
             }
 
@@ -84,7 +129,7 @@
                 text: spot.name,
                 fontSize: 11,
                 fontFamily: 'Manrope, sans-serif',
-                fill: dashed ? '#1f4e96' : '#ffffff',
+                fill: dashed ? '#3C4654' : '#ffffff',
                 listening: false
             });
 
@@ -129,6 +174,63 @@
             layer.add(label);
 
             spotsById.set(spot.id, { node: rect, label: label, name: spot.name, isActive: spot.isActive });
+        }
+
+        function appendSpotToSidebar(spot) {
+            var sidebar = document.getElementById('spot-sidebar');
+            if (!sidebar) return;
+
+            var countEl = sidebar.querySelector('.spot-sidebar__count');
+            if (countEl) {
+                var current = parseInt(countEl.textContent, 10) || 0;
+                countEl.textContent = (current + 1).toString();
+            }
+
+            var emptyEl = sidebar.querySelector('.spot-sidebar__empty');
+            if (emptyEl) {
+                emptyEl.parentNode.removeChild(emptyEl);
+            }
+
+            var list = sidebar.querySelector('.spot-sidebar__list');
+            if (!list) {
+                list = document.createElement('ul');
+                list.className = 'spot-sidebar__list';
+                sidebar.appendChild(list);
+            }
+
+            var editUrl = container.dataset.spotEditUrlTemplate
+                ? container.dataset.spotEditUrlTemplate.replace('__ID__', spot.id)
+                : '#';
+
+            var li = document.createElement('li');
+            li.className = 'spot-sidebar__item';
+
+            var row = document.createElement('div');
+            row.className = 'spot-sidebar__row';
+
+            var nameSpan = document.createElement('span');
+            nameSpan.className = 'spot-sidebar__name';
+            nameSpan.textContent = spot.name;
+            row.appendChild(nameSpan);
+
+            var pill = document.createElement('span');
+            pill.className = 'pill pill--unplaced';
+            var dot = document.createElement('span');
+            dot.className = 'pill__dot';
+            dot.setAttribute('aria-hidden', 'true');
+            pill.appendChild(dot);
+            pill.appendChild(document.createTextNode('Unplaced'));
+            row.appendChild(pill);
+
+            li.appendChild(row);
+
+            var editLink = document.createElement('a');
+            editLink.className = 'spot-sidebar__edit';
+            editLink.href = editUrl;
+            editLink.textContent = 'Edit details →';
+            li.appendChild(editLink);
+
+            list.appendChild(li);
         }
 
         stage.on('click tap', function (e) {
@@ -217,24 +319,15 @@
             addSpotForm.addEventListener('submit', function (e) {
                 e.preventDefault();
 
-                var formData = new FormData(addSpotForm);
-                var payload = {
-                    Name: formData.get('Name'),
-                    Description: formData.get('Description'),
-                    LengthMeters: parseFloat(formData.get('LengthMeters')),
-                    WidthMeters: parseFloat(formData.get('WidthMeters')),
-                    DepthMeters: parseFloat(formData.get('DepthMeters')),
-                    PricePerDay: parseFloat(formData.get('PricePerDay'))
-                };
+                var payload = new URLSearchParams(new FormData(addSpotForm));
 
                 fetch(spotCreateUrl, {
                     method: 'POST',
                     headers: {
                         'Accept': 'application/json',
-                        'Content-Type': 'application/json',
                         'RequestVerificationToken': token
                     },
-                    body: JSON.stringify(payload)
+                    body: payload
                 })
                     .then(function (r) {
                         if (r.ok) {
@@ -250,6 +343,7 @@
                                     isActive: false
                                 });
                                 layer.batchDraw();
+                                appendSpotToSidebar({ id: data.id, name: data.name });
                                 closeModal();
                             });
                         } else {
