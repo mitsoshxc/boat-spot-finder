@@ -128,7 +128,7 @@
             </section>
 
             <div class="plate-form__actions">
-                <a class="link--quiet" asp-action="Index">&larr; Back to spots</a>
+                <a class="link--quiet" asp-action="Index" asp-route-marinaId="@(ViewData["MarinaId"])">&larr; Back to spots</a>
                 <button type="submit" class="btn btn--primary">Create spot</button>
             </div>
         </form>
