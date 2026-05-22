@@ -172,6 +172,7 @@
 
             layer.add(rect);
             layer.add(label);
+            updateLabelPosition();
 
             spotsById.set(spot.id, { node: rect, label: label, name: spot.name, isActive: spot.isActive });
         }
@@ -342,7 +343,7 @@
                                     canvasRotation: null,
                                     isActive: false
                                 });
-                                layer.batchDraw();
+                                layer.draw();
                                 appendSpotToSidebar({ id: data.id, name: data.name });
                                 closeModal();
                             });

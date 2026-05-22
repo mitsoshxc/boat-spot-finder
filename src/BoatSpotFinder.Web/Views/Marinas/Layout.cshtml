@@ -47,7 +47,7 @@
                     <div id="canvas-container"
                          data-marina-id="@Model.Id"
                          data-spot-create-url="@Url.Action("Create", "Spots", new { marinaId = Model.Id })"
-                         data-spot-edit-url-template="@Url.Action("Edit", "Spots", new { marinaId = Model.Id, id = "__ID__" })"
+                         data-spot-edit-url-template="/placeowner/marinas/@Model.Id/spots/__ID__/edit"
                          style="width:@(Model.LayoutWidth)px; height:@(Model.LayoutHeight)px;">
                         @if (string.IsNullOrEmpty(Model.BackgroundImagePath))
                         {
