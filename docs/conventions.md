@@ -147,9 +147,9 @@ Every PlaceOwner controller action that operates on a specific marina must call 
 
 When a service interface exists for a domain operation (e.g. `ISpotSeasonalRuleService`), controllers must call the service — never the underlying repository directly for that operation. The service owns validation and business rules. Calling the repository directly bypasses the overlap check and violates the layering contract.
 
-### JSON vs form content-negotiation in Create POST
+### JSON vs form content-negotiation
 
-When a Create POST action must be callable both from a standard HTML form and from JavaScript (e.g. the canvas editor modal), the controller inspects `Request.Headers.Accept`:
+When a POST action must be callable both from a standard HTML form and from JavaScript (e.g. the canvas editor's Add Spot modal and sidebar Delete modal), the controller inspects `Request.Headers.Accept`:
 
 ```csharp
 var isJson = Request.Headers.Accept.ToString().Contains("application/json");
@@ -160,6 +160,8 @@ var isJson = Request.Headers.Accept.ToString().Contains("application/json");
 - If `isJson` is false: use the standard redirect-or-view pattern.
 
 The JS caller sets `Accept: application/json` and includes the `RequestVerificationToken` header (read from the hidden `__RequestVerificationToken` form input on the page).
+
+The same pattern applies to Delete actions invoked from a JS modal. On success the JSON branch returns `Json(new { ok = true })`; on a business-rule violation (e.g. "Cannot delete a spot that has bookings") it returns `BadRequest(new { error = "..." })`.
 
 ### Flag enum aggregation from checkbox lists
 
@@ -252,6 +254,17 @@ Do not add comments unless the reason behind the code is non-obvious. "What" com
 | Spot status derivation | Free = active + no overlapping Confirmed/Pending booking. Booked = has overlap. Unavailable = `IsActive=false`. Computed in the repository/service, never stored. |
 | Shared JS | `marina-viewer.js` is used by Browse, Admin, and PlaceOwner read-only views. `marina-editor.js` is PlaceOwner-only. Keep them separate files. |
 | Save positions | The editor POSTs a JSON array to `SavePositions` in bulk on user action — not on every drag event. |
+
+### Editor interactions
+
+| Behavior | Rule |
+|---|---|
+| Overlap and bounds (client-side only) | Spots cannot overlap each other or extend outside the layout's logical bounds. Enforced in `marina-editor.js` using axis-aligned bounding boxes (AABB) via `node.getClientRect({ relativeTo: layer })`. During drag and resize, spots snap to neighbor edges and canvas edges when within a threshold. On `dragend` / `transformend`, if the spot's AABB overlaps any other spot or extends out of bounds, position/size/rotation revert to the pre-drag / pre-transform snapshot. `SpotsController.SavePositions` does **not** enforce this server-side — the contract is client-side only. |
+| New-spot placement | When `addSpotToCanvas` runs the unplaced branch (brand-new spots from the Add Spot modal, or spots loaded with null `CanvasX/Y/W/H`), it scans the canvas in a grid step for the first 80×50 slot that does not overlap any existing spot. If a free slot is found the spot lands there automatically; if the canvas is full a cascade offset formula is used as a fallback so the spot is still visible (the user drags it to its final position manually). |
+| Rotation | `rotateEnabled: false` on the Konva Transformer — the rotation handle is hidden and users cannot change rotation. Stored `Spot.CanvasRotation` values still round-trip through `SavePositions`, so previously-rotated spots render at their saved angle. |
+| Transformer anchors | The Transformer exposes all eight anchors — 4 corners (`top-left`, `top-right`, `bottom-left`, `bottom-right`) and 4 edge midpoints (`top-center`, `bottom-center`, `middle-left`, `middle-right`) — so users can resize one axis at a time via edge anchors or both axes at once via corner anchors. |
+| Spot label color | `Konva.Text` labels are always rendered with white fill regardless of placement state, for legibility against the spot's slate fill. |
+| Fullscreen mode | The layout editor has a CSS-overlay fullscreen mode toggled by the `.workspace--fullscreen` modifier on `.workspace--editor`. When active, CSS hides the workspace head, plate caption, upload row, and nav links; the canvas shell fills viewport height; the sidebar gets internal scroll. On enter, JS DOM-moves the three essential buttons (Add spot, Exit fullscreen, Save layout) into `.spot-sidebar__toolbar` inside the sidebar; on exit they move back to `.toolbar`. Toggled by button or ESC key. Add/Delete modal `z-index` sits above the fullscreen overlay so modals function inside fullscreen. |
 
 ---
 
