@@ -71,7 +71,10 @@
                 'top-left', 'top-right', 'bottom-left', 'bottom-right',
                 'middle-left', 'middle-right', 'top-center', 'bottom-center'
             ],
-            rotateEnabled: false
+            rotateEnabled: false,
+            boundBoxFunc: function (oldBox, newBox) {
+                return resizeBoundBox(oldBox, newBox);
+            }
         });
         layer.add(transformer);
 
@@ -183,6 +186,85 @@
             if (bestDy !== null) {
                 node.y(node.y() + bestDy);
             }
+        }
+
+        function resizeBoundBox(oldBox, newBox) {
+            if (layoutBounds.w <= 0 || layoutBounds.h <= 0) return newBox;
+            if (!transformer || transformer.nodes().length === 0) return newBox;
+            var draggedNode = transformer.nodes()[0];
+            var others = getOtherRects(draggedNode);
+
+            var oldLeft = oldBox.x;
+            var oldRight = oldBox.x + oldBox.width;
+            var oldTop = oldBox.y;
+            var oldBottom = oldBox.y + oldBox.height;
+            var newLeft = newBox.x;
+            var newRight = newBox.x + newBox.width;
+            var newTop = newBox.y;
+            var newBottom = newBox.y + newBox.height;
+
+            var leftChanged = Math.abs(newLeft - oldLeft) > 0.5;
+            var rightChanged = Math.abs(newRight - oldRight) > 0.5;
+            var topChanged = Math.abs(newTop - oldTop) > 0.5;
+            var bottomChanged = Math.abs(newBottom - oldBottom) > 0.5;
+
+            function pickBestSnap(value, targets) {
+                var best = null;
+                for (var i = 0; i < targets.length; i++) {
+                    var d = targets[i] - value;
+                    if (Math.abs(d) < SNAP_THRESHOLD && (best === null || Math.abs(d) < Math.abs(best))) {
+                        best = d;
+                    }
+                }
+                return best;
+            }
+
+            if (rightChanged) {
+                var rightTargets = [layoutBounds.w];
+                for (var i = 0; i < others.length; i++) rightTargets.push(others[i].x);
+                var d = pickBestSnap(newRight, rightTargets);
+                if (d !== null) newRight = newRight + d;
+            }
+            if (leftChanged) {
+                var leftTargets = [0];
+                for (var j = 0; j < others.length; j++) leftTargets.push(others[j].x + others[j].width);
+                var d2 = pickBestSnap(newLeft, leftTargets);
+                if (d2 !== null) newLeft = newLeft + d2;
+            }
+            if (bottomChanged) {
+                var bottomTargets = [layoutBounds.h];
+                for (var k = 0; k < others.length; k++) bottomTargets.push(others[k].y);
+                var d3 = pickBestSnap(newBottom, bottomTargets);
+                if (d3 !== null) newBottom = newBottom + d3;
+            }
+            if (topChanged) {
+                var topTargets = [0];
+                for (var m = 0; m < others.length; m++) topTargets.push(others[m].y + others[m].height);
+                var d4 = pickBestSnap(newTop, topTargets);
+                if (d4 !== null) newTop = newTop + d4;
+            }
+
+            var snapped = {
+                x: newLeft,
+                y: newTop,
+                width: newRight - newLeft,
+                height: newBottom - newTop,
+                rotation: newBox.rotation
+            };
+
+            if (snapped.width <= 0 || snapped.height <= 0) return oldBox;
+            if (snapped.x < 0 || snapped.y < 0 ||
+                snapped.x + snapped.width > layoutBounds.w ||
+                snapped.y + snapped.height > layoutBounds.h) {
+                return oldBox;
+            }
+            for (var n = 0; n < others.length; n++) {
+                if (rectsOverlap(snapped, others[n])) {
+                    return oldBox;
+                }
+            }
+
+            return snapped;
         }
 
         function addSpotToCanvas(spot) {
@@ -313,7 +395,6 @@
             });
 
             rect.on('transform', function () {
-                applySnapDuringDrag(rect);
                 updateLabelPosition();
                 layer.batchDraw();
             });
