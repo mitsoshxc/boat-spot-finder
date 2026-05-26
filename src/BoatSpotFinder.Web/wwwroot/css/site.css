@@ -1062,6 +1062,19 @@ ul { list-style: none; padding: 0; margin: 0; }
     max-width: 720px;
     margin: 0 auto;
 }
+.workspace--fullscreen {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: var(--cream);
+    overflow: auto;
+    padding: 24px;
+    margin: 0;
+}
+
+body.body--fullscreen-editor {
+    overflow: hidden;
+}
 
 .workspace__head {
     display: flex;
@@ -1106,6 +1119,49 @@ ul { list-style: none; padding: 0; margin: 0; }
     animation: lift 560ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
     animation-delay: 360ms;
     width: 100%;
+}
+
+.workspace--fullscreen .workspace__head-titles {
+    display: none;
+}
+
+.workspace--fullscreen .canvas-shell__caption {
+    display: none;
+}
+
+.workspace--fullscreen .upload-row {
+    display: none;
+}
+
+.workspace--fullscreen .toolbar > a {
+    display: none;
+}
+
+.workspace--fullscreen .workspace__head {
+    display: none;
+}
+
+.spot-sidebar__toolbar {
+    display: none;
+}
+
+.workspace--fullscreen .spot-sidebar__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--hairline-ink);
+}
+
+.workspace--fullscreen .spot-sidebar__toolbar .btn {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 36px;
+}
+
+.workspace--fullscreen .editor-grid {
+    height: calc(100vh - 48px);
 }
 
 .workspace__mark {
@@ -1719,6 +1775,26 @@ ul { list-style: none; padding: 0; margin: 0; }
 .spot-sidebar__edit:hover {
     color: var(--brass-deep);
     border-bottom-color: var(--brass);
+}
+.spot-sidebar__actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 6px;
+}
+.spot-sidebar__delete {
+    background: none;
+    border: none;
+    padding: 6px 0;
+    font: inherit;
+    color: var(--alert);
+    cursor: pointer;
+    text-decoration: none;
+    min-height: 44px;
+}
+.spot-sidebar__delete:hover {
+    text-decoration: underline;
 }
 .spot-sidebar__empty {
     font-size: 0.875rem;
@@ -2456,4 +2532,34 @@ ul { list-style: none; padding: 0; margin: 0; }
     .rule-card__actions .btn { flex: 1 1 130px; width: auto; }
     .rule-card__actions form { flex: 1 1 130px; }
 }
+}
+
+/* ── Fullscreen layout fixes ──────────────────────────────────────────────── */
+.workspace--fullscreen .editor-grid {
+    align-items: stretch;
+}
+
+.workspace--fullscreen .canvas-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.workspace--fullscreen .canvas-shell__frame {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.workspace--fullscreen .canvas-shell__viewport {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+}
+
+.workspace--fullscreen .spot-sidebar {
+    position: static;
+    overflow-y: auto;
+    max-height: 100%;
 }

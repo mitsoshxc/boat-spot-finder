@@ -67,13 +67,123 @@
         stage.add(layer);
 
         var transformer = new Konva.Transformer({
-            enabledAnchors: ['top-left', 'top-right', 'bottom-left', 'bottom-right'],
-            rotateEnabled: true
+            enabledAnchors: [
+                'top-left', 'top-right', 'bottom-left', 'bottom-right',
+                'middle-left', 'middle-right', 'top-center', 'bottom-center'
+            ],
+            rotateEnabled: false
         });
         layer.add(transformer);
 
         var spotsById = new Map();
         var unplacedCount = 0;
+        var layoutBounds = { w: 0, h: 0 };
+
+        var SNAP_THRESHOLD = 8;
+
+        function getOtherRects(draggedNode) {
+            var rects = [];
+            spotsById.forEach(function (entry) {
+                if (entry.node !== draggedNode) {
+                    rects.push(entry.node.getClientRect({ relativeTo: layer }));
+                }
+            });
+            return rects;
+        }
+
+        function rectsOverlap(a, b) {
+            return !(a.x + a.width <= b.x || b.x + b.width <= a.x ||
+                     a.y + a.height <= b.y || b.y + b.height <= a.y);
+        }
+
+        function isOutOfBounds(r) {
+            return r.x < 0 || r.y < 0 ||
+                   r.x + r.width > layoutBounds.w ||
+                   r.y + r.height > layoutBounds.h;
+        }
+
+        function findEmptySlot(w, h) {
+            if (layoutBounds.w <= 0 || layoutBounds.h <= 0) {
+                return null;
+            }
+
+            var existing = [];
+            spotsById.forEach(function (entry) {
+                existing.push(entry.node.getClientRect({ relativeTo: layer }));
+            });
+
+            var step = 20;
+            for (var y = 20; y + h <= layoutBounds.h - 20; y += step) {
+                for (var x = 20; x + w <= layoutBounds.w - 20; x += step) {
+                    var candidate = { x: x, y: y, width: w, height: h };
+                    var clash = false;
+                    for (var i = 0; i < existing.length; i++) {
+                        if (rectsOverlap(candidate, existing[i])) {
+                            clash = true;
+                            break;
+                        }
+                    }
+                    if (!clash) {
+                        return { x: x, y: y };
+                    }
+                }
+            }
+            return null;
+        }
+
+        function applySnapDuringDrag(node) {
+            var aabb = node.getClientRect({ relativeTo: layer });
+            var others = getOtherRects(node);
+
+            var bestDx = null;
+            var bestDy = null;
+
+            function trySnapX(delta) {
+                if (Math.abs(delta) <= SNAP_THRESHOLD) {
+                    if (bestDx === null || Math.abs(delta) < Math.abs(bestDx)) {
+                        bestDx = delta;
+                    }
+                }
+            }
+
+            function trySnapY(delta) {
+                if (Math.abs(delta) <= SNAP_THRESHOLD) {
+                    if (bestDy === null || Math.abs(delta) < Math.abs(bestDy)) {
+                        bestDy = delta;
+                    }
+                }
+            }
+
+            var myLeft = aabb.x;
+            var myRight = aabb.x + aabb.width;
+            var myTop = aabb.y;
+            var myBottom = aabb.y + aabb.height;
+
+            trySnapX(0 - myLeft);
+            trySnapX(layoutBounds.w - myRight);
+            trySnapY(0 - myTop);
+            trySnapY(layoutBounds.h - myBottom);
+
+            for (var i = 0; i < others.length; i++) {
+                var o = others[i];
+                var oLeft = o.x;
+                var oRight = o.x + o.width;
+                var oTop = o.y;
+                var oBottom = o.y + o.height;
+
+                trySnapX(oRight - myLeft);
+                trySnapX(oLeft - myRight);
+                trySnapY(oBottom - myTop);
+                trySnapY(oTop - myBottom);
+            }
+
+            if (bestDx !== null) {
+                node.x(node.x() + bestDx);
+            }
+            if (bestDy !== null) {
+                node.y(node.y() + bestDy);
+            }
+        }
 
         function addSpotToCanvas(spot) {
             var placed = spot.canvasX != null && spot.canvasY != null && spot.canvasW != null && spot.canvasH != null;
@@ -96,10 +206,16 @@
                     opacity = 0.4;
                 }
             } else {
-                x = 20 + (unplacedCount * 12);
-                y = 20 + (unplacedCount * 12);
                 w = 80;
                 h = 50;
+                var slot = findEmptySlot(w, h);
+                if (slot) {
+                    x = slot.x;
+                    y = slot.y;
+                } else {
+                    x = 20 + (unplacedCount * 12);
+                    y = 20 + (unplacedCount * 12);
+                }
                 rotation = 0;
                 dashed = true;
                 fill = '#6B7684';
@@ -129,7 +245,7 @@
                 text: spot.name,
                 fontSize: 11,
                 fontFamily: 'Manrope, sans-serif',
-                fill: dashed ? '#3C4654' : '#ffffff',
+                fill: '#ffffff',
                 listening: false
             });
 
@@ -155,14 +271,76 @@
 
             updateLabelPosition();
 
+            rect.on('dragstart', function () {
+                rect._preDragX = rect.x();
+                rect._preDragY = rect.y();
+            });
+
             rect.on('dragmove', function () {
+                applySnapDuringDrag(rect);
                 updateLabelPosition();
                 layer.batchDraw();
             });
 
+            rect.on('dragend', function () {
+                var aabb = rect.getClientRect({ relativeTo: layer });
+                var others = getOtherRects(rect);
+                var bad = isOutOfBounds(aabb);
+                if (!bad) {
+                    for (var i = 0; i < others.length; i++) {
+                        if (rectsOverlap(aabb, others[i])) {
+                            bad = true;
+                            break;
+                        }
+                    }
+                }
+                if (bad) {
+                    rect.x(rect._preDragX);
+                    rect.y(rect._preDragY);
+                    updateLabelPosition();
+                    layer.batchDraw();
+                }
+            });
+
+            rect.on('transformstart', function () {
+                rect._preTransformX = rect.x();
+                rect._preTransformY = rect.y();
+                rect._preTransformW = rect.width();
+                rect._preTransformH = rect.height();
+                rect._preTransformScaleX = rect.scaleX();
+                rect._preTransformScaleY = rect.scaleY();
+                rect._preTransformRotation = rect.rotation();
+            });
+
             rect.on('transform', function () {
+                applySnapDuringDrag(rect);
                 updateLabelPosition();
                 layer.batchDraw();
+            });
+
+            rect.on('transformend', function () {
+                var aabb = rect.getClientRect({ relativeTo: layer });
+                var others = getOtherRects(rect);
+                var bad = isOutOfBounds(aabb);
+                if (!bad) {
+                    for (var i = 0; i < others.length; i++) {
+                        if (rectsOverlap(aabb, others[i])) {
+                            bad = true;
+                            break;
+                        }
+                    }
+                }
+                if (bad) {
+                    rect.x(rect._preTransformX);
+                    rect.y(rect._preTransformY);
+                    rect.width(rect._preTransformW);
+                    rect.height(rect._preTransformH);
+                    rect.scaleX(rect._preTransformScaleX);
+                    rect.scaleY(rect._preTransformScaleY);
+                    rect.rotation(rect._preTransformRotation);
+                    updateLabelPosition();
+                    layer.batchDraw();
+                }
             });
 
             rect.on('click tap', function () {
@@ -205,6 +383,7 @@
 
             var li = document.createElement('li');
             li.className = 'spot-sidebar__item';
+            li.dataset.spotId = spot.id;
 
             var row = document.createElement('div');
             row.className = 'spot-sidebar__row';
@@ -225,11 +404,24 @@
 
             li.appendChild(row);
 
+            var actions = document.createElement('div');
+            actions.className = 'spot-sidebar__actions';
+
             var editLink = document.createElement('a');
             editLink.className = 'spot-sidebar__edit';
             editLink.href = editUrl;
             editLink.textContent = 'Edit details →';
-            li.appendChild(editLink);
+            actions.appendChild(editLink);
+
+            var deleteBtn = document.createElement('button');
+            deleteBtn.type = 'button';
+            deleteBtn.className = 'spot-sidebar__delete';
+            deleteBtn.dataset.spotId = spot.id;
+            deleteBtn.dataset.spotName = spot.name;
+            deleteBtn.textContent = 'Delete';
+            actions.appendChild(deleteBtn);
+
+            li.appendChild(actions);
 
             list.appendChild(li);
         }
@@ -244,6 +436,9 @@
         fetch('/browse/marina/' + marinaId + '/layout-data')
             .then(function (r) { return r.json(); })
             .then(function (data) {
+                layoutBounds.w = data.layoutWidth || 1200;
+                layoutBounds.h = data.layoutHeight || 800;
+
                 if (data.backgroundImagePath) {
                     var img = new Image();
                     img.onload = function () {
@@ -481,6 +676,192 @@
                         console.error('Save positions network error', err);
                     });
             });
+        }
+
+        var deleteModal = document.getElementById('delete-spot-modal');
+        var deleteModalErrors = deleteModal ? deleteModal.querySelector('.modal__errors') : null;
+        var deleteModalName = document.getElementById('delete-spot-modal-name');
+        var deleteConfirmBtn = document.getElementById('delete-spot-confirm');
+        var pendingDeleteSpotId = null;
+
+        function openDeleteModal(spotId, spotName) {
+            pendingDeleteSpotId = spotId;
+            if (deleteModalName) deleteModalName.textContent = spotName;
+            if (deleteModalErrors) {
+                deleteModalErrors.setAttribute('hidden', '');
+                deleteModalErrors.innerHTML = '';
+            }
+            if (deleteModal) deleteModal.removeAttribute('hidden');
+        }
+
+        function closeDeleteModal() {
+            pendingDeleteSpotId = null;
+            if (deleteModal) deleteModal.setAttribute('hidden', '');
+        }
+
+        if (deleteModal) {
+            deleteModal.addEventListener('click', function (e) {
+                if (e.target.hasAttribute('data-modal-dismiss')) {
+                    closeDeleteModal();
+                }
+            });
+        }
+
+        document.addEventListener('click', function (e) {
+            var btn = e.target.closest('.spot-sidebar__delete');
+            if (!btn) return;
+            openDeleteModal(btn.dataset.spotId, btn.dataset.spotName);
+        });
+
+        if (deleteConfirmBtn) {
+            deleteConfirmBtn.addEventListener('click', function () {
+                if (!pendingDeleteSpotId) return;
+                var spotId = pendingDeleteSpotId;
+                var url = '/placeowner/marinas/' + marinaId + '/spots/' + spotId + '/delete';
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'RequestVerificationToken': token
+                    }
+                })
+                    .then(function (r) {
+                        if (r.ok) {
+                            removeSpotFromUI(spotId);
+                            closeDeleteModal();
+                        } else {
+                            return r.json().then(function (body) {
+                                var msg = (body && body.error) ? body.error : 'Delete failed. Please try again.';
+                                if (deleteModalErrors) {
+                                    deleteModalErrors.removeAttribute('hidden');
+                                    deleteModalErrors.innerHTML = '<p>' + escapeHtml(msg) + '</p>';
+                                }
+                            }).catch(function () {
+                                if (deleteModalErrors) {
+                                    deleteModalErrors.removeAttribute('hidden');
+                                    deleteModalErrors.innerHTML = '<p>Delete failed. Please try again.</p>';
+                                }
+                            });
+                        }
+                    })
+                    .catch(function () {
+                        if (deleteModalErrors) {
+                            deleteModalErrors.removeAttribute('hidden');
+                            deleteModalErrors.innerHTML = '<p>Network error. Please check your connection and try again.</p>';
+                        }
+                    });
+            });
+        }
+
+        function removeSpotFromUI(spotId) {
+            var entry = spotsById.get(spotId);
+            if (entry) {
+                if (transformer.nodes().indexOf(entry.node) !== -1) {
+                    transformer.nodes([]);
+                }
+                entry.node.destroy();
+                if (entry.label) entry.label.destroy();
+                spotsById.delete(spotId);
+                layer.batchDraw();
+            }
+
+            var sidebar = document.getElementById('spot-sidebar');
+            if (!sidebar) return;
+
+            var item = sidebar.querySelector('.spot-sidebar__item[data-spot-id="' + spotId + '"]');
+            if (item && item.parentNode) item.parentNode.removeChild(item);
+
+            var countEl = sidebar.querySelector('.spot-sidebar__count');
+            if (countEl) {
+                var current = parseInt(countEl.textContent, 10) || 0;
+                countEl.textContent = Math.max(0, current - 1).toString();
+            }
+
+            var list = sidebar.querySelector('.spot-sidebar__list');
+            if (list && list.children.length === 0) {
+                var empty = document.createElement('p');
+                empty.className = 'spot-sidebar__empty';
+                empty.innerHTML = 'No spots yet. Use <em>Add spot</em> in the toolbar to define your first.';
+                list.parentNode.replaceChild(empty, list);
+            }
+        }
+    });
+
+    var btnFullscreen = document.getElementById('btn-fullscreen-toggle');
+    var workspaceEl = document.querySelector('.workspace--editor');
+
+    function moveButtonsToSidebar() {
+        var sidebar = document.getElementById('spot-sidebar');
+        if (!sidebar) return;
+        var btnAdd = document.getElementById('btn-add-spot');
+        var btnSave = document.getElementById('btn-save-layout');
+        if (!btnAdd || !btnSave || !btnFullscreen) return;
+
+        var container = sidebar.querySelector('.spot-sidebar__toolbar');
+        if (!container) {
+            container = document.createElement('div');
+            container.className = 'spot-sidebar__toolbar';
+            sidebar.insertBefore(container, sidebar.firstChild);
+        }
+        container.appendChild(btnAdd);
+        container.appendChild(btnFullscreen);
+        container.appendChild(btnSave);
+    }
+
+    function moveButtonsBackToToolbar() {
+        var toolbar = document.querySelector('.workspace__head .toolbar');
+        var sidebar = document.getElementById('spot-sidebar');
+        if (!sidebar) return;
+        var container = sidebar.querySelector('.spot-sidebar__toolbar');
+        if (!container || !toolbar) return;
+
+        var btnAdd = document.getElementById('btn-add-spot');
+        var btnSave = document.getElementById('btn-save-layout');
+        if (btnAdd) toolbar.appendChild(btnAdd);
+        if (btnFullscreen) toolbar.appendChild(btnFullscreen);
+        if (btnSave) toolbar.appendChild(btnSave);
+
+        container.remove();
+    }
+
+    function isFullscreen() {
+        return workspaceEl && workspaceEl.classList.contains('workspace--fullscreen');
+    }
+
+    function enterFullscreen() {
+        if (!workspaceEl) return;
+        workspaceEl.classList.add('workspace--fullscreen');
+        document.body.classList.add('body--fullscreen-editor');
+        moveButtonsToSidebar();
+        if (btnFullscreen) btnFullscreen.textContent = 'Exit fullscreen';
+    }
+
+    function exitFullscreen() {
+        if (!workspaceEl) return;
+        moveButtonsBackToToolbar();
+        workspaceEl.classList.remove('workspace--fullscreen');
+        document.body.classList.remove('body--fullscreen-editor');
+        if (btnFullscreen) btnFullscreen.textContent = 'Fullscreen';
+    }
+
+    if (btnFullscreen) {
+        btnFullscreen.addEventListener('click', function () {
+            if (isFullscreen()) {
+                exitFullscreen();
+            } else {
+                enterFullscreen();
+            }
+        });
+    }
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape') return;
+        var addModalOpen = modal && !modal.hasAttribute('hidden');
+        var deleteModalOpen = deleteModal && !deleteModal.hasAttribute('hidden');
+        if (addModalOpen || deleteModalOpen) return;
+        if (isFullscreen()) {
+            exitFullscreen();
         }
     });
 }());

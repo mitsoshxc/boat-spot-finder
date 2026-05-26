@@ -226,11 +226,17 @@ public class SpotsController : Controller
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
         if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId)) return Forbid();
 
+        var isJson = Request.Headers.Accept.ToString().Contains("application/json");
+
         var spot = await _spotRepository.GetByIdAsync(id);
         if (spot is null || spot.MarinaId != marinaId) return NotFound();
 
         if (await _spotRepository.HasBookingsAsync(id))
         {
+            if (isJson)
+            {
+                return BadRequest(new { error = "Cannot delete a spot that has bookings. Deactivate it instead to hide it from new bookings while preserving history." });
+            }
             TempData["DeleteError"] = "Cannot delete a spot that has bookings. Deactivate it instead to hide it from new bookings while preserving history.";
             return RedirectToAction(nameof(Edit), new { marinaId, id });
         }
@@ -246,6 +252,11 @@ public class SpotsController : Controller
             entityId: id.ToString(),
             marinaId: marinaId.ToString(),
             details: new { spotName });
+
+        if (isJson)
+        {
+            return Json(new { ok = true });
+        }
 
         return RedirectToAction(nameof(Index), new { marinaId });
     }
