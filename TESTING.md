@@ -189,8 +189,8 @@ Tail `logs/audit-YYYY-MM-DD.log` (repo root) and confirm structured JSON entries
 - [x] Click "Add Spot" → modal opens (bottom sheet on mobile, centered card on ≥720px)
 - [x] Modal includes a `Minimum booking · days` field (default 1, range 1–365). Submit name/description/dimensions/price/min-booking → spot appears in the unplaced sidebar with an `Unplaced` pill; sidebar count badge increments live (no reload); empty-state paragraph removed automatically.
 - [x] Spots on the canvas render in dock grey (`#6B7684` slate-soft fill, `#3C4654` slate stroke). Unplaced spots have a dashed stroke; placed-Active spots are solid; placed-Inactive stay neutral grey.
-- [ ] Drag the unplaced spot onto the canvas, resize, rotate → click Save Layout → "Saved ✓" flash appears for ~2 seconds on the button
-- [ ] Reload page → positions and rotation persisted; spot now rendered solid (Active) on canvas; sidebar pill flips from `Unplaced` to `Active`
+- [x] Drag the unplaced spot onto the canvas, resize, rotate → click Save Layout → "Saved ✓" flash appears for ~2 seconds on the button
+- [x] Reload page → positions and rotation persisted; spot now rendered solid (Active) on canvas; sidebar pill flips from `Unplaced` to `Active`
 
 ### 8. Spot CRUD
 
