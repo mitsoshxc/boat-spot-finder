@@ -156,6 +156,12 @@
                 <button type="submit" class="btn btn--danger btn--sm" style="width: 100%; min-height: 44px;">Deactivate this spot</button>
             </form>
         }
+        else
+        {
+            <form asp-action="Activate" asp-route-marinaId="@(ViewData["MarinaId"])" asp-route-id="@Model.Id" method="post" class="activate-form" style="margin-top: 16px;">
+                <button type="submit" class="btn btn--primary btn--sm" style="width: 100%; min-height: 44px;">Activate this spot</button>
+            </form>
+        }
 
         <form asp-action="Delete" asp-route-marinaId="@(ViewData["MarinaId"])" asp-route-id="@Model.Id" method="post" class="delete-form"
               style="margin-top: 8px;"
