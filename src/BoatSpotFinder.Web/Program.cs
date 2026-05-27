@@ -6,8 +6,10 @@ using BoatSpotFinder.Infrastructure.Data;
 using BoatSpotFinder.Infrastructure.Email;
 using BoatSpotFinder.Infrastructure.Logging;
 using BoatSpotFinder.Infrastructure.Repositories;
+using BoatSpotFinder.Infrastructure.Search;
 using BoatSpotFinder.Web.Infrastructure.Storage;
 using BoatSpotFinder.Web.Infrastructure;
+using Elastic.Clients.Elasticsearch;
 using Hangfire;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
@@ -72,6 +74,19 @@ builder.Services.AddScoped<ISpotSeasonalRuleRepository, SpotSeasonalRuleReposito
 builder.Services.AddScoped<ISpotSeasonalRuleService, SpotSeasonalRuleService>();
 builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 
+var esUri = builder.Configuration["Elasticsearch:Uri"];
+if (string.IsNullOrWhiteSpace(esUri))
+{
+    builder.Services.AddScoped<IMarinaSearchService, NullMarinaSearchService>();
+}
+else
+{
+    var esSettings = new ElasticsearchClientSettings(new Uri(esUri))
+        .DefaultIndex("marinas");
+    builder.Services.AddSingleton(new ElasticsearchClient(esSettings));
+    builder.Services.AddScoped<IMarinaSearchService, ElasticsearchMarinaSearchService>();
+}
+
 builder.Services.AddHangfire(c =>
     c.UseSqlServerStorage(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddHangfireServer();
@@ -110,5 +125,23 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.MapHealthChecks("/health");
+
+app.Lifetime.ApplicationStarted.Register(() => Task.Run(async () =>
+{
+    try
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var search = scope.ServiceProvider.GetRequiredService<IMarinaSearchService>();
+        var marinas = await db.Set<Marina>().Where(m => m.IsActive).ToListAsync();
+        foreach (var marina in marinas)
+            await search.IndexAsync(marina);
+    }
+    catch (Exception ex)
+    {
+        var logger = app.Services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "ES startup seed failed");
+    }
+}));
 
 app.Run();

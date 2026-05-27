@@ -14,17 +14,20 @@ public class MarinasController : Controller
     private readonly IMarinaAdminRepository _marinaAdminRepository;
     private readonly IFileStorageService _fileStorageService;
     private readonly IAuditLogger _auditLogger;
+    private readonly IMarinaSearchService _marinaSearchService;
 
     public MarinasController(
         IMarinaRepository marinaRepository,
         IMarinaAdminRepository marinaAdminRepository,
         IFileStorageService fileStorageService,
-        IAuditLogger auditLogger)
+        IAuditLogger auditLogger,
+        IMarinaSearchService marinaSearchService)
     {
         _marinaRepository = marinaRepository;
         _marinaAdminRepository = marinaAdminRepository;
         _fileStorageService = fileStorageService;
         _auditLogger = auditLogger;
+        _marinaSearchService = marinaSearchService;
     }
 
     [HttpGet("")]
@@ -104,6 +107,9 @@ public class MarinasController : Controller
             marina.LayoutHeight);
 
         await _marinaRepository.UpdateAsync(marina);
+
+        if (marina.IsActive)
+            await _marinaSearchService.IndexAsync(marina);
 
         _auditLogger.Log(
             userId: userId,
