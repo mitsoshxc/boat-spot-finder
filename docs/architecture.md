@@ -10,7 +10,8 @@
 | Identity | ASP.NET Core Identity | 10.0 |
 | Background jobs | Hangfire | 1.8.20 |
 | Data protection | `PersistKeysToDbContext` (same SQL Server DB) | 10.0 |
-| Health checks | EF Core DbContext check + optional Elasticsearch check | — |
+| Health checks | EF Core DbContext check | — |
+| Search | Elasticsearch (optional) via `Elastic.Clients.Elasticsearch` | 8.19.22 |
 
 ---
 
@@ -49,9 +50,10 @@ NuGet dependency: `Microsoft.Extensions.Identity.Core` only.
 - **`Data/AppDbContext.cs`** — extends `IdentityDbContext<ApplicationUser>` and `IDataProtectionKeyContext`. Registers all DbSets. Overrides `SaveChanges` and `SaveChangesAsync` to maintain `BaseEntity.UpdatedAt`. Seeds roles, admin user, and `AdminSettings` via `HasData`.
 - **`Data/Configurations/`** — one `IEntityTypeConfiguration<T>` file per entity. `BaseEntityConfiguration<T>` is an abstract generic base that sets `HasDefaultValueSql("GETUTCDATE()")` on both timestamp columns; concrete configs inherit it and call `base.Configure(builder)` first.
 - **`Repositories/`** — concrete repository implementations.
+- **`Search/`** — Elasticsearch integration. Contains `ElasticsearchMarinaSearchService` (real impl, uses `Elastic.Clients.Elasticsearch`) and `NullMarinaSearchService` (stub, always returns null from `SearchAsync`). Both implement `IMarinaSearchService` from `Core/Interfaces/`.
 - **`Migrations/`** — EF Core migration files. Never hand-edited.
 
-NuGet dependencies: `Microsoft.AspNetCore.Identity.EntityFrameworkCore`, `Microsoft.EntityFrameworkCore.SqlServer`, `Microsoft.AspNetCore.DataProtection.EntityFrameworkCore`, `Microsoft.EntityFrameworkCore.Tools`.
+NuGet dependencies: `Microsoft.AspNetCore.Identity.EntityFrameworkCore`, `Microsoft.EntityFrameworkCore.SqlServer`, `Microsoft.AspNetCore.DataProtection.EntityFrameworkCore`, `Microsoft.EntityFrameworkCore.Tools`, `Elastic.Clients.Elasticsearch` (8.19.22).
 
 ### Web (`BoatSpotFinder.Web`)
 
@@ -61,7 +63,7 @@ NuGet dependencies: `Microsoft.AspNetCore.Identity.EntityFrameworkCore`, `Micros
 - **`Infrastructure/`** — web-layer infrastructure: `HangfireAdminAuthFilter`, `CustomSignInManager`, and `Storage/LocalFileStorageService` (writes marina background images to `wwwroot/uploads/marina-backgrounds/`).
 - **`wwwroot/js/`** — client-side JavaScript. `marina-editor.js` drives the PlaceOwner canvas layout editor (Konva stage, Add Spot modal, SavePositions POST, snap/overlap collision logic, sidebar delete modal, clear background modal, fullscreen toggle). Konva.js is loaded from CDN (`https://unpkg.com/konva@9/konva.min.js`) on the views that use the canvas — it is not bundled. See [`conventions.md`](conventions.md) § Canvas / Visual Layout for the full canvas ruleset.
 
-NuGet dependencies: `Hangfire.Core`, `Hangfire.SqlServer`, `Hangfire.AspNetCore`, `AspNetCore.HealthChecks.Elasticsearch`, `Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore`, `Microsoft.AspNetCore.Identity.EntityFrameworkCore`.
+NuGet dependencies: `Hangfire.Core`, `Hangfire.SqlServer`, `Hangfire.AspNetCore`, `Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore`, `Microsoft.AspNetCore.Identity.EntityFrameworkCore`.
 
 ---
 
@@ -75,9 +77,10 @@ NuGet dependencies: `Hangfire.Core`, `Hangfire.SqlServer`, `Hangfire.AspNetCore`
 6. `AddIdentity<ApplicationUser, IdentityRole>().AddEntityFrameworkStores<AppDbContext>().AddDefaultTokenProviders().AddSignInManager<CustomSignInManager>()` — uses `AddIdentity` (not `AddDefaultIdentity`) to allow the custom sign-in manager chain.
 7. `ConfigureApplicationCookie(...)` — sets `LoginPath` and `AccessDeniedPath`.
 8. `AddDataProtection().PersistKeysToDbContext<AppDbContext>()`.
-9. Scoped repository and service registrations: `IAdminSettingsRepository`, `IInvitationRepository`, `IMarinaAdminRepository`, `IAuditLogger`, `IMarinaRepository`, `ISpotRepository`, `ISpotSeasonalRuleRepository`, `ISpotSeasonalRuleService`, `IFileStorageService`.
-10. `AddHangfire(c => c.UseSqlServerStorage(...))` + `AddHangfireServer()`.
-11. `AddHealthChecks().AddDbContextCheck<AppDbContext>()` + conditional `AddElasticsearch(esUri)` when `Elasticsearch:Uri` is configured.
+9. Scoped repository and service registrations: `IAdminSettingsRepository`, `IInvitationRepository`, `IMarinaAdminRepository`, `IAuditLogger`, `IMarinaRepository`, `ISpotRepository`, `ISpotSeasonalRuleRepository`, `ISpotSeasonalRuleService`, `IFileStorageService`. (`IMarinaSearchService` is registered in step 10.)
+10. Elasticsearch config guard — reads `Elasticsearch:Uri` from configuration. If blank: registers `NullMarinaSearchService` as `IMarinaSearchService` (scoped). If set: registers `ElasticsearchClient` as singleton (with `DefaultIndex("marinas")`) then `ElasticsearchMarinaSearchService` as `IMarinaSearchService` (scoped).
+11. `AddHangfire(c => c.UseSqlServerStorage(...))` + `AddHangfireServer()`.
+12. `AddHealthChecks().AddDbContextCheck<AppDbContext>()`.
 
 ---
 
@@ -109,6 +112,21 @@ This block replaces the need to run `dotnet ef database update` manually during 
 
 ---
 
+## Elasticsearch Startup Seed
+
+After `app.MapHealthChecks("/health")` and before `app.Run()`, a startup seed block re-indexes all active marinas into Elasticsearch on each process start:
+
+```csharp
+app.Lifetime.ApplicationStarted.Register(() => Task.Run(async () =>
+{
+    // loads all IsActive marinas and calls IMarinaSearchService.IndexAsync on each
+}));
+```
+
+The `Task.Run` wrapper is intentional: `Register` accepts `Action`, so a bare `Register(async () => ...)` would be async-void and silently swallow exceptions. Exceptions surface via `ILogger<Program>`. When `NullMarinaSearchService` is active (no ES URI configured), all calls are no-ops. The seed is idempotent — running it repeatedly only refreshes the index.
+
+---
+
 ## Hangfire
 
 Dashboard at `/hangfire`. Protected by `HangfireAdminAuthFilter` (`Web/Infrastructure/HangfireAdminAuthFilter.cs`), which returns true only when `User.IsInRole("Admin")`. Uses the same SQL Server database as the application — no separate Hangfire store.
@@ -117,7 +135,7 @@ Dashboard at `/hangfire`. Protected by `HangfireAdminAuthFilter` (`Web/Infrastru
 
 ## Health Checks
 
-Endpoint: `GET /health`. Always includes an EF Core `DbContextCheck<AppDbContext>`. The Elasticsearch check is registered only when `Elasticsearch:Uri` is present in configuration, so the endpoint reports healthy in development (Mode 1, no Docker, no ES).
+Endpoint: `GET /health`. Includes an EF Core `DbContextCheck<AppDbContext>`. No Elasticsearch health check is registered — ES connectivity is not monitored at the `/health` endpoint; index drift is recovered by the startup seed (see § Elasticsearch Startup Seed above).
 
 ---
 
@@ -150,8 +168,8 @@ No CSS framework, no client-side validation library, no jQuery. All views use on
 
 | File | Committed | Purpose |
 |---|---|---|
-| `src/BoatSpotFinder.Web/appsettings.json` | Yes | Logging defaults; `ConnectionStrings:DefaultConnection` is an empty placeholder. |
-| `src/BoatSpotFinder.Web/appsettings.Development.json` | No (git-ignored) | LocalDB connection string; `AppSettings:BaseUrl = "https://localhost:5001"`. |
+| `src/BoatSpotFinder.Web/appsettings.json` | Yes | Logging defaults; `ConnectionStrings:DefaultConnection` is an empty placeholder; `Elasticsearch:Uri` is an empty string (ES off). |
+| `src/BoatSpotFinder.Web/appsettings.Development.json` | No (git-ignored) | LocalDB connection string; `AppSettings:BaseUrl = "https://localhost:5001"`; `Elasticsearch:Uri = "http://localhost:9200"` when running with Docker. |
 
 Never commit a real connection string to `appsettings.json`. Production secrets are injected via environment variables or k8s Secrets (Phase 8).
 

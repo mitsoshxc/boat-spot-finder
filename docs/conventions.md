@@ -10,7 +10,7 @@ These rules apply to every file in the codebase. The Dev agent enforces them on 
 |---|---|
 | Entities live only in `Core/Entities/` | No EF attributes on entity classes. |
 | Repository interfaces live in `Core/Interfaces/` | Concrete implementations in `Infrastructure/Repositories/`. |
-| Service interfaces live in `Core/Interfaces/` | Concrete implementations in `Core/Services/`. |
+| Service interfaces live in `Core/Interfaces/` | Concrete implementations in `Core/Services/`. Search service implementations live in `Infrastructure/Search/`. |
 | Shared result/DTO types live in `Core/Common/` or `Core/Models/` | `Core/Common/` for cross-cutting types (e.g. `ServiceResult`); `Core/Models/` for input/transfer objects. |
 | EF configurations live in `Infrastructure/Data/Configurations/` | One file per entity; inherit `BaseEntityConfiguration<T>` for entities that extend `BaseEntity`. |
 | `AppDbContext` lives in `Infrastructure/Data/` | Never in `Core` or `Web`. |
@@ -202,6 +202,37 @@ public record ServiceResult(bool Success, IEnumerable<string> Errors)
 - Controllers check `result.Success`; on failure they add each error to `ModelState` and return the view.
 - Do not throw for expected validation failures. Reserve exceptions for unexpected infrastructure errors.
 - All future services must follow this pattern.
+
+---
+
+## Search Indexing
+
+`IMarinaSearchService` (`Core/Interfaces/`) exposes three methods: `IndexAsync(Marina)`, `DeleteAsync(Guid)`, and `SearchAsync(string?)`.
+
+### Sentinel pattern on SearchAsync
+
+`SearchAsync` returns `Task<IEnumerable<Guid>?>`. The nullable return is a deliberate sentinel:
+
+- `null` means "Elasticsearch is not active; apply no filter — return all from SQL."
+- A non-null value (including an empty list) means "Elasticsearch responded; restrict results to this set of IDs."
+
+The real implementation (`ElasticsearchMarinaSearchService`) never returns null from `SearchAsync` — on exception it logs and returns an empty enumerable. Only `NullMarinaSearchService` (the no-op stub registered when `Elasticsearch:Uri` is blank) returns null. Consumers must branch on null.
+
+### Sync rules
+
+- ES sync always happens **after** a DB write succeeds. Never sync before the DB write.
+- On ES exception, log and continue — the DB is the source of truth. Index drift is recovered by the startup seed on next process start.
+- In `MarinasController.Edit POST`, `IndexAsync` is called only when `marina.IsActive == true`. Inactive marinas are not indexed. Admin-side deactivation/reactivation sync (including `DeleteAsync` on deactivate) is deferred to Phase 6 task 6.2.
+- `IndexAsync` and `DeleteAsync` swallow exceptions internally (log + continue), so callers do not need try/catch.
+
+### Implementations
+
+| Class | Location | Behaviour |
+|---|---|---|
+| `ElasticsearchMarinaSearchService` | `Infrastructure/Search/` | Real ES client. Index name `"marinas"`. Multi-match across name, region, phone, address, description with fuzziness AUTO. Size 10000. |
+| `NullMarinaSearchService` | `Infrastructure/Search/` | No-op stub. `IndexAsync`/`DeleteAsync` return `Task.CompletedTask`. `SearchAsync` returns `null`. |
+
+DI wiring is controlled by a config guard in `Program.cs`: if `Elasticsearch:Uri` is blank, `NullMarinaSearchService` is registered; otherwise `ElasticsearchClient` (singleton) + `ElasticsearchMarinaSearchService` (scoped) are registered.
 
 ---
 
