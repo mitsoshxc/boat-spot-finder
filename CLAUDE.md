@@ -32,6 +32,7 @@ Stack: ASP.NET Core 10 MVC · Entity Framework Core 10 · SQL Server · ASP.NET 
 
 | Skill | Invoked by | When to use |
 |---|---|---|
+| `/frontend-design <purpose + fields>` | Tech lead | Generate production-grade HTML/CSS markup for any new or substantially changed `.cshtml` view. Output is passed verbatim into the `/dev` brief — Dev writes the actual files. JS is not in scope for this skill — describe JS behaviour in the `/dev` brief and Dev implements it directly. |
 | `/dev <brief>` | Tech lead | Delegate an implementation task to the Dev agent |
 | `/verify <brief>` | Tech lead | Verify Dev's output against the brief, conventions, build, and tests |
 | `/doc <phase summary>` | Tech lead | Delegate phase-level documentation updates to the Doc agent after every task in the phase is approved |
