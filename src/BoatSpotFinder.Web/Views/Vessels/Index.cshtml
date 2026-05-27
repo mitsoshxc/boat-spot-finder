@@ -1,0 +1,84 @@
+@model IEnumerable<VesselListItemViewModel>
+@{
+    ViewData["Title"] = "My Vessels";
+}
+
+<section class="workspace">
+    <header class="workspace__head">
+        <span class="workspace__mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="0.9">
+                <path d="M6 20 Q16 26 26 20"/>
+                <path d="M8 20 L10 12 L16 8 L22 12 L24 20"/>
+                <line x1="16" y1="8" x2="16" y2="4"/>
+                <path d="M16 4 L16 12 L22 12" fill="currentColor" stroke="none" opacity="0.5"/>
+                <line x1="4" y1="24" x2="28" y2="24" opacity="0.4"/>
+                <line x1="6" y1="27" x2="26" y2="27" opacity="0.2"/>
+            </svg>
+        </span>
+        <span class="workspace__eyebrow">Boat owner · Fleet</span>
+        <h1 class="workspace__title">My Vessels</h1>
+        <p class="workspace__lede">Your registered vessels. Add vessel details so you can book marina spots that fit.</p>
+        <div style="margin-top: 18px;">
+            <a class="btn btn--primary btn--sm" href="/vessels/create">
+                <span class="btn__sigil" aria-hidden="true">+</span>
+                Add vessel
+            </a>
+        </div>
+    </header>
+
+    @if (TempData["Error"] is string errorMsg)
+    {
+        <div class="notice notice--warning" style="margin-bottom: 24px;">
+            <p class="notice__body">@errorMsg</p>
+        </div>
+    }
+
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <span class="vignette vignette--muted" aria-hidden="true">
+                <svg viewBox="0 0 64 48" fill="none" stroke="currentColor" stroke-width="0.7">
+                    <path d="M10 32 Q32 42 54 32"/>
+                    <path d="M14 32 L18 18 L32 12 L46 18 L50 32"/>
+                    <line x1="32" y1="12" x2="32" y2="6"/>
+                    <path d="M32 6 L32 18 L46 18" fill="currentColor" stroke="none" opacity="0.35"/>
+                    <line x1="6" y1="38" x2="58" y2="38" opacity="0.3"/>
+                </svg>
+            </span>
+            <p class="empty-state__title">No vessels yet</p>
+            <p class="empty-state__body">Register your first vessel to start booking spots.</p>
+            <div style="margin-top: 18px;">
+                <a class="btn btn--ghost btn--sm" href="/vessels/create">Add vessel</a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <ul class="marina-grid">
+            @foreach (var v in Model)
+            {
+                <li class="marina-card">
+                    <div class="marina-card__head">
+                        <span class="pill pill--active"><span class="pill__dot" aria-hidden="true"></span>@v.Type</span>
+                    </div>
+                    <h2 class="marina-card__name">@v.Name</h2>
+                    <p class="marina-card__meta">
+                        <span class="marina-card__metric">@v.LengthMeters</span>
+                        <span class="marina-card__metric-label">&times;</span>
+                        <span class="marina-card__metric">@v.WidthMeters</span>
+                        <span class="marina-card__metric-label">&times;</span>
+                        <span class="marina-card__metric">@v.DepthMeters</span>
+                        <span class="marina-card__metric-label">m</span>
+                    </p>
+                    <div class="marina-card__actions">
+                        <a class="btn btn--ghost btn--sm" href="/vessels/edit/@v.Id">Edit</a>
+                        <form method="post" action="/vessels/delete/@v.Id" onsubmit="return confirm('Delete this vessel? This cannot be undone.');">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn--sm btn--danger">Delete</button>
+                        </form>
+                    </div>
+                </li>
+            }
+        </ul>
+    }
+</section>

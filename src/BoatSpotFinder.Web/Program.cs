@@ -73,6 +73,8 @@ builder.Services.AddScoped<ISpotRepository, SpotRepository>();
 builder.Services.AddScoped<ISpotSeasonalRuleRepository, SpotSeasonalRuleRepository>();
 builder.Services.AddScoped<ISpotSeasonalRuleService, SpotSeasonalRuleService>();
 builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
+builder.Services.AddScoped<IVesselRepository, VesselRepository>();
+builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 
 var esUri = builder.Configuration["Elasticsearch:Uri"];
 if (string.IsNullOrWhiteSpace(esUri))

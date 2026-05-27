@@ -1,0 +1,87 @@
+@model VesselEditViewModel
+@{
+    ViewData["Title"] = "Edit vessel";
+}
+
+<section class="workspace workspace--narrow">
+    <header class="workspace__head">
+        <span class="workspace__mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="0.9">
+                <path d="M6 20 Q16 26 26 20"/>
+                <path d="M8 20 L10 12 L16 8 L22 12 L24 20"/>
+                <line x1="16" y1="8" x2="16" y2="4"/>
+                <path d="M16 4 L16 12 L22 12" fill="currentColor" stroke="none" opacity="0.5"/>
+                <line x1="4" y1="24" x2="28" y2="24" opacity="0.4"/>
+                <line x1="6" y1="27" x2="26" y2="27" opacity="0.2"/>
+            </svg>
+        </span>
+        <span class="workspace__eyebrow">Edit vessel</span>
+        <h1 class="workspace__title">@Model.Name</h1>
+        <p class="workspace__subtitle">Update your vessel details</p>
+    </header>
+
+    <article class="plate">
+        <form asp-action="Edit" method="post" class="plate-form" novalidate>
+            <input type="hidden" asp-for="Id" />
+            <div asp-validation-summary="ModelOnly" class="auth-errors"></div>
+
+            <section class="plate-section">
+                <h2 class="plate-section__title">
+                    <span class="plate-section__numeral">I</span>
+                    Identity
+                </h2>
+                <div class="plate-section__body">
+                    <div class="field">
+                        <label asp-for="Name" class="field__label">Vessel name</label>
+                        <input asp-for="Name" class="field__input" autocomplete="off" />
+                        <span asp-validation-for="Name" class="field__error"></span>
+                    </div>
+                    <div class="field">
+                        <label asp-for="Description" class="field__label">Description</label>
+                        <textarea asp-for="Description" rows="3" class="field__input field__input--area"></textarea>
+                        <span asp-validation-for="Description" class="field__error"></span>
+                        <span class="field__meta">Optional. Notes about your vessel.</span>
+                    </div>
+                    <div class="field">
+                        <label asp-for="Type" class="field__label">Type</label>
+                        <select asp-for="Type" asp-items="Model.VesselTypeOptions" class="field__input">
+                            <option value="">— Select type —</option>
+                        </select>
+                        <span asp-validation-for="Type" class="field__error"></span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="plate-section">
+                <h2 class="plate-section__title">
+                    <span class="plate-section__numeral">II</span>
+                    Dimensions
+                </h2>
+                <div class="plate-section__body">
+                    <div class="field-row field-row--three">
+                        <div class="field">
+                            <label asp-for="LengthMeters" class="field__label">Length &middot; m</label>
+                            <input asp-for="LengthMeters" type="number" step="0.1" min="0" class="field__input field__input--mono" />
+                            <span asp-validation-for="LengthMeters" class="field__error"></span>
+                        </div>
+                        <div class="field">
+                            <label asp-for="WidthMeters" class="field__label">Width &middot; m</label>
+                            <input asp-for="WidthMeters" type="number" step="0.1" min="0" class="field__input field__input--mono" />
+                            <span asp-validation-for="WidthMeters" class="field__error"></span>
+                        </div>
+                        <div class="field">
+                            <label asp-for="DepthMeters" class="field__label">Depth &middot; m</label>
+                            <input asp-for="DepthMeters" type="number" step="0.1" min="0" class="field__input field__input--mono" />
+                            <span asp-validation-for="DepthMeters" class="field__error"></span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <div class="plate-form__actions">
+                <a class="link--quiet" href="/vessels">&larr; Back to vessels</a>
+                <button type="submit" class="btn btn--primary">Save changes</button>
+            </div>
+        </form>
+    </article>
+</section>

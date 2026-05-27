@@ -2563,3 +2563,15 @@ body.body--fullscreen-editor {
     overflow-y: auto;
     max-height: 100%;
 }
+
+/* --- Danger button (destructive action) --- */
+.btn--danger {
+    color: var(--alert);
+    border-color: rgba(139, 44, 47, 0.35);
+    background: transparent;
+}
+.btn--danger:hover {
+    background: var(--alert-bg);
+    color: var(--alert);
+    border-color: var(--alert);
+}
