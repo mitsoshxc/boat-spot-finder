@@ -99,7 +99,7 @@ public class SpotSeasonalRulesController : Controller
             return View(model);
         }
 
-        var input = new SpotSeasonalRuleInput(model.Name, model.StartDate, model.EndDate, model.PricePerDay, model.MinBookingDays);
+        var input = new SpotSeasonalRuleInput(model.Name, model.StartDate!.Value, model.EndDate!.Value, model.PricePerDay, model.MinBookingDays);
         var result = await _ruleService.CreateAsync(spotId, input);
 
         if (!result.Success)

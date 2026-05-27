@@ -10,10 +10,10 @@ public record SpotSeasonalRuleCreateViewModel
     public string Name { get; init; } = string.Empty;
 
     [Required]
-    public DateOnly StartDate { get; init; }
+    public DateOnly? StartDate { get; init; }
 
     [Required]
-    public DateOnly EndDate { get; init; }
+    public DateOnly? EndDate { get; init; }
 
     [Required, Range(0, 100000)]
     public decimal PricePerDay { get; init; }
