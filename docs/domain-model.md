@@ -52,7 +52,7 @@ Seeded admin: `admin@boatspotfinder.com`, `Id = "30000000-0000-0000-0000-0000000
 | `DefaultPricePerDay` | `decimal (18,2)` | Fallback when `Spot.PricePerDay` is null. |
 | `IsActive` | `bool` | Default `true`. Soft-delete. Deactivating hides marina from Browse; existing bookings are not cancelled. |
 | `LayoutWidth` / `LayoutHeight` | `int` | Default 1200 / 800. Defines the canvas coordinate space for spot layout. |
-| `BackgroundImagePath` | `string?` | |
+| `BackgroundImagePath` | `string?` | Null when no image uploaded. Cleared via `MarinasController.ClearBackground`; deletion from storage handled before nulling the field. |
 | `AverageRating` | `decimal?` | **Deferred to Phase 5b.** |
 | `ReviewCount` | `int` | **Deferred to Phase 5b.** |
 

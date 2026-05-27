@@ -69,6 +69,7 @@ public class Marina : BaseEntity
     }
 
     public void SetBackgroundImage(string? path) => BackgroundImagePath = path;
+    public void ClearBackgroundImage() => BackgroundImagePath = null;
     public void Activate() => IsActive = true;
     public void Deactivate() => IsActive = false;
 }

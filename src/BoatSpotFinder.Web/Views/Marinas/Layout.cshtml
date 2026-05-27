@@ -82,6 +82,18 @@
                 <span class="upload-row__hint">JPG, PNG, or WebP &middot; up to 5&nbsp;MB.</span>
                 <p class="upload-row__error" id="background-upload-error" role="alert" hidden></p>
             </form>
+@if (!string.IsNullOrEmpty(Model.BackgroundImagePath))
+{
+    <form asp-action="ClearBackground"
+          asp-route-id="@Model.Id"
+          method="post"
+          class="upload-row"
+          id="clear-background-form">
+        <button type="submit" class="btn btn--sm btn--danger">Clear background</button>
+        <span class="upload-row__hint">Removes the uploaded image and reverts to the empty placeholder.</span>
+        <p class="upload-row__error" id="clear-background-error" role="alert" hidden></p>
+    </form>
+}
         </article>
 
         <aside class="spot-sidebar" id="spot-sidebar">
@@ -189,6 +201,21 @@
         <div class="modal__actions">
             <button type="button" class="link--quiet" data-modal-dismiss>Cancel</button>
             <button type="button" id="delete-spot-confirm" class="btn btn--danger btn--sm">Delete spot</button>
+        </div>
+    </div>
+</div>
+
+<div id="clear-background-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="clear-background-modal-title" hidden>
+    <div class="modal__backdrop" data-modal-dismiss aria-hidden="true"></div>
+    <div class="modal__panel">
+        <header class="modal__head">
+            <h2 id="clear-background-modal-title" class="modal__title">Remove background image?</h2>
+            <p class="modal__lede">This action cannot be undone. The uploaded image will be permanently deleted from storage and the canvas will revert to the empty placeholder.</p>
+        </header>
+        <div class="modal__errors" hidden></div>
+        <div class="modal__actions">
+            <button type="button" class="link--quiet" data-modal-dismiss>Cancel</button>
+            <button type="button" id="clear-background-confirm" class="btn btn--danger btn--sm">Remove background</button>
         </div>
     </div>
 </div>

@@ -2,9 +2,9 @@
     'use strict';
 
     document.addEventListener('DOMContentLoaded', function () {
-        var uploadForm = document.getElementById('background-upload-form');
-        var uploadInput = uploadForm ? uploadForm.querySelector('input[name="backgroundImage"]') : null;
-        var uploadError = document.getElementById('background-upload-error');
+        const uploadForm = document.getElementById('background-upload-form');
+        const uploadInput = uploadForm ? uploadForm.querySelector('input[name="backgroundImage"]') : null;
+        const uploadError = document.getElementById('background-upload-error');
 
         if (uploadForm && uploadInput && uploadError) {
             uploadInput.addEventListener('change', function () {
@@ -13,20 +13,20 @@
             });
 
             uploadForm.addEventListener('submit', function (e) {
-                var file = uploadInput.files && uploadInput.files[0];
+                const file = uploadInput.files && uploadInput.files[0];
                 if (!file) { return; }
 
-                var allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-                var allowedExts = ['.jpg', '.jpeg', '.png', '.webp'];
-                var maxSize = 5 * 1024 * 1024;
-                var errorMsg = '';
+                const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+                const allowedExts = ['.jpg', '.jpeg', '.png', '.webp'];
+                const maxSize = 5 * 1024 * 1024;
+                let errorMsg = '';
 
                 if (allowedTypes.indexOf(file.type) === -1) {
                     errorMsg = 'Please choose a JPG, PNG, or WebP image.';
                 } else {
-                    var nameLower = file.name.toLowerCase();
-                    var extOk = false;
-                    for (var i = 0; i < allowedExts.length; i++) {
+                    const nameLower = file.name.toLowerCase();
+                    let extOk = false;
+                    for (let i = 0; i < allowedExts.length; i++) {
                         if (nameLower.slice(-allowedExts[i].length) === allowedExts[i]) {
                             extOk = true;
                             break;
@@ -47,26 +47,26 @@
             });
         }
 
-        var container = document.getElementById('canvas-container');
+        const container = document.getElementById('canvas-container');
         if (!container) return;
 
-        var marinaId = container.dataset.marinaId;
-        var spotCreateUrl = container.dataset.spotCreateUrl;
-        var stageWidth = container.clientWidth;
-        var stageHeight = container.clientHeight;
-        var tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
-        var token = tokenInput ? tokenInput.value : '';
+        const marinaId = container.dataset.marinaId;
+        const spotCreateUrl = container.dataset.spotCreateUrl;
+        const stageWidth = container.clientWidth;
+        const stageHeight = container.clientHeight;
+        const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+        const token = tokenInput ? tokenInput.value : '';
 
-        var stage = new Konva.Stage({
+        const stage = new Konva.Stage({
             container: 'canvas-container',
             width: stageWidth,
             height: stageHeight
         });
 
-        var layer = new Konva.Layer();
+        const layer = new Konva.Layer();
         stage.add(layer);
 
-        var transformer = new Konva.Transformer({
+        const transformer = new Konva.Transformer({
             enabledAnchors: [
                 'top-left', 'top-right', 'bottom-left', 'bottom-right',
                 'middle-left', 'middle-right', 'top-center', 'bottom-center'
@@ -78,31 +78,35 @@
         });
         layer.add(transformer);
 
-        var spotsById = new Map();
-        var unplacedCount = 0;
-        var layoutBounds = { w: 0, h: 0 };
+        const spotsById = new Map();
+        let unplacedCount = 0;
+        const layoutBounds = { w: 0, h: 0 };
 
-        var SNAP_THRESHOLD = 8;
+        const SNAP_THRESHOLD = 8;
 
         function getOtherRects(draggedNode) {
-            var rects = [];
+            const rects = [];
             spotsById.forEach(function (entry) {
                 if (entry.node !== draggedNode) {
-                    rects.push(entry.node.getClientRect({ relativeTo: layer }));
+                    rects.push(entry.node.getClientRect({ relativeTo: layer, skipStroke: true }));
                 }
             });
             return rects;
         }
 
+        const OVERLAP_EPSILON = 0.5;
+
         function rectsOverlap(a, b) {
-            return !(a.x + a.width <= b.x || b.x + b.width <= a.x ||
-                     a.y + a.height <= b.y || b.y + b.height <= a.y);
+            return !(a.x + a.width <= b.x + OVERLAP_EPSILON ||
+                     b.x + b.width <= a.x + OVERLAP_EPSILON ||
+                     a.y + a.height <= b.y + OVERLAP_EPSILON ||
+                     b.y + b.height <= a.y + OVERLAP_EPSILON);
         }
 
         function isOutOfBounds(r) {
-            return r.x < 0 || r.y < 0 ||
-                   r.x + r.width > layoutBounds.w ||
-                   r.y + r.height > layoutBounds.h;
+            return r.x < -OVERLAP_EPSILON || r.y < -OVERLAP_EPSILON ||
+                   r.x + r.width > layoutBounds.w + OVERLAP_EPSILON ||
+                   r.y + r.height > layoutBounds.h + OVERLAP_EPSILON;
         }
 
         function findEmptySlot(w, h) {
@@ -110,17 +114,17 @@
                 return null;
             }
 
-            var existing = [];
+            const existing = [];
             spotsById.forEach(function (entry) {
-                existing.push(entry.node.getClientRect({ relativeTo: layer }));
+                existing.push(entry.node.getClientRect({ relativeTo: layer, skipStroke: true }));
             });
 
-            var step = 20;
-            for (var y = 20; y + h <= layoutBounds.h - 20; y += step) {
-                for (var x = 20; x + w <= layoutBounds.w - 20; x += step) {
-                    var candidate = { x: x, y: y, width: w, height: h };
-                    var clash = false;
-                    for (var i = 0; i < existing.length; i++) {
+            const step = 20;
+            for (let y = 20; y + h <= layoutBounds.h - 20; y += step) {
+                for (let x = 20; x + w <= layoutBounds.w - 20; x += step) {
+                    const candidate = { x: x, y: y, width: w, height: h };
+                    let clash = false;
+                    for (let i = 0; i < existing.length; i++) {
                         if (rectsOverlap(candidate, existing[i])) {
                             clash = true;
                             break;
@@ -135,49 +139,49 @@
         }
 
         function applySnapDuringDrag(node) {
-            var aabb = node.getClientRect({ relativeTo: layer });
-            var others = getOtherRects(node);
+            const aabb = node.getClientRect({ relativeTo: layer, skipStroke: true });
+            const others = getOtherRects(node);
 
-            var bestDx = null;
-            var bestDy = null;
+            const start = node._preDragAABB;
+            const startLeft   = start ? start.x : null;
+            const startRight  = start ? start.x + start.width : null;
+            const startTop    = start ? start.y : null;
+            const startBottom = start ? start.y + start.height : null;
 
-            function trySnapX(delta) {
-                if (Math.abs(delta) <= SNAP_THRESHOLD) {
-                    if (bestDx === null || Math.abs(delta) < Math.abs(bestDx)) {
-                        bestDx = delta;
-                    }
-                }
+            let bestDx = null;
+            let bestDy = null;
+
+            function trySnapX(myEdge, targetPos, startEdge) {
+                const delta = targetPos - myEdge;
+                if (Math.abs(delta) > SNAP_THRESHOLD) return;
+                if (startEdge !== null && Math.abs(targetPos - startEdge) < 0.5) return;
+                if (bestDx === null || Math.abs(delta) < Math.abs(bestDx)) bestDx = delta;
             }
 
-            function trySnapY(delta) {
-                if (Math.abs(delta) <= SNAP_THRESHOLD) {
-                    if (bestDy === null || Math.abs(delta) < Math.abs(bestDy)) {
-                        bestDy = delta;
-                    }
-                }
+            function trySnapY(myEdge, targetPos, startEdge) {
+                const delta = targetPos - myEdge;
+                if (Math.abs(delta) > SNAP_THRESHOLD) return;
+                if (startEdge !== null && Math.abs(targetPos - startEdge) < 0.5) return;
+                if (bestDy === null || Math.abs(delta) < Math.abs(bestDy)) bestDy = delta;
             }
 
-            var myLeft = aabb.x;
-            var myRight = aabb.x + aabb.width;
-            var myTop = aabb.y;
-            var myBottom = aabb.y + aabb.height;
+            const myLeft = aabb.x;
+            const myRight = aabb.x + aabb.width;
+            const myTop = aabb.y;
+            const myBottom = aabb.y + aabb.height;
 
-            trySnapX(0 - myLeft);
-            trySnapX(layoutBounds.w - myRight);
-            trySnapY(0 - myTop);
-            trySnapY(layoutBounds.h - myBottom);
+            trySnapX(myLeft,   0,              startLeft);
+            trySnapX(myRight,  layoutBounds.w, startRight);
+            trySnapY(myTop,    0,              startTop);
+            trySnapY(myBottom, layoutBounds.h, startBottom);
 
-            for (var i = 0; i < others.length; i++) {
-                var o = others[i];
-                var oLeft = o.x;
-                var oRight = o.x + o.width;
-                var oTop = o.y;
-                var oBottom = o.y + o.height;
+            for (let i = 0; i < others.length; i++) {
+                const o = others[i];
 
-                trySnapX(oRight - myLeft);
-                trySnapX(oLeft - myRight);
-                trySnapY(oBottom - myTop);
-                trySnapY(oTop - myBottom);
+                trySnapX(myLeft,   o.x + o.width,  startLeft);
+                trySnapX(myRight,  o.x,             startRight);
+                trySnapY(myTop,    o.y + o.height,  startTop);
+                trySnapY(myBottom, o.y,             startBottom);
             }
 
             if (bestDx !== null) {
@@ -191,27 +195,35 @@
         function resizeBoundBox(oldBox, newBox) {
             if (layoutBounds.w <= 0 || layoutBounds.h <= 0) return newBox;
             if (!transformer || transformer.nodes().length === 0) return newBox;
-            var draggedNode = transformer.nodes()[0];
-            var others = getOtherRects(draggedNode);
+            const draggedNode = transformer.nodes()[0];
+            const others = getOtherRects(draggedNode);
 
-            var oldLeft = oldBox.x;
-            var oldRight = oldBox.x + oldBox.width;
-            var oldTop = oldBox.y;
-            var oldBottom = oldBox.y + oldBox.height;
-            var newLeft = newBox.x;
-            var newRight = newBox.x + newBox.width;
-            var newTop = newBox.y;
-            var newBottom = newBox.y + newBox.height;
+            const stroke = (draggedNode.strokeWidth && draggedNode.strokeWidth()) || 0;
+            const halfStroke = stroke / 2;
 
-            var leftChanged = Math.abs(newLeft - oldLeft) > 0.5;
-            var rightChanged = Math.abs(newRight - oldRight) > 0.5;
-            var topChanged = Math.abs(newTop - oldTop) > 0.5;
-            var bottomChanged = Math.abs(newBottom - oldBottom) > 0.5;
+            const oldLeft   = oldBox.x + halfStroke;
+            const oldRight  = oldBox.x + oldBox.width  - halfStroke;
+            const oldTop    = oldBox.y + halfStroke;
+            const oldBottom = oldBox.y + oldBox.height - halfStroke;
+            let newLeft     = newBox.x + halfStroke;
+            let newRight    = newBox.x + newBox.width  - halfStroke;
+            let newTop      = newBox.y + halfStroke;
+            let newBottom   = newBox.y + newBox.height - halfStroke;
 
-            function pickBestSnap(value, targets) {
-                var best = null;
-                for (var i = 0; i < targets.length; i++) {
-                    var d = targets[i] - value;
+            const leftChanged   = Math.abs(newLeft   - oldLeft)   > 0.5;
+            const rightChanged  = Math.abs(newRight  - oldRight)  > 0.5;
+            const topChanged    = Math.abs(newTop    - oldTop)    > 0.5;
+            const bottomChanged = Math.abs(newBottom - oldBottom) > 0.5;
+
+            function pickBestSnap(value, oldValue, targets) {
+                if (value === oldValue) return null;
+                const direction = Math.sign(value - oldValue);
+                let best = null;
+                for (let i = 0; i < targets.length; i++) {
+                    const t = targets[i];
+                    const offset = t - oldValue;
+                    if (Math.abs(offset) < 0.5 || Math.sign(offset) !== direction) continue;
+                    const d = t - value;
                     if (Math.abs(d) < SNAP_THRESHOLD && (best === null || Math.abs(d) < Math.abs(best))) {
                         best = d;
                     }
@@ -220,56 +232,63 @@
             }
 
             if (rightChanged) {
-                var rightTargets = [layoutBounds.w];
-                for (var i = 0; i < others.length; i++) rightTargets.push(others[i].x);
-                var d = pickBestSnap(newRight, rightTargets);
+                const rightTargets = [layoutBounds.w];
+                for (let i = 0; i < others.length; i++) rightTargets.push(others[i].x);
+                const d = pickBestSnap(newRight, oldRight, rightTargets);
                 if (d !== null) newRight = newRight + d;
             }
             if (leftChanged) {
-                var leftTargets = [0];
-                for (var j = 0; j < others.length; j++) leftTargets.push(others[j].x + others[j].width);
-                var d2 = pickBestSnap(newLeft, leftTargets);
+                const leftTargets = [0];
+                for (let j = 0; j < others.length; j++) leftTargets.push(others[j].x + others[j].width);
+                const d2 = pickBestSnap(newLeft, oldLeft, leftTargets);
                 if (d2 !== null) newLeft = newLeft + d2;
             }
             if (bottomChanged) {
-                var bottomTargets = [layoutBounds.h];
-                for (var k = 0; k < others.length; k++) bottomTargets.push(others[k].y);
-                var d3 = pickBestSnap(newBottom, bottomTargets);
+                const bottomTargets = [layoutBounds.h];
+                for (let k = 0; k < others.length; k++) bottomTargets.push(others[k].y);
+                const d3 = pickBestSnap(newBottom, oldBottom, bottomTargets);
                 if (d3 !== null) newBottom = newBottom + d3;
             }
             if (topChanged) {
-                var topTargets = [0];
-                for (var m = 0; m < others.length; m++) topTargets.push(others[m].y + others[m].height);
-                var d4 = pickBestSnap(newTop, topTargets);
+                const topTargets = [0];
+                for (let m = 0; m < others.length; m++) topTargets.push(others[m].y + others[m].height);
+                const d4 = pickBestSnap(newTop, oldTop, topTargets);
                 if (d4 !== null) newTop = newTop + d4;
             }
 
-            var snapped = {
-                x: newLeft,
-                y: newTop,
-                width: newRight - newLeft,
-                height: newBottom - newTop,
-                rotation: newBox.rotation
+            const snappedGeom = {
+                x:      newLeft,
+                y:      newTop,
+                width:  newRight  - newLeft,
+                height: newBottom - newTop
             };
 
-            if (snapped.width <= 0 || snapped.height <= 0) return oldBox;
-            if (snapped.x < 0 || snapped.y < 0 ||
-                snapped.x + snapped.width > layoutBounds.w ||
-                snapped.y + snapped.height > layoutBounds.h) {
+            if (snappedGeom.width <= 0 || snappedGeom.height <= 0) return oldBox;
+            if (snappedGeom.x < 0 || snappedGeom.y < 0 ||
+                snappedGeom.x + snappedGeom.width  > layoutBounds.w ||
+                snappedGeom.y + snappedGeom.height > layoutBounds.h) {
                 return oldBox;
             }
-            for (var n = 0; n < others.length; n++) {
-                if (rectsOverlap(snapped, others[n])) {
+            for (let n = 0; n < others.length; n++) {
+                if (rectsOverlap(snappedGeom, others[n])) {
                     return oldBox;
                 }
             }
+
+            const snapped = {
+                x:        newLeft   - halfStroke,
+                y:        newTop    - halfStroke,
+                width:    (newRight  - newLeft)  + stroke,
+                height:   (newBottom - newTop)   + stroke,
+                rotation: newBox.rotation
+            };
 
             return snapped;
         }
 
         function addSpotToCanvas(spot) {
-            var placed = spot.canvasX != null && spot.canvasY != null && spot.canvasW != null && spot.canvasH != null;
-            var x, y, w, h, rotation, dashed, fill, stroke, opacity;
+            const placed = spot.canvasX != null && spot.canvasY != null && spot.canvasW != null && spot.canvasH != null;
+            let x, y, w, h, rotation, dashed, fill, stroke, opacity;
 
             if (placed) {
                 x = spot.canvasX;
@@ -290,7 +309,7 @@
             } else {
                 w = 80;
                 h = 50;
-                var slot = findEmptySlot(w, h);
+                const slot = findEmptySlot(w, h);
                 if (slot) {
                     x = slot.x;
                     y = slot.y;
@@ -306,7 +325,7 @@
                 unplacedCount++;
             }
 
-            var rect = new Konva.Rect({
+            const rect = new Konva.Rect({
                 x: x,
                 y: y,
                 width: w,
@@ -323,7 +342,7 @@
                 rect.dash([6, 4]);
             }
 
-            var label = new Konva.Text({
+            const label = new Konva.Text({
                 text: spot.name,
                 fontSize: 11,
                 fontFamily: 'Manrope, sans-serif',
@@ -332,8 +351,8 @@
             });
 
             function positionLabel() {
-                var rw = rect.width() * rect.scaleX();
-                var rh = rect.height() * rect.scaleY();
+                const rw = rect.width() * rect.scaleX();
+                const rh = rect.height() * rect.scaleY();
                 label.x(rect.x() - rw / 2 + rect.width() / 2 - label.width() / 2);
                 label.y(rect.y() - rh / 2 + rect.height() / 2 - label.height() / 2);
                 label.rotation(rect.rotation());
@@ -356,6 +375,7 @@
             rect.on('dragstart', function () {
                 rect._preDragX = rect.x();
                 rect._preDragY = rect.y();
+                rect._preDragAABB = rect.getClientRect({ relativeTo: layer, skipStroke: true });
             });
 
             rect.on('dragmove', function () {
@@ -365,11 +385,11 @@
             });
 
             rect.on('dragend', function () {
-                var aabb = rect.getClientRect({ relativeTo: layer });
-                var others = getOtherRects(rect);
-                var bad = isOutOfBounds(aabb);
+                const aabb = rect.getClientRect({ relativeTo: layer, skipStroke: true });
+                const others = getOtherRects(rect);
+                let bad = isOutOfBounds(aabb);
                 if (!bad) {
-                    for (var i = 0; i < others.length; i++) {
+                    for (let i = 0; i < others.length; i++) {
                         if (rectsOverlap(aabb, others[i])) {
                             bad = true;
                             break;
@@ -392,6 +412,7 @@
                 rect._preTransformScaleX = rect.scaleX();
                 rect._preTransformScaleY = rect.scaleY();
                 rect._preTransformRotation = rect.rotation();
+                rect._preTransformAABB = rect.getClientRect({ relativeTo: layer, skipStroke: true });
             });
 
             rect.on('transform', function () {
@@ -400,11 +421,11 @@
             });
 
             rect.on('transformend', function () {
-                var aabb = rect.getClientRect({ relativeTo: layer });
-                var others = getOtherRects(rect);
-                var bad = isOutOfBounds(aabb);
+                const aabb = rect.getClientRect({ relativeTo: layer, skipStroke: true });
+                const others = getOtherRects(rect);
+                let bad = isOutOfBounds(aabb);
                 if (!bad) {
-                    for (var i = 0; i < others.length; i++) {
+                    for (let i = 0; i < others.length; i++) {
                         if (rectsOverlap(aabb, others[i])) {
                             bad = true;
                             break;
@@ -437,46 +458,46 @@
         }
 
         function appendSpotToSidebar(spot) {
-            var sidebar = document.getElementById('spot-sidebar');
+            const sidebar = document.getElementById('spot-sidebar');
             if (!sidebar) return;
 
-            var countEl = sidebar.querySelector('.spot-sidebar__count');
+            const countEl = sidebar.querySelector('.spot-sidebar__count');
             if (countEl) {
-                var current = parseInt(countEl.textContent, 10) || 0;
+                const current = parseInt(countEl.textContent, 10) || 0;
                 countEl.textContent = (current + 1).toString();
             }
 
-            var emptyEl = sidebar.querySelector('.spot-sidebar__empty');
+            const emptyEl = sidebar.querySelector('.spot-sidebar__empty');
             if (emptyEl) {
                 emptyEl.parentNode.removeChild(emptyEl);
             }
 
-            var list = sidebar.querySelector('.spot-sidebar__list');
+            let list = sidebar.querySelector('.spot-sidebar__list');
             if (!list) {
                 list = document.createElement('ul');
                 list.className = 'spot-sidebar__list';
                 sidebar.appendChild(list);
             }
 
-            var editUrl = container.dataset.spotEditUrlTemplate
+            const editUrl = container.dataset.spotEditUrlTemplate
                 ? container.dataset.spotEditUrlTemplate.replace('__ID__', spot.id)
                 : '#';
 
-            var li = document.createElement('li');
+            const li = document.createElement('li');
             li.className = 'spot-sidebar__item';
             li.dataset.spotId = spot.id;
 
-            var row = document.createElement('div');
+            const row = document.createElement('div');
             row.className = 'spot-sidebar__row';
 
-            var nameSpan = document.createElement('span');
+            const nameSpan = document.createElement('span');
             nameSpan.className = 'spot-sidebar__name';
             nameSpan.textContent = spot.name;
             row.appendChild(nameSpan);
 
-            var pill = document.createElement('span');
+            const pill = document.createElement('span');
             pill.className = 'pill pill--unplaced';
-            var dot = document.createElement('span');
+            const dot = document.createElement('span');
             dot.className = 'pill__dot';
             dot.setAttribute('aria-hidden', 'true');
             pill.appendChild(dot);
@@ -485,16 +506,16 @@
 
             li.appendChild(row);
 
-            var actions = document.createElement('div');
+            const actions = document.createElement('div');
             actions.className = 'spot-sidebar__actions';
 
-            var editLink = document.createElement('a');
+            const editLink = document.createElement('a');
             editLink.className = 'spot-sidebar__edit';
             editLink.href = editUrl;
             editLink.textContent = 'Edit details →';
             actions.appendChild(editLink);
 
-            var deleteBtn = document.createElement('button');
+            const deleteBtn = document.createElement('button');
             deleteBtn.type = 'button';
             deleteBtn.className = 'spot-sidebar__delete';
             deleteBtn.dataset.spotId = spot.id;
@@ -521,9 +542,9 @@
                 layoutBounds.h = data.layoutHeight || 800;
 
                 if (data.backgroundImagePath) {
-                    var img = new Image();
+                    const img = new Image();
                     img.onload = function () {
-                        var bg = new Konva.Image({
+                        const bg = new Konva.Image({
                             image: img,
                             x: 0,
                             y: 0,
@@ -537,7 +558,7 @@
                     };
                     img.src = data.backgroundImagePath;
                 } else {
-                    var bg = new Konva.Rect({
+                    const bg = new Konva.Rect({
                         x: 0,
                         y: 0,
                         width: data.layoutWidth,
@@ -562,9 +583,9 @@
                 console.error('Failed to load layout data', err);
             });
 
-        var modal = document.getElementById('add-spot-modal');
-        var addSpotForm = document.getElementById('add-spot-form');
-        var modalErrors = modal ? modal.querySelector('.modal__errors') : null;
+        const modal = document.getElementById('add-spot-modal');
+        const addSpotForm = document.getElementById('add-spot-form');
+        const modalErrors = modal ? modal.querySelector('.modal__errors') : null;
 
         function openModal() {
             if (modal) modal.removeAttribute('hidden');
@@ -572,12 +593,12 @@
 
         function clearModalFieldErrors() {
             if (!addSpotForm) return;
-            var inputs = addSpotForm.querySelectorAll('[aria-invalid]');
-            for (var i = 0; i < inputs.length; i++) {
+            const inputs = addSpotForm.querySelectorAll('[aria-invalid]');
+            for (let i = 0; i < inputs.length; i++) {
                 inputs[i].removeAttribute('aria-invalid');
             }
-            var fieldErrors = addSpotForm.querySelectorAll('.field__error');
-            for (var j = 0; j < fieldErrors.length; j++) {
+            const fieldErrors = addSpotForm.querySelectorAll('.field__error');
+            for (let j = 0; j < fieldErrors.length; j++) {
                 fieldErrors[j].parentNode.removeChild(fieldErrors[j]);
             }
         }
@@ -592,7 +613,7 @@
             }
         }
 
-        var btnAddSpot = document.getElementById('btn-add-spot');
+        const btnAddSpot = document.getElementById('btn-add-spot');
         if (btnAddSpot) {
             btnAddSpot.addEventListener('click', openModal);
         }
@@ -615,15 +636,15 @@
                     modalErrors.innerHTML = '';
                 }
 
-                var fd = new FormData(addSpotForm);
-                var decimalFields = ['LengthMeters', 'WidthMeters', 'DepthMeters', 'PricePerDay'];
+                const fd = new FormData(addSpotForm);
+                const decimalFields = ['LengthMeters', 'WidthMeters', 'DepthMeters', 'PricePerDay'];
                 decimalFields.forEach(function (name) {
-                    var v = fd.get(name);
+                    const v = fd.get(name);
                     if (typeof v === 'string' && v.indexOf(',') !== -1) {
                         fd.set(name, v.replace(/,/g, '.'));
                     }
                 });
-                var payload = new URLSearchParams(fd);
+                const payload = new URLSearchParams(fd);
 
                 fetch(spotCreateUrl, {
                     method: 'POST',
@@ -652,11 +673,11 @@
                             });
                         } else {
                             return r.json().then(function (errors) {
-                                var fallbackMessages = [];
+                                const fallbackMessages = [];
                                 if (errors && typeof errors === 'object') {
                                     Object.keys(errors).forEach(function (key) {
-                                        var errs = errors[key];
-                                        var firstMsg = '';
+                                        const errs = errors[key];
+                                        let firstMsg = '';
                                         if (Array.isArray(errs) && errs.length > 0) {
                                             firstMsg = errs[0];
                                         } else if (typeof errs === 'string') {
@@ -664,10 +685,10 @@
                                         }
                                         if (!firstMsg) return;
 
-                                        var input = addSpotForm.querySelector('[name="' + key + '"]');
+                                        const input = addSpotForm.querySelector('[name="' + key + '"]');
                                         if (input) {
                                             input.setAttribute('aria-invalid', 'true');
-                                            var errorEl = document.createElement('p');
+                                            const errorEl = document.createElement('p');
                                             errorEl.className = 'field__error';
                                             errorEl.textContent = firstMsg;
                                             input.parentNode.insertBefore(errorEl, input.nextSibling);
@@ -709,14 +730,14 @@
                 .replace(/"/g, '&quot;');
         }
 
-        var btnSaveLayout = document.getElementById('btn-save-layout');
+        const btnSaveLayout = document.getElementById('btn-save-layout');
         if (btnSaveLayout) {
             btnSaveLayout.addEventListener('click', function () {
-                var positions = [];
+                const positions = [];
                 spotsById.forEach(function (entry, id) {
-                    var node = entry.node;
-                    var newW = node.width() * node.scaleX();
-                    var newH = node.height() * node.scaleY();
+                    const node = entry.node;
+                    const newW = node.width() * node.scaleX();
+                    const newH = node.height() * node.scaleY();
                     node.scaleX(1);
                     node.scaleY(1);
                     node.width(newW);
@@ -742,7 +763,7 @@
                 })
                     .then(function (r) {
                         if (r.ok) {
-                            var btnText = btnSaveLayout.textContent;
+                            const btnText = btnSaveLayout.textContent;
                             btnSaveLayout.textContent = 'Saved ✓';
                             setTimeout(function () {
                                 btnSaveLayout.textContent = btnText;
@@ -759,11 +780,11 @@
             });
         }
 
-        var deleteModal = document.getElementById('delete-spot-modal');
-        var deleteModalErrors = deleteModal ? deleteModal.querySelector('.modal__errors') : null;
-        var deleteModalName = document.getElementById('delete-spot-modal-name');
-        var deleteConfirmBtn = document.getElementById('delete-spot-confirm');
-        var pendingDeleteSpotId = null;
+        const deleteModal = document.getElementById('delete-spot-modal');
+        const deleteModalErrors = deleteModal ? deleteModal.querySelector('.modal__errors') : null;
+        const deleteModalName = document.getElementById('delete-spot-modal-name');
+        const deleteConfirmBtn = document.getElementById('delete-spot-confirm');
+        let pendingDeleteSpotId = null;
 
         function openDeleteModal(spotId, spotName) {
             pendingDeleteSpotId = spotId;
@@ -789,7 +810,7 @@
         }
 
         document.addEventListener('click', function (e) {
-            var btn = e.target.closest('.spot-sidebar__delete');
+            const btn = e.target.closest('.spot-sidebar__delete');
             if (!btn) return;
             openDeleteModal(btn.dataset.spotId, btn.dataset.spotName);
         });
@@ -797,8 +818,8 @@
         if (deleteConfirmBtn) {
             deleteConfirmBtn.addEventListener('click', function () {
                 if (!pendingDeleteSpotId) return;
-                var spotId = pendingDeleteSpotId;
-                var url = '/placeowner/marinas/' + marinaId + '/spots/' + spotId + '/delete';
+                const spotId = pendingDeleteSpotId;
+                const url = '/placeowner/marinas/' + marinaId + '/spots/' + spotId + '/delete';
 
                 fetch(url, {
                     method: 'POST',
@@ -813,7 +834,7 @@
                             closeDeleteModal();
                         } else {
                             return r.json().then(function (body) {
-                                var msg = (body && body.error) ? body.error : 'Delete failed. Please try again.';
+                                const msg = (body && body.error) ? body.error : 'Delete failed. Please try again.';
                                 if (deleteModalErrors) {
                                     deleteModalErrors.removeAttribute('hidden');
                                     deleteModalErrors.innerHTML = '<p>' + escapeHtml(msg) + '</p>';
@@ -836,7 +857,7 @@
         }
 
         function removeSpotFromUI(spotId) {
-            var entry = spotsById.get(spotId);
+            const entry = spotsById.get(spotId);
             if (entry) {
                 if (transformer.nodes().indexOf(entry.node) !== -1) {
                     transformer.nodes([]);
@@ -847,39 +868,110 @@
                 layer.batchDraw();
             }
 
-            var sidebar = document.getElementById('spot-sidebar');
+            const sidebar = document.getElementById('spot-sidebar');
             if (!sidebar) return;
 
-            var item = sidebar.querySelector('.spot-sidebar__item[data-spot-id="' + spotId + '"]');
+            const item = sidebar.querySelector('.spot-sidebar__item[data-spot-id="' + spotId + '"]');
             if (item && item.parentNode) item.parentNode.removeChild(item);
 
-            var countEl = sidebar.querySelector('.spot-sidebar__count');
+            const countEl = sidebar.querySelector('.spot-sidebar__count');
             if (countEl) {
-                var current = parseInt(countEl.textContent, 10) || 0;
+                const current = parseInt(countEl.textContent, 10) || 0;
                 countEl.textContent = Math.max(0, current - 1).toString();
             }
 
-            var list = sidebar.querySelector('.spot-sidebar__list');
+            const list = sidebar.querySelector('.spot-sidebar__list');
             if (list && list.children.length === 0) {
-                var empty = document.createElement('p');
+                const empty = document.createElement('p');
                 empty.className = 'spot-sidebar__empty';
                 empty.innerHTML = 'No spots yet. Use <em>Add spot</em> in the toolbar to define your first.';
                 list.parentNode.replaceChild(empty, list);
             }
         }
+
+        const clearBgForm = document.getElementById('clear-background-form');
+        const clearBgModal = document.getElementById('clear-background-modal');
+        const clearBgModalErrors = clearBgModal ? clearBgModal.querySelector('.modal__errors') : null;
+        const clearBgConfirmBtn = document.getElementById('clear-background-confirm');
+        let clearBgUrl = null;
+
+        function openClearBgModal(url) {
+            clearBgUrl = url;
+            if (clearBgModalErrors) {
+                clearBgModalErrors.setAttribute('hidden', '');
+                clearBgModalErrors.innerHTML = '';
+            }
+            if (clearBgModal) clearBgModal.removeAttribute('hidden');
+        }
+
+        function closeClearBgModal() {
+            if (clearBgModal) clearBgModal.setAttribute('hidden', '');
+            clearBgUrl = null;
+        }
+
+        if (clearBgForm) {
+            clearBgForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                openClearBgModal(clearBgForm.action);
+            });
+        }
+
+        if (clearBgModal) {
+            clearBgModal.addEventListener('click', function (e) {
+                if (e.target.closest('[data-modal-dismiss]')) closeClearBgModal();
+            });
+        }
+
+        if (clearBgConfirmBtn) {
+            clearBgConfirmBtn.addEventListener('click', function () {
+                if (!clearBgUrl) return;
+                fetch(clearBgUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'RequestVerificationToken': token
+                    }
+                })
+                    .then(function (r) {
+                        if (r.ok) {
+                            closeClearBgModal();
+                            window.location.reload();
+                        } else {
+                            return r.json().then(function (body) {
+                                const msg = (body && body.error) ? body.error : 'Failed to remove background. Please try again.';
+                                if (clearBgModalErrors) {
+                                    clearBgModalErrors.removeAttribute('hidden');
+                                    clearBgModalErrors.innerHTML = '<p>' + escapeHtml(msg) + '</p>';
+                                }
+                            }).catch(function () {
+                                if (clearBgModalErrors) {
+                                    clearBgModalErrors.removeAttribute('hidden');
+                                    clearBgModalErrors.innerHTML = '<p>Failed to remove background. Please try again.</p>';
+                                }
+                            });
+                        }
+                    })
+                    .catch(function () {
+                        if (clearBgModalErrors) {
+                            clearBgModalErrors.removeAttribute('hidden');
+                            clearBgModalErrors.innerHTML = '<p>Network error. Please try again.</p>';
+                        }
+                    });
+            });
+        }
     });
 
-    var btnFullscreen = document.getElementById('btn-fullscreen-toggle');
-    var workspaceEl = document.querySelector('.workspace--editor');
+    const btnFullscreen = document.getElementById('btn-fullscreen-toggle');
+    const workspaceEl = document.querySelector('.workspace--editor');
 
     function moveButtonsToSidebar() {
-        var sidebar = document.getElementById('spot-sidebar');
+        const sidebar = document.getElementById('spot-sidebar');
         if (!sidebar) return;
-        var btnAdd = document.getElementById('btn-add-spot');
-        var btnSave = document.getElementById('btn-save-layout');
+        const btnAdd = document.getElementById('btn-add-spot');
+        const btnSave = document.getElementById('btn-save-layout');
         if (!btnAdd || !btnSave || !btnFullscreen) return;
 
-        var container = sidebar.querySelector('.spot-sidebar__toolbar');
+        let container = sidebar.querySelector('.spot-sidebar__toolbar');
         if (!container) {
             container = document.createElement('div');
             container.className = 'spot-sidebar__toolbar';
@@ -891,14 +983,14 @@
     }
 
     function moveButtonsBackToToolbar() {
-        var toolbar = document.querySelector('.workspace__head .toolbar');
-        var sidebar = document.getElementById('spot-sidebar');
+        const toolbar = document.querySelector('.workspace__head .toolbar');
+        const sidebar = document.getElementById('spot-sidebar');
         if (!sidebar) return;
-        var container = sidebar.querySelector('.spot-sidebar__toolbar');
+        const container = sidebar.querySelector('.spot-sidebar__toolbar');
         if (!container || !toolbar) return;
 
-        var btnAdd = document.getElementById('btn-add-spot');
-        var btnSave = document.getElementById('btn-save-layout');
+        const btnAdd = document.getElementById('btn-add-spot');
+        const btnSave = document.getElementById('btn-save-layout');
         if (btnAdd) toolbar.appendChild(btnAdd);
         if (btnFullscreen) toolbar.appendChild(btnFullscreen);
         if (btnSave) toolbar.appendChild(btnSave);
@@ -938,9 +1030,10 @@
 
     document.addEventListener('keydown', function (e) {
         if (e.key !== 'Escape') return;
-        var addModalOpen = modal && !modal.hasAttribute('hidden');
-        var deleteModalOpen = deleteModal && !deleteModal.hasAttribute('hidden');
-        if (addModalOpen || deleteModalOpen) return;
+        const addModalOpen = modal && !modal.hasAttribute('hidden');
+        const deleteModalOpen = deleteModal && !deleteModal.hasAttribute('hidden');
+        const clearBgModalOpen = clearBgModal && !clearBgModal.hasAttribute('hidden');
+        if (addModalOpen || deleteModalOpen || clearBgModalOpen) return;
         if (isFullscreen()) {
             exitFullscreen();
         }

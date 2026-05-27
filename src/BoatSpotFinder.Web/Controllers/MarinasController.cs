@@ -195,4 +195,30 @@ public class MarinasController : Controller
 
         return RedirectToAction(nameof(Layout), new { id });
     }
+
+    [HttpPost("{id:guid}/background/clear")]
+    public async Task<IActionResult> ClearBackground(Guid id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        if (!await _marinaAdminRepository.ExistsAsync(id, userId))
+            return Forbid();
+
+        var marina = await _marinaRepository.GetByIdAsync(id);
+        if (marina is null)
+            return NotFound();
+
+        var isJson = Request.Headers.Accept.ToString().Contains("application/json");
+
+        if (!string.IsNullOrEmpty(marina.BackgroundImagePath))
+        {
+            await _fileStorageService.DeleteAsync(marina.BackgroundImagePath);
+            marina.ClearBackgroundImage();
+            await _marinaRepository.UpdateAsync(marina);
+        }
+
+        if (isJson)
+            return Json(new { ok = true });
+
+        return RedirectToAction(nameof(Layout), new { id });
+    }
 }

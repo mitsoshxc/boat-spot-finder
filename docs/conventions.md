@@ -243,6 +243,18 @@ Do not add comments unless the reason behind the code is non-obvious. "What" com
 
 ---
 
+## JavaScript
+
+Use `const` by default for every variable declaration. Use `let` only when the binding is reassigned. **Never use `var`** in any `.js` file or in inline `<script>` blocks inside `.cshtml`.
+
+- `const` permits mutation of the bound value (array `.push`, object property assignment, DOM/Konva method calls) — it only forbids rebinding the identifier. Prefer `const` whenever the binding itself does not change.
+- `let` is correct for loop counters (`for (let i = 0; ...)`), accumulators, flags toggled inside a branch, and variables declared without an initializer and assigned in branches.
+- This rule is JS-only. `@{ var x = ... }` blocks in `.cshtml` are C# Razor and remain unaffected.
+
+Enforced on every JS Dev brief.
+
+---
+
 ## Canvas / Visual Layout
 
 | Concern | Rule |
@@ -250,7 +262,7 @@ Do not add comments unless the reason behind the code is non-obvious. "What" com
 | Canvas library | Konva.js via CDN `https://unpkg.com/konva@9/konva.min.js`. Included only on views that use it (`Layout.cshtml`, `Browse/Marina.cshtml`, `Admin/MarinaLayout.cshtml`). |
 | Coordinate system | Logical units 0–`LayoutWidth` × 0–`LayoutHeight` (default 1200×800). JS scales to rendered size client-side. Never store pixel values tied to screen resolution. |
 | Canvas positions nullable | `CanvasX/Y/W/H/Rotation` are all nullable. A spot may exist without being placed. Unplaced spots appear in a sidebar list, not on the canvas. |
-| Background image | Stored under `wwwroot/uploads/marina-backgrounds/{id}.{ext}`. Validate type (jpg/png/webp) and max size (5 MB) in the controller. Serve as static files. |
+| Background image | Stored under `wwwroot/uploads/marina-backgrounds/{id}.{ext}`. Validate type (jpg/png/webp) and max size (5 MB) in the controller. Serve as static files. Removable via `MarinasController.ClearBackground` (see "Clear background image" in Editor interactions). |
 | Spot status derivation | Free = active + no overlapping Confirmed/Pending booking. Booked = has overlap. Unavailable = `IsActive=false`. Computed in the repository/service, never stored. |
 | Shared JS | `marina-viewer.js` is used by Browse, Admin, and PlaceOwner read-only views. `marina-editor.js` is PlaceOwner-only. Keep them separate files. |
 | Save positions | The editor POSTs a JSON array to `SavePositions` in bulk on user action — not on every drag event. |
@@ -259,12 +271,13 @@ Do not add comments unless the reason behind the code is non-obvious. "What" com
 
 | Behavior | Rule |
 |---|---|
-| Overlap and bounds (client-side only) | Spots cannot overlap each other or extend outside the layout's logical bounds. Enforced in `marina-editor.js` using axis-aligned bounding boxes (AABB) via `node.getClientRect({ relativeTo: layer })`. During drag and resize, spots snap to neighbor edges and canvas edges when within a threshold. On `dragend` / `transformend`, if the spot's AABB overlaps any other spot or extends out of bounds, position/size/rotation revert to the pre-drag / pre-transform snapshot. `SpotsController.SavePositions` does **not** enforce this server-side — the contract is client-side only. |
+| Overlap and bounds (client-side only) | Spots cannot overlap each other or extend outside the layout's logical bounds. Enforced in `marina-editor.js` using axis-aligned bounding boxes (AABB) via `node.getClientRect({ relativeTo: layer })`. During drag and resize, spots snap to neighbor edges and canvas edges when within a threshold. On `dragend` / `transformend`, if the spot's AABB overlaps any other spot or extends out of bounds, position/size/rotation revert to the pre-drag / pre-transform snapshot. `SpotsController.SavePositions` does **not** enforce this server-side — the contract is client-side only. Snap targets that match the spot's starting edge position (captured on `dragstart` / `transformstart` as `_preDragAABB` / `_preTransformAABB`) are excluded for the duration of the gesture so a spot that begins touching a neighbor can be released freely; entering a new snap zone later in the same gesture still snaps as usual. |
 | New-spot placement | When `addSpotToCanvas` runs the unplaced branch (brand-new spots from the Add Spot modal, or spots loaded with null `CanvasX/Y/W/H`), it scans the canvas in a grid step for the first 80×50 slot that does not overlap any existing spot. If a free slot is found the spot lands there automatically; if the canvas is full a cascade offset formula is used as a fallback so the spot is still visible (the user drags it to its final position manually). |
 | Rotation | `rotateEnabled: false` on the Konva Transformer — the rotation handle is hidden and users cannot change rotation. Stored `Spot.CanvasRotation` values still round-trip through `SavePositions`, so previously-rotated spots render at their saved angle. |
 | Transformer anchors | The Transformer exposes all eight anchors — 4 corners (`top-left`, `top-right`, `bottom-left`, `bottom-right`) and 4 edge midpoints (`top-center`, `bottom-center`, `middle-left`, `middle-right`) — so users can resize one axis at a time via edge anchors or both axes at once via corner anchors. |
 | Spot label color | `Konva.Text` labels are always rendered with white fill regardless of placement state, for legibility against the spot's slate fill. |
 | Fullscreen mode | The layout editor has a CSS-overlay fullscreen mode toggled by the `.workspace--fullscreen` modifier on `.workspace--editor`. When active, CSS hides the workspace head, plate caption, upload row, and nav links; the canvas shell fills viewport height; the sidebar gets internal scroll. On enter, JS DOM-moves the three essential buttons (Add spot, Exit fullscreen, Save layout) into `.spot-sidebar__toolbar` inside the sidebar; on exit they move back to `.toolbar`. Toggled by button or ESC key. Add/Delete modal `z-index` sits above the fullscreen overlay so modals function inside fullscreen. |
+| Clear background image | The marina layout editor exposes a "Clear background" row (rendered only when `Marina.BackgroundImagePath` is set) that opens a confirmation modal and, on confirm, POSTs to `MarinasController.ClearBackground` (`POST /placeowner/marinas/{id}/background/clear`). The action runs the standard PlaceOwner ownership check, calls `IFileStorageService.DeleteAsync` to remove the file from `wwwroot/uploads/marina-backgrounds/`, sets `BackgroundImagePath` to null via the entity's `ClearBackgroundImage()` method, persists via `UpdateAsync`, and is idempotent — clearing when no background exists is a no-op success. Content-negotiates per § Controllers § JSON vs form content-negotiation. The JS confirm flow reloads the page on success rather than mutating the canvas in place. |
 
 ---
 
