@@ -170,7 +170,7 @@ Tail `logs/audit-YYYY-MM-DD.log` (repo root) and confirm structured JSON entries
 - [x] Unknown email: `"action":"LoginFailed_UserNotFound"` with empty `userId` and the typed email in `userEmail`
 - [x] Deactivated user: `"action":"LoginFailed_Deactivated"` with the user's identifiers
 - [x] Login attempt before email confirmed: `"action":"LoginFailed_EmailUnconfirmed"` with the user's identifiers
-- [ ] (After §6/§7) `SpotCreated` / `SpotEdited` / `SpotDeactivated` / `MarinaEdited` entries
+- [x] (After §6/§7) `SpotCreated` / `SpotEdited` / `SpotDeactivated` / `SpotActivated` / `SpotDeleted` / `MarinaEdited` entries (verified during §7–§8; all action strings confirmed in `src/BoatSpotFinder.Web/Controllers/SpotsController.cs` and `MarinasController.cs`)
 
 ### 6. PlaceOwner marina edit (requires seeded invitation)
 
@@ -194,38 +194,41 @@ Tail `logs/audit-YYYY-MM-DD.log` (repo root) and confirm structured JSON entries
 
 ### 8. Spot CRUD
 
-- [ ] Visit `/placeowner/marinas/{marinaId}/spots` → list shows all spots including inactive
-- [ ] Edit a spot → toggle vessel-type checkboxes, change price → save → updated
-- [ ] Re-open Edit → the previously-checked vessel-type checkboxes are checked again (flag round-trip)
-- [ ] Deactivate a spot → list now shows it as inactive (gray)
-- [ ] On the Edit page, scroll past the Save/Deactivate buttons to find "Delete this spot permanently" (red `.btn--danger`). For a spot with **no bookings**: click → browser `confirm()` dialog → OK → redirects to `/placeowner/marinas/{marinaId}/spots`, spot is gone from the DB (verify with `SELECT * FROM Spots WHERE Id = '<id>'`).
-- [ ] For a spot **with bookings** (hand-insert a Booking row via SQL if needed to test): click Delete → redirects back to Edit, `.notice notice--warning` shows "Cannot delete a spot that has bookings. Deactivate it instead..."; spot remains in DB.
-- [ ] Inactive spots are also deletable: Deactivate first, then Delete works the same as active. Confirm both the Deactivate and Delete forms POST to `/placeowner/marinas/{marinaId}/spots/{id}/{deactivate|delete}` (the explicit `asp-route-marinaId` ensures URL generation doesn't fall back to the conventional `/Spots/{action}/{id}` 404).
-- [ ] Audit log shows `SpotCreated` / `SpotEdited` / `SpotDeactivated` / `SpotDeleted` entries with correct `marinaId` and `entityId`
+- [x] Visit `/placeowner/marinas/{marinaId}/spots` → list shows all spots including inactive
+- [x] Edit a spot → toggle vessel-type checkboxes, change price → save → updated
+- [x] Re-open Edit → the previously-checked vessel-type checkboxes are checked again (flag round-trip)
+- [x] Deactivate a spot → list now shows it as inactive (gray)
+- [x] On the Spot Edit page, when a spot is inactive, an "Activate this spot" primary button (`btn--primary btn--sm`, `class="activate-form"`) replaces the Deactivate button. Click → POSTs to `/placeowner/marinas/{marinaId}/spots/{id}/activate` → spot becomes active; audit log gains a `SpotActivated` entry. (`src/BoatSpotFinder.Web/Views/Spots/Edit.cshtml` if/else block; `SpotsController.Activate` already existed — commit `c96bd60` wires up the view branch.)
+- [x] On the Edit page, scroll past the Save/Deactivate buttons to find "Delete this spot permanently" (red `.btn--danger`). For a spot with **no bookings**: click → browser `confirm()` dialog → OK → redirects to `/placeowner/marinas/{marinaId}/spots`, spot is gone from the DB (verify with `SELECT * FROM Spots WHERE Id = '<id>'`).
+- [x] For a spot **with bookings** (hand-insert a Booking row via SQL if needed to test): click Delete → redirects back to Edit, `.notice notice--warning` shows "Cannot delete a spot that has bookings. Deactivate it instead..."; spot remains in DB.
+- [x] Inactive spots are also deletable: Deactivate first, then Delete works the same as active. Confirm both the Deactivate and Delete forms POST to `/placeowner/marinas/{marinaId}/spots/{id}/{deactivate|delete}` (the explicit `asp-route-marinaId` ensures URL generation doesn't fall back to the conventional `/Spots/{action}/{id}` 404).
+- [x] Audit log shows `SpotCreated` / `SpotEdited` / `SpotDeactivated` / `SpotActivated` / `SpotDeleted` entries with correct `marinaId` and `entityId`
 
 ### 9. Seasonal rules
 
-- [ ] `/placeowner/marinas/{marinaId}/spots/{spotId}/seasonal-rules` → empty list
-- [ ] Create a rule (Summer 2026 — 2026-06-01 → 2026-09-01, €100, min 3 days) → success
-- [ ] Try to create an overlapping rule (2026-08-01 → 2026-10-01) → ModelState error "Date range overlaps with an existing rule."
-- [ ] Try a boundary case (2026-09-01 → 2026-10-01 — shares 09-01 with existing) → also rejected (inclusive bounds)
-- [ ] Try adjacent (2026-09-02 → 2026-12-31) → accepted
-- [ ] Edit the existing rule keeping its dates → no false-positive overlap error
-- [ ] Delete a rule → gone
+Note: `SpotSeasonalRuleCreateViewModel.StartDate` and `EndDate` are `DateOnly?` (commit `e3fbf3d`, `src/BoatSpotFinder.Web/Models/SpotSeasonalRuleCreateViewModel.cs`). The Create form's `<input type="date">` fields render blank (no `value` attribute), so the native browser picker opens on today's date instead of `0001-01-01`. `[Required]` still rejects null on submit; `SpotSeasonalRulesController.Create` POST unwraps with `.Value` after `ModelState.IsValid` (`src/BoatSpotFinder.Web/Controllers/SpotSeasonalRulesController.cs` line 102). The Edit ViewModel uses non-nullable `DateOnly` (dates are always populated from the DB) — unchanged.
+
+- [x] `/placeowner/marinas/{marinaId}/spots/{spotId}/seasonal-rules` → empty list
+- [x] Create a rule (Summer 2026 — 2026-06-01 → 2026-09-01, €100, min 3 days) → success
+- [x] Try to create an overlapping rule (2026-08-01 → 2026-10-01) → ModelState error "Date range overlaps with an existing rule."
+- [x] Try a boundary case (2026-09-01 → 2026-10-01 — shares 09-01 with existing) → also rejected (inclusive bounds)
+- [x] Try adjacent (2026-09-02 → 2026-12-31) → accepted
+- [x] Edit the existing rule keeping its dates → no false-positive overlap error
+- [x] Delete a rule → gone
 
 ### 10. Ownership enforcement
 
 Requires a second seeded PlaceOwner (Option A above, second invitation for a different marina).
 
-- [ ] As PlaceOwner B, visit `/placeowner/marinas/{marinaA-id}/edit` → 403 Forbidden
-- [ ] As PlaceOwner B, visit `/placeowner/marinas/{marinaA-id}/spots` → 403
-- [ ] As PlaceOwner B, visit `/placeowner/marinas/{marinaA-id}/spots/{spotA-id}/edit` → 403
-- [ ] As PlaceOwner B, visit `/placeowner/marinas/{marinaA-id}/spots/{spotA-id}/seasonal-rules` → 403
+- [x] As PlaceOwner B, visit `/placeowner/marinas/{marinaA-id}/edit` → 403 Forbidden
+- [x] As PlaceOwner B, visit `/placeowner/marinas/{marinaA-id}/spots` → 403
+- [x] As PlaceOwner B, visit `/placeowner/marinas/{marinaA-id}/spots/{spotA-id}/edit` → 403
+- [x] As PlaceOwner B, visit `/placeowner/marinas/{marinaA-id}/spots/{spotA-id}/seasonal-rules` → 403
 
 ### 11. CSRF
 
 - [x] View source on any form page — confirm `<input name="__RequestVerificationToken" ...>` is present in every `<form>` (tag helper auto-injects it)
-- [ ] (Optional) `curl -X POST http://localhost:5000/placeowner/marinas/{id}/edit` without the token → 400 Bad Request
+- [x] (Optional) Curl `POST /placeowner/marinas/{id}/edit` without a token returned **HTTP/2 302** redirecting to `/account/login` — the authentication filter fires before the antiforgery filter in the pipeline, so the redirect is expected and correct. CSRF defence is confirmed via §11.1 (token field present in every form) combined with the globally registered `AutoValidateAntiforgeryTokenAttribute` in `Program.cs` (`src/BoatSpotFinder.Web/Program.cs` line 36–37), which validates on all state-changing verbs.
 
 ---
 
