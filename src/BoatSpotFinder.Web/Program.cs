@@ -123,6 +123,16 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
     Authorization = [new HangfireAdminAuthFilter()]
 });
 
+RecurringJob.AddOrUpdate<IBookingService>(
+    "booking-auto-action",
+    service => service.AutoActionAsync(),
+    "*/5 * * * *");
+
+RecurringJob.AddOrUpdate<IBookingService>(
+    "booking-complete-overdue",
+    service => service.CompleteOverdueAsync(),
+    "0 2 * * *");
+
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");

@@ -50,6 +50,8 @@ These rules apply to every file in the codebase. The Dev agent enforces them on 
 
 All ViewModels, DTOs, request, response, and event objects are declared as `record`, not `class`. Records provide value equality, immutability, and concise syntax. Example: `public record CreateMarinaRequest(string Name, string Address);`. Applies to everything in `Web/Models/` and any DTO/ETO/request/response type defined in `Core` or `Infrastructure`.
 
+**Exception — mutable collection ViewModels.** Use `class` (not `record`) when a ViewModel needs to hold a mutable collection property that is repopulated on multiple code paths (e.g., a `List<SelectListItem>` dropdown list that is rebuilt after a failed POST). `BookingCreateViewModel` and `BookingListItemViewModel` are the current examples: they are `class` because their `Vessels` / attribution properties are written after construction in controller action bodies, not in a single object initialiser. All other ViewModels remain `record`.
+
 ---
 
 ## Views

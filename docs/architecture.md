@@ -53,14 +53,12 @@ NuGet dependency: `Microsoft.Extensions.Identity.Core` only.
 - **`Search/`** — Elasticsearch integration. Contains `ElasticsearchMarinaSearchService` (real impl, uses `Elastic.Clients.Elasticsearch`) and `NullMarinaSearchService` (stub, always returns null from `SearchAsync`). Both implement `IMarinaSearchService` from `Core/Interfaces/`.
 - **`Migrations/`** — EF Core migration files. Never hand-edited.
 
-`IBookingRepository` is currently a minimal stub (Phase 4): it exposes only `GetByVesselIdAsync(Guid)`. Phase 5 task 5.1 expands it with the full booking interface.
-
 NuGet dependencies: `Microsoft.AspNetCore.Identity.EntityFrameworkCore`, `Microsoft.EntityFrameworkCore.SqlServer`, `Microsoft.AspNetCore.DataProtection.EntityFrameworkCore`, `Microsoft.EntityFrameworkCore.Tools`, `Elastic.Clients.Elasticsearch` (8.19.22).
 
 ### Web (`BoatSpotFinder.Web`)
 
 - **`Program.cs`** — DI registration and middleware pipeline (see below).
-- **`Controllers/`** — MVC controllers. Added from Phase 2 onwards. Phase 3 adds `MarinasController` (`placeowner/marinas`), `SpotsController` (`placeowner/marinas/{marinaId}/spots`), `SpotSeasonalRulesController` (`placeowner/marinas/{marinaId}/spots/{spotId}/seasonal-rules`), and `BrowseController` (`browse/marina/{id}/layout-data`). Phase 4 adds `VesselsController` (`vessels`) — `[Authorize(Roles="BoatOwner")]`, actions: Index, Create GET/POST, Edit GET/POST, Delete POST.
+- **`Controllers/`** — MVC controllers. Added from Phase 2 onwards. Phase 3 adds `MarinasController` (`placeowner/marinas`), `SpotsController` (`placeowner/marinas/{marinaId}/spots`), `SpotSeasonalRulesController` (`placeowner/marinas/{marinaId}/spots/{spotId}/seasonal-rules`), and `BrowseController` (`browse/marina/{id}/layout-data`). Phase 4 adds `VesselsController` (`vessels`) — `[Authorize(Roles="BoatOwner")]`, actions: Index, Create GET/POST, Edit GET/POST, Delete POST. Phase 5 adds `BookingsController` (`bookings`) — `[Authorize(Roles="BoatOwner")]`, actions: MyBookings GET, Create GET/POST, Cancel POST; and `SpotBookingsController` (`placeowner/spot-bookings`) — `[Authorize(Roles="PlaceOwner")]`, actions: Incoming GET, Confirm POST, Reject POST, Cancel POST.
 - **`Views/`** — Razor views. Added from Phase 2 onwards.
 - **`Infrastructure/`** — web-layer infrastructure: `HangfireAdminAuthFilter`, `CustomSignInManager`, and `Storage/LocalFileStorageService` (writes marina background images to `wwwroot/uploads/marina-backgrounds/`).
 - **`wwwroot/js/`** — client-side JavaScript. `marina-editor.js` drives the PlaceOwner canvas layout editor (Konva stage, Add Spot modal, SavePositions POST, snap/overlap collision logic, sidebar delete modal, clear background modal, fullscreen toggle). Konva.js is loaded from CDN (`https://unpkg.com/konva@9/konva.min.js`) on the views that use the canvas — it is not bundled. See [`conventions.md`](conventions.md) § Canvas / Visual Layout for the full canvas ruleset.
@@ -79,7 +77,7 @@ NuGet dependencies: `Hangfire.Core`, `Hangfire.SqlServer`, `Hangfire.AspNetCore`
 6. `AddIdentity<ApplicationUser, IdentityRole>().AddEntityFrameworkStores<AppDbContext>().AddDefaultTokenProviders().AddSignInManager<CustomSignInManager>()` — uses `AddIdentity` (not `AddDefaultIdentity`) to allow the custom sign-in manager chain.
 7. `ConfigureApplicationCookie(...)` — sets `LoginPath` and `AccessDeniedPath`.
 8. `AddDataProtection().PersistKeysToDbContext<AppDbContext>()`.
-9. Scoped repository and service registrations: `IAdminSettingsRepository`, `IInvitationRepository`, `IMarinaAdminRepository`, `IAuditLogger`, `IMarinaRepository`, `ISpotRepository`, `ISpotSeasonalRuleRepository`, `ISpotSeasonalRuleService`, `IFileStorageService`, `IVesselRepository`, `IBookingRepository`. (`IMarinaSearchService` is registered in step 10.)
+9. Scoped repository and service registrations: `IAdminSettingsRepository`, `IInvitationRepository`, `IMarinaAdminRepository`, `IAuditLogger`, `IMarinaRepository`, `ISpotRepository`, `ISpotSeasonalRuleRepository`, `ISpotSeasonalRuleService`, `IFileStorageService`, `IVesselRepository`, `IBookingRepository`, `IBookingService`. (`IMarinaSearchService` is registered in step 10.)
 10. Elasticsearch config guard — reads `Elasticsearch:Uri` from configuration. If blank: registers `NullMarinaSearchService` as `IMarinaSearchService` (scoped). If set: registers `ElasticsearchClient` as singleton (with `DefaultIndex("marinas")`) then `ElasticsearchMarinaSearchService` as `IMarinaSearchService` (scoped).
 11. `AddHangfire(c => c.UseSqlServerStorage(...))` + `AddHangfireServer()`.
 12. `AddHealthChecks().AddDbContextCheck<AppDbContext>()`.
@@ -95,6 +93,8 @@ Routing
 Authentication
 Authorization
 UseHangfireDashboard("/hangfire")
+RecurringJob.AddOrUpdate "booking-auto-action"   (*/5 * * * *)
+RecurringJob.AddOrUpdate "booking-complete-overdue"  (0 2 * * *)
 MapControllerRoute (default: {controller=Home}/{action=Index}/{id?})
 MapHealthChecks("/health")
 ```
@@ -132,6 +132,15 @@ The `Task.Run` wrapper is intentional: `Register` accepts `Action`, so a bare `R
 ## Hangfire
 
 Dashboard at `/hangfire`. Protected by `HangfireAdminAuthFilter` (`Web/Infrastructure/HangfireAdminAuthFilter.cs`), which returns true only when `User.IsInRole("Admin")`. Uses the same SQL Server database as the application — no separate Hangfire store.
+
+Two recurring jobs are registered immediately after `UseHangfireDashboard` in `Program.cs`:
+
+| Job id | Schedule | Method | Effect |
+|---|---|---|---|
+| `booking-auto-action` | `*/5 * * * *` (every 5 min) | `IBookingService.AutoActionAsync()` | Auto-confirms or auto-rejects Pending bookings whose `CreatedAt + AdminSettings.AutoActionTimeoutHours < UtcNow`, depending on `AdminSettings.AutoActionType`. |
+| `booking-complete-overdue` | `0 2 * * *` (02:00 UTC daily) | `IBookingService.CompleteOverdueAsync()` | Transitions Confirmed bookings to Completed where `EndDate < today`. |
+
+Both jobs are registered using the typed generic overload `RecurringJob.AddOrUpdate<IBookingService>(...)` so Hangfire resolves `IBookingService` through DI at execution time.
 
 ---
 

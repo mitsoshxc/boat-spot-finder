@@ -1,0 +1,177 @@
+@model IEnumerable<BookingListItemViewModel>
+@{
+    ViewData["Title"] = "Incoming bookings";
+    var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+}
+
+<section class="workspace">
+    <header class="workspace__head">
+        <span class="workspace__mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="0.9">
+                <rect x="6" y="8" width="20" height="20" rx="1"/>
+                <rect x="12" y="4" width="8" height="6" rx="0.5"/>
+                <path d="M11 17 L16 22 L21 17" opacity="0.7"/>
+                <line x1="16" y1="13" x2="16" y2="22" opacity="0.7"/>
+                <line x1="10" y1="26" x2="22" y2="26" opacity="0.4"/>
+            </svg>
+        </span>
+        <span class="workspace__eyebrow">Place owner &middot; Inbox</span>
+        <h1 class="workspace__title">Incoming bookings</h1>
+        <p class="workspace__lede">Requests across all your marinas. Confirm or reject pending requests before the auto-decision timer expires.</p>
+    </header>
+
+    @if (TempData["Error"] is string errorMsg)
+    {
+        <div class="notice notice--warning" style="margin-bottom: 24px;">
+            <p class="notice__body">@errorMsg</p>
+        </div>
+    }
+    @if (TempData["Success"] is string successMsg)
+    {
+        <div class="notice notice--success" style="margin-bottom: 24px;">
+            <p class="notice__body">@successMsg</p>
+        </div>
+    }
+
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <span class="vignette vignette--muted" aria-hidden="true">
+                <svg viewBox="0 0 64 48" fill="none" stroke="currentColor" stroke-width="0.7">
+                    <rect x="10" y="14" width="44" height="26" rx="1.5"/>
+                    <path d="M20 22 L32 32 L44 22" opacity="0.6"/>
+                    <line x1="32" y1="32" x2="32" y2="14" opacity="0.4"/>
+                </svg>
+            </span>
+            <p class="empty-state__title">The inbox is clear.</p>
+            <p class="empty-state__body">When a boat owner requests one of your spots, it will appear here.</p>
+        </div>
+    }
+    else
+    {
+        <ul class="rule-grid">
+            @foreach (var b in Model)
+            {
+                var statusKey = b.Status.ToString().ToLowerInvariant();
+                var canConfirmOrReject = b.Status == BookingStatus.Pending;
+                var canCancel = b.Status == BookingStatus.Confirmed && b.StartDate > today;
+                var vesselDeleted = string.Equals(b.VesselName, "Vessel deleted", StringComparison.Ordinal);
+                <li class="rule-card booking-card">
+                    <div class="booking-card__head">
+                        <div class="booking-card__head-text">
+                            <span class="rule-card__eyebrow">@b.MarinaName</span>
+                            <h2 class="rule-card__name">@b.SpotName</h2>
+                            <p class="booking-card__received">
+                                Requested by <strong>@b.BoatOwnerName</strong>
+                                <span aria-hidden="true">&middot;</span>
+                                @b.BookingCreatedAt.ToString("d MMM yyyy · HH:mm") UTC
+                            </p>
+                        </div>
+                        <span class="pill pill--booking pill--@statusKey">
+                            <span class="pill__dot" aria-hidden="true"></span>@b.Status
+                        </span>
+                    </div>
+
+                    <div class="rule-card__range" aria-label="@($"From {b.StartDate.ToString("d MMM yyyy")} to {b.EndDate.ToString("d MMM yyyy")}")">
+                        <div class="rule-card__date">
+                            <span class="rule-card__date-label">Arrival</span>
+                            <span class="rule-card__date-value">@b.StartDate.ToString("d MMM yyyy")</span>
+                        </div>
+                        <span class="rule-card__divider" aria-hidden="true"></span>
+                        <div class="rule-card__date">
+                            <span class="rule-card__date-label">Departure</span>
+                            <span class="rule-card__date-value">@b.EndDate.ToString("d MMM yyyy")</span>
+                        </div>
+                    </div>
+
+                    @if (b.Status == BookingStatus.Pending && b.AutoActionDeadline.HasValue)
+                    {
+                        var deadlineMs = new DateTimeOffset(DateTime.SpecifyKind(b.AutoActionDeadline.Value, DateTimeKind.Utc))
+                            .ToUnixTimeMilliseconds();
+                        <p class="booking-card__deadline" data-deadline="@deadlineMs">
+                            <span class="booking-card__deadline-dot" aria-hidden="true"></span>
+                            <span class="booking-card__deadline-text">Auto-decision pending</span>
+                        </p>
+                    }
+
+                    <dl class="rule-card__stats">
+                        <div class="rule-card__stat">
+                            <dt class="rule-card__stat-label">Vessel</dt>
+                            <dd class="rule-card__stat-value">
+                                @if (vesselDeleted)
+                                {
+                                    <span class="rule-card__stat-value--muted">Vessel deleted</span>
+                                }
+                                else
+                                {
+                                    <span>@b.VesselName</span>
+                                }
+                            </dd>
+                        </div>
+                        <div class="rule-card__stat">
+                            <dt class="rule-card__stat-label">Total</dt>
+                            <dd class="rule-card__stat-value">
+                                <span>&euro;@b.TotalPrice.ToString("0.00")</span>
+                            </dd>
+                        </div>
+                    </dl>
+
+                    @if (canConfirmOrReject)
+                    {
+                        <div class="rule-card__actions">
+                            <form method="post" action="/placeowner/spot-bookings/@b.Id/confirm"
+                                  onsubmit="return confirm('Confirm this booking?');">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn--primary btn--sm">Confirm</button>
+                            </form>
+                            <form method="post" action="/placeowner/spot-bookings/@b.Id/reject"
+                                  onsubmit="return confirm('Reject this booking? The boat owner will be notified.');">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn--danger btn--sm">Reject</button>
+                            </form>
+                        </div>
+                    }
+                    else if (canCancel)
+                    {
+                        <div class="rule-card__actions">
+                            <form method="post" action="/placeowner/spot-bookings/@b.Id/cancel"
+                                  onsubmit="return confirm('Cancel this confirmed booking? The boat owner will be notified.');">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn--danger btn--sm">Cancel</button>
+                            </form>
+                        </div>
+                    }
+                </li>
+            }
+        </ul>
+    }
+</section>
+
+@section Scripts {
+    <script>
+        (() => {
+            const formatRemaining = (ms) => {
+                if (ms <= 0) return 'Auto-decision now imminent';
+                const totalMinutes = Math.floor(ms / 60000);
+                const hours = Math.floor(totalMinutes / 60);
+                const minutes = totalMinutes % 60;
+                if (hours <= 0) return `Auto-decision in ${minutes}m`;
+                return `Auto-decision in ${hours}h ${minutes.toString().padStart(2, '0')}m`;
+            };
+
+            const tick = () => {
+                const now = Date.now();
+                const nodes = document.querySelectorAll('.booking-card__deadline');
+                nodes.forEach((node) => {
+                    const deadline = parseInt(node.dataset.deadline, 10);
+                    if (!Number.isFinite(deadline)) return;
+                    const textNode = node.querySelector('.booking-card__deadline-text');
+                    if (textNode) textNode.textContent = formatRemaining(deadline - now);
+                });
+            };
+
+            tick();
+            setInterval(tick, 60_000);
+        })();
+    </script>
+}

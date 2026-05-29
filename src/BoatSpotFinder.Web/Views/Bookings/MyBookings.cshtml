@@ -1,0 +1,124 @@
+@model IEnumerable<BookingListItemViewModel>
+@{
+    ViewData["Title"] = "My Bookings";
+    var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+}
+
+<section class="workspace">
+    <header class="workspace__head">
+        <span class="workspace__mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="0.9">
+                <rect x="6" y="5" width="20" height="22" rx="1"/>
+                <line x1="6" y1="10" x2="26" y2="10" opacity="0.6"/>
+                <line x1="10" y1="14" x2="22" y2="14" opacity="0.4"/>
+                <line x1="10" y1="18" x2="20" y2="18" opacity="0.3"/>
+                <line x1="10" y1="22" x2="22" y2="22" opacity="0.4"/>
+                <circle cx="22" cy="22" r="1.4" fill="currentColor" stroke="none" opacity="0.7"/>
+            </svg>
+        </span>
+        <span class="workspace__eyebrow">Boat owner &middot; Ledger</span>
+        <h1 class="workspace__title">My Bookings</h1>
+        <p class="workspace__lede">Your booking requests and confirmed stays. Cancel a booking any time before its arrival date.</p>
+    </header>
+
+    @if (TempData["Error"] is string errorMsg)
+    {
+        <div class="notice notice--warning" style="margin-bottom: 24px;">
+            <p class="notice__body">@errorMsg</p>
+        </div>
+    }
+    @if (TempData["Success"] is string successMsg)
+    {
+        <div class="notice notice--success" style="margin-bottom: 24px;">
+            <p class="notice__body">@successMsg</p>
+        </div>
+    }
+
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <span class="vignette vignette--muted" aria-hidden="true">
+                <svg viewBox="0 0 64 48" fill="none" stroke="currentColor" stroke-width="0.7">
+                    <rect x="10" y="8" width="44" height="32" rx="1.5"/>
+                    <line x1="10" y1="16" x2="54" y2="16" opacity="0.5"/>
+                    <line x1="18" y1="22" x2="46" y2="22" opacity="0.35"/>
+                    <line x1="18" y1="28" x2="40" y2="28" opacity="0.3"/>
+                    <line x1="18" y1="34" x2="46" y2="34" opacity="0.35"/>
+                </svg>
+            </span>
+            <p class="empty-state__title">The ledger is empty.</p>
+            <p class="empty-state__body">Find a marina and request your first spot &mdash; pending and confirmed bookings will appear here.</p>
+            <div style="margin-top: 18px;">
+                <a class="btn btn--ghost btn--sm" href="/browse">Browse marinas</a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <ul class="rule-grid">
+            @foreach (var b in Model)
+            {
+                var statusKey = b.Status.ToString().ToLowerInvariant();
+                var canCancel = (b.Status == BookingStatus.Pending || b.Status == BookingStatus.Confirmed)
+                    && b.StartDate > today;
+                var vesselDeleted = string.Equals(b.VesselName, "Vessel deleted", StringComparison.Ordinal);
+                <li class="rule-card booking-card">
+                    <div class="booking-card__head">
+                        <div class="booking-card__head-text">
+                            <span class="rule-card__eyebrow">@b.MarinaName</span>
+                            <h2 class="rule-card__name">@b.SpotName</h2>
+                        </div>
+                        <span class="pill pill--booking pill--@statusKey">
+                            <span class="pill__dot" aria-hidden="true"></span>@b.Status
+                        </span>
+                    </div>
+
+                    <div class="rule-card__range" aria-label="@($"From {b.StartDate.ToString("d MMM yyyy")} to {b.EndDate.ToString("d MMM yyyy")}")">
+                        <div class="rule-card__date">
+                            <span class="rule-card__date-label">Arrival</span>
+                            <span class="rule-card__date-value">@b.StartDate.ToString("d MMM yyyy")</span>
+                        </div>
+                        <span class="rule-card__divider" aria-hidden="true"></span>
+                        <div class="rule-card__date">
+                            <span class="rule-card__date-label">Departure</span>
+                            <span class="rule-card__date-value">@b.EndDate.ToString("d MMM yyyy")</span>
+                        </div>
+                    </div>
+
+                    <dl class="rule-card__stats">
+                        <div class="rule-card__stat">
+                            <dt class="rule-card__stat-label">Vessel</dt>
+                            <dd class="rule-card__stat-value">
+                                @if (vesselDeleted)
+                                {
+                                    <span class="rule-card__stat-value--muted">Vessel deleted</span>
+                                }
+                                else
+                                {
+                                    <span>@b.VesselName</span>
+                                }
+                            </dd>
+                        </div>
+                        <div class="rule-card__stat">
+                            <dt class="rule-card__stat-label">Total</dt>
+                            <dd class="rule-card__stat-value">
+                                <span>&euro;@b.TotalPrice.ToString("0.00")</span>
+                            </dd>
+                        </div>
+                    </dl>
+
+                    @if (canCancel)
+                    {
+                        <div class="rule-card__actions">
+                            <form method="post" action="/bookings/@b.Id/cancel"
+                                  onsubmit="return confirm('Cancel this booking? This cannot be undone.');">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn--danger btn--sm">Cancel booking</button>
+                            </form>
+                        </div>
+                    }
+                </li>
+            }
+        </ul>
+    }
+</section>

@@ -29,7 +29,8 @@ public class BookingRepository : IBookingRepository
     public async Task<IEnumerable<Booking>> GetByBoatOwnerIdAsync(string userId)
     {
         return await _context.Bookings
-            .Include(b => b.Spot)
+            .Include(b => b.Spot).ThenInclude(s => s.Marina)
+            .Include(b => b.Vessel)
             .Where(b => b.BoatOwnerId == userId)
             .ToListAsync();
     }
@@ -45,7 +46,8 @@ public class BookingRepository : IBookingRepository
     public async Task<IEnumerable<Booking>> GetByMarinaOwnerIdAsync(string userId)
     {
         return await _context.Bookings
-            .Include(b => b.Spot)
+            .Include(b => b.Spot).ThenInclude(s => s.Marina)
+            .Include(b => b.Vessel)
             .Where(b => _context.MarinaAdmins.Any(ma => ma.MarinaId == b.Spot.MarinaId && ma.UserId == userId))
             .ToListAsync();
     }
