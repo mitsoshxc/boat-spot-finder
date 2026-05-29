@@ -76,6 +76,7 @@ builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 builder.Services.AddScoped<IVesselRepository, VesselRepository>();
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 builder.Services.AddScoped<IBookingService, BookingService>();
+builder.Services.AddScoped<IReviewRepository, ReviewRepository>();
 
 var esUri = builder.Configuration["Elasticsearch:Uri"];
 if (string.IsNullOrWhiteSpace(esUri))

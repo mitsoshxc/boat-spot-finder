@@ -6,6 +6,8 @@ public class ApplicationUser : IdentityUser
 {
     public bool IsActive { get; private set; } = true;
     public bool IsSuperAdmin { get; init; }
+    public decimal? AverageRatingAsBoatOwner { get; set; }
+    public int ReviewCountAsBoatOwner { get; set; }
 
     public void Activate() => IsActive = true;
     public void Deactivate() => IsActive = false;

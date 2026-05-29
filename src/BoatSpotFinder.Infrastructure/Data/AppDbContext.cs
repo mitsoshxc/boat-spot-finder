@@ -20,6 +20,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>, IDataProtectionK
     public DbSet<SpotSeasonalRule> SpotSeasonalRules { get; set; }
     public DbSet<Vessel> Vessels { get; set; }
     public DbSet<Booking> Bookings { get; set; }
+    public DbSet<Review> Reviews { get; set; }
     public DbSet<AdminSettings> AdminSettings { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

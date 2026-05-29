@@ -10,5 +10,7 @@ public class ApplicationUserConfiguration : IEntityTypeConfiguration<Application
     {
         builder.Property(u => u.IsActive).HasDefaultValue(true);
         builder.Property(u => u.IsSuperAdmin).HasDefaultValue(false);
+        builder.Property(u => u.ReviewCountAsBoatOwner).HasDefaultValue(0);
+        builder.Property(u => u.AverageRatingAsBoatOwner).HasPrecision(18, 2);
     }
 }

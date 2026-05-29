@@ -14,5 +14,7 @@ public class MarinaConfiguration : BaseEntityConfiguration<Marina>
         builder.Property(m => m.LayoutWidth).HasDefaultValue(1200);
         builder.Property(m => m.LayoutHeight).HasDefaultValue(800);
         builder.Property(m => m.DefaultPricePerDay).HasPrecision(18, 2);
+        builder.Property(m => m.ReviewCount).HasDefaultValue(0);
+        builder.Property(m => m.AverageRating).HasPrecision(18, 2);
     }
 }

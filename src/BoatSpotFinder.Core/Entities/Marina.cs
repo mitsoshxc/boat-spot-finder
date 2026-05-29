@@ -40,6 +40,8 @@ public class Marina : BaseEntity
     public int LayoutWidth { get; private set; } = 1200;
     public int LayoutHeight { get; private set; } = 800;
     public string? BackgroundImagePath { get; private set; }
+    public decimal? AverageRating { get; set; }
+    public int ReviewCount { get; set; }
 
     public ICollection<Spot> Spots { get; init; } = [];
     public ICollection<MarinaAdmin> Admins { get; init; } = [];

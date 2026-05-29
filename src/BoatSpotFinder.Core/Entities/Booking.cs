@@ -13,6 +13,7 @@ public class Booking : BaseEntity
     public Spot Spot { get; init; } = null!;
     public Vessel? Vessel { get; init; }
     public ApplicationUser BoatOwner { get; init; } = null!;
+    public ICollection<Review> Reviews { get; set; } = [];
 
     public void Confirm() => Status = BookingStatus.Confirmed;
     public void Cancel() => Status = BookingStatus.Cancelled;
