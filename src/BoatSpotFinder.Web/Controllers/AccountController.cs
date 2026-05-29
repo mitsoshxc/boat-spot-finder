@@ -45,7 +45,9 @@ public class AccountController : Controller
     public async Task<IActionResult> Login(LoginViewModel model)
     {
         if (!ModelState.IsValid)
+        {
             return View(model);
+        }
 
         var result = await _signInManager.PasswordSignInAsync(
             model.Email, model.Password, model.RememberMe, lockoutOnFailure: false);
@@ -54,7 +56,9 @@ public class AccountController : Controller
         {
             var user = await _userManager.FindByEmailAsync(model.Email);
             if (user is null)
+            {
                 return View(model);
+            }
 
             _auditLogger.Log(
                 userId: user.Id,
@@ -68,9 +72,13 @@ public class AccountController : Controller
             var roles = await _userManager.GetRolesAsync(user);
 
             if (roles.Contains("Admin"))
+            {
                 return Redirect("/admin/dashboard");
+            }
             if (roles.Contains("PlaceOwner"))
+            {
                 return Redirect("/placeowner/marinas");
+            }
 
             return Redirect("/browse");
         }
@@ -159,7 +167,9 @@ public class AccountController : Controller
     public async Task<IActionResult> Register(RegisterViewModel model)
     {
         if (!ModelState.IsValid)
+        {
             return View(model);
+        }
 
         var user = new ApplicationUser
         {
@@ -197,11 +207,15 @@ public class AccountController : Controller
     {
         var user = await _userManager.FindByIdAsync(userId);
         if (user is null)
+        {
             return View("ConfirmEmail");
+        }
 
         var result = await _userManager.ConfirmEmailAsync(user, token);
         if (!result.Succeeded)
+        {
             return View("ConfirmEmail");
+        }
 
         TempData["LoginSuccessMessage"] = "Your email has been confirmed. You can now sign in.";
         return RedirectToAction(nameof(Login));
@@ -220,7 +234,9 @@ public class AccountController : Controller
     public async Task<IActionResult> ResendConfirmationEmail(ResendConfirmationViewModel model)
     {
         if (!ModelState.IsValid)
+        {
             return View(model);
+        }
 
         var user = await _userManager.FindByEmailAsync(model.Email);
         if (user is not null && !await _userManager.IsEmailConfirmedAsync(user))
@@ -245,7 +261,9 @@ public class AccountController : Controller
         var invitation = await _invitationRepository.GetByTokenHashAsync(tokenHash);
 
         if (invitation is null || invitation.IsUsed || invitation.ExpiresAt < DateTimeOffset.UtcNow)
+        {
             return NotFound();
+        }
 
         var model = new InviteRegisterViewModel
         {
@@ -264,10 +282,14 @@ public class AccountController : Controller
         var invitation = await _invitationRepository.GetByTokenHashAsync(tokenHash);
 
         if (invitation is null || invitation.IsUsed || invitation.ExpiresAt < DateTimeOffset.UtcNow)
+        {
             return NotFound();
+        }
 
         if (!ModelState.IsValid)
+        {
             return View(model);
+        }
 
         var user = new ApplicationUser
         {
@@ -308,7 +330,9 @@ public class AccountController : Controller
     public async Task<IActionResult> ForgotPassword(ForgotPasswordViewModel model)
     {
         if (!ModelState.IsValid)
+        {
             return View(model);
+        }
 
         var user = await _userManager.FindByEmailAsync(model.Email);
 
@@ -337,15 +361,21 @@ public class AccountController : Controller
     public async Task<IActionResult> ResetPassword(ResetPasswordViewModel model)
     {
         if (!ModelState.IsValid)
+        {
             return View(model);
+        }
 
         var user = await _userManager.FindByEmailAsync(model.Email);
         if (user is null)
+        {
             return RedirectToAction(nameof(ResetPasswordConfirmation));
+        }
 
         var result = await _userManager.ResetPasswordAsync(user, model.Token, model.Password);
         if (result.Succeeded)
+        {
             return RedirectToAction(nameof(ResetPasswordConfirmation));
+        }
 
         foreach (var e in result.Errors)
             ModelState.AddModelError(string.Empty, e.Description);

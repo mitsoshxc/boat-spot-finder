@@ -34,7 +34,9 @@ public class MarinaRepository : IMarinaRepository
         var query = _context.Marinas.AsQueryable();
 
         if (!includeInactive)
+        {
             query = query.Where(m => m.IsActive);
+        }
 
         return await query.ToListAsync();
     }
@@ -45,7 +47,9 @@ public class MarinaRepository : IMarinaRepository
             .Where(m => m.IsActive && m.Spots.Any());
 
         if (marinaIds != null)
+        {
             query = query.Where(m => marinaIds.Contains(m.Id));
+        }
 
         return await query.ToListAsync();
     }

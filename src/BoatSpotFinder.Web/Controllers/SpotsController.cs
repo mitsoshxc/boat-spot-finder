@@ -34,10 +34,16 @@ public class SpotsController : Controller
     public async Task<IActionResult> Index(Guid marinaId)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId)) return Forbid();
+        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId))
+        {
+            return Forbid();
+        }
 
         var marina = await _marinaRepository.GetByIdAsync(marinaId);
-        if (marina is null) return NotFound();
+        if (marina is null)
+        {
+            return NotFound();
+        }
 
         var spots = await _spotRepository.GetByMarinaIdAsync(marinaId, includeInactive: true);
 
@@ -67,10 +73,16 @@ public class SpotsController : Controller
     public async Task<IActionResult> Create(Guid marinaId)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId)) return Forbid();
+        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId))
+        {
+            return Forbid();
+        }
 
         var marina = await _marinaRepository.GetByIdAsync(marinaId);
-        if (marina is null) return NotFound();
+        if (marina is null)
+        {
+            return NotFound();
+        }
 
         var model = new SpotCreateViewModel
         {
@@ -87,13 +99,19 @@ public class SpotsController : Controller
     public async Task<IActionResult> Create(Guid marinaId, SpotCreateViewModel model)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId)) return Forbid();
+        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId))
+        {
+            return Forbid();
+        }
 
         var isJson = Request.Headers.Accept.ToString().Contains("application/json");
 
         if (!ModelState.IsValid)
         {
-            if (isJson) return BadRequest(ModelState);
+            if (isJson)
+            {
+                return BadRequest(ModelState);
+            }
 
             var marina0 = await _marinaRepository.GetByIdAsync(marinaId);
             model = model with { VesselTypeOptions = BuildVesselTypeOptions() };
@@ -128,7 +146,10 @@ public class SpotsController : Controller
             marinaId: marinaId.ToString(),
             details: new { spotName = spot.Name });
 
-        if (isJson) return Json(new { id = spot.Id, name = spot.Name });
+        if (isJson)
+        {
+            return Json(new { id = spot.Id, name = spot.Name });
+        }
 
         return RedirectToAction(nameof(Index), new { marinaId });
     }
@@ -137,14 +158,26 @@ public class SpotsController : Controller
     public async Task<IActionResult> Edit(Guid marinaId, Guid id)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId)) return Forbid();
+        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId))
+        {
+            return Forbid();
+        }
 
         var spot = await _spotRepository.GetByIdAsync(id);
-        if (spot is null) return NotFound();
-        if (spot.MarinaId != marinaId) return Forbid();
+        if (spot is null)
+        {
+            return NotFound();
+        }
+        if (spot.MarinaId != marinaId)
+        {
+            return Forbid();
+        }
 
         var marina = await _marinaRepository.GetByIdAsync(marinaId);
-        if (marina is null) return NotFound();
+        if (marina is null)
+        {
+            return NotFound();
+        }
 
         var allowedList = Enum.GetValues<VesselType>()
             .Where(v => v != VesselType.None && spot.AllowedVesselTypes.HasFlag(v))
@@ -175,9 +208,15 @@ public class SpotsController : Controller
     public async Task<IActionResult> Edit(Guid marinaId, Guid id, SpotEditViewModel model)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId)) return Forbid();
+        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId))
+        {
+            return Forbid();
+        }
 
-        if (id != model.Id) return BadRequest();
+        if (id != model.Id)
+        {
+            return BadRequest();
+        }
 
         if (!ModelState.IsValid)
         {
@@ -189,8 +228,14 @@ public class SpotsController : Controller
         }
 
         var spot = await _spotRepository.GetByIdAsync(id);
-        if (spot is null) return NotFound();
-        if (spot.MarinaId != marinaId) return Forbid();
+        if (spot is null)
+        {
+            return NotFound();
+        }
+        if (spot.MarinaId != marinaId)
+        {
+            return Forbid();
+        }
 
         var allowedFlags = model.AllowedVesselTypes.Count > 0
             ? model.AllowedVesselTypes.Aggregate(VesselType.None, (acc, v) => acc | v)
@@ -224,12 +269,18 @@ public class SpotsController : Controller
     public async Task<IActionResult> Delete(Guid marinaId, Guid id)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId)) return Forbid();
+        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId))
+        {
+            return Forbid();
+        }
 
         var isJson = Request.Headers.Accept.ToString().Contains("application/json");
 
         var spot = await _spotRepository.GetByIdAsync(id);
-        if (spot is null || spot.MarinaId != marinaId) return NotFound();
+        if (spot is null || spot.MarinaId != marinaId)
+        {
+            return NotFound();
+        }
 
         if (await _spotRepository.HasBookingsAsync(id))
         {
@@ -265,11 +316,20 @@ public class SpotsController : Controller
     public async Task<IActionResult> Deactivate(Guid marinaId, Guid id)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId)) return Forbid();
+        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId))
+        {
+            return Forbid();
+        }
 
         var spot = await _spotRepository.GetByIdAsync(id);
-        if (spot is null) return NotFound();
-        if (spot.MarinaId != marinaId) return Forbid();
+        if (spot is null)
+        {
+            return NotFound();
+        }
+        if (spot.MarinaId != marinaId)
+        {
+            return Forbid();
+        }
 
         spot.Deactivate();
         await _spotRepository.UpdateAsync(spot);
@@ -290,11 +350,20 @@ public class SpotsController : Controller
     public async Task<IActionResult> Activate(Guid marinaId, Guid id)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId)) return Forbid();
+        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId))
+        {
+            return Forbid();
+        }
 
         var spot = await _spotRepository.GetByIdAsync(id);
-        if (spot is null) return NotFound();
-        if (spot.MarinaId != marinaId) return Forbid();
+        if (spot is null)
+        {
+            return NotFound();
+        }
+        if (spot.MarinaId != marinaId)
+        {
+            return Forbid();
+        }
 
         spot.Activate();
         await _spotRepository.UpdateAsync(spot);
@@ -315,9 +384,15 @@ public class SpotsController : Controller
     public async Task<IActionResult> SavePositions(Guid marinaId, [FromBody] List<SpotPositionUpdateViewModel> updates)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId)) return Forbid();
+        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId))
+        {
+            return Forbid();
+        }
 
-        if (updates == null) return BadRequest();
+        if (updates == null)
+        {
+            return BadRequest();
+        }
 
         var positions = updates
             .Select(v => new SpotPositionUpdate(v.Id, v.CanvasX, v.CanvasY, v.CanvasW, v.CanvasH, v.CanvasRotation))

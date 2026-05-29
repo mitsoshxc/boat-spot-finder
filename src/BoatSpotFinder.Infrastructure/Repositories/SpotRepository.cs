@@ -33,7 +33,9 @@ public class SpotRepository : ISpotRepository
         var query = _context.Spots.AsQueryable();
 
         if (includeInactive)
+        {
             query = query.IgnoreQueryFilters();
+        }
 
         return await query
             .Where(s => s.MarinaId == marinaId)
@@ -45,7 +47,9 @@ public class SpotRepository : ISpotRepository
         var query = _context.Spots.AsQueryable();
 
         if (includeInactive)
+        {
             query = query.IgnoreQueryFilters();
+        }
 
         return await query.ToListAsync();
     }

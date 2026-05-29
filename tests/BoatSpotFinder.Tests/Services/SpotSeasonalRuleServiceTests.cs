@@ -124,7 +124,10 @@ internal sealed class StubSpotSeasonalRuleRepository : ISpotSeasonalRuleReposito
     public Task UpdateAsync(SpotSeasonalRule rule)
     {
         var idx = Rules.FindIndex(r => r.Id == rule.Id);
-        if (idx >= 0) Rules[idx] = rule;
+        if (idx >= 0)
+        {
+            Rules[idx] = rule;
+        }
         return Task.CompletedTask;
     }
 

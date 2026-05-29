@@ -25,7 +25,10 @@ public class InvitationRepositoryTests
                 : DateTimeOffset.UtcNow.AddDays(1),
             InvitedById = "30000000-0000-0000-0000-000000000001"
         };
-        if (used) inv.MarkUsed();
+        if (used)
+        {
+            inv.MarkUsed();
+        }
         db.Context.Invitations.Add(inv);
         await db.Context.SaveChangesAsync();
         return (db, inv);

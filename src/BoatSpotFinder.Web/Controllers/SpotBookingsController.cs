@@ -77,9 +77,13 @@ public class SpotBookingsController : Controller
         var result = await _bookingService.ConfirmAsync(id, userId);
 
         if (!result.Success)
+        {
             TempData["Error"] = string.Join(" ", result.Errors);
+        }
         else
+        {
             TempData["Success"] = "Booking confirmed.";
+        }
 
         return RedirectToAction(nameof(Incoming));
     }
@@ -91,9 +95,13 @@ public class SpotBookingsController : Controller
         var result = await _bookingService.RejectAsync(id, userId);
 
         if (!result.Success)
+        {
             TempData["Error"] = string.Join(" ", result.Errors);
+        }
         else
+        {
             TempData["Success"] = "Booking rejected.";
+        }
 
         return RedirectToAction(nameof(Incoming));
     }
@@ -105,9 +113,13 @@ public class SpotBookingsController : Controller
         var result = await _bookingService.CancelAsync(id, userId);
 
         if (!result.Success)
+        {
             TempData["Error"] = string.Join(" ", result.Errors);
+        }
         else
+        {
             TempData["Success"] = "Booking cancelled.";
+        }
 
         return RedirectToAction(nameof(Incoming));
     }

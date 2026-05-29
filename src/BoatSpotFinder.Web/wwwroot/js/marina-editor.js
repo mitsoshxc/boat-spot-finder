@@ -48,7 +48,7 @@
         }
 
         const container = document.getElementById('canvas-container');
-        if (!container) return;
+        if (!container) { return; }
 
         const marinaId = container.dataset.marinaId;
         const spotCreateUrl = container.dataset.spotCreateUrl;
@@ -153,16 +153,16 @@
 
             function trySnapX(myEdge, targetPos, startEdge) {
                 const delta = targetPos - myEdge;
-                if (Math.abs(delta) > SNAP_THRESHOLD) return;
-                if (startEdge !== null && Math.abs(targetPos - startEdge) < 0.5) return;
-                if (bestDx === null || Math.abs(delta) < Math.abs(bestDx)) bestDx = delta;
+                if (Math.abs(delta) > SNAP_THRESHOLD) { return; }
+                if (startEdge !== null && Math.abs(targetPos - startEdge) < 0.5) { return; }
+                if (bestDx === null || Math.abs(delta) < Math.abs(bestDx)) { bestDx = delta; }
             }
 
             function trySnapY(myEdge, targetPos, startEdge) {
                 const delta = targetPos - myEdge;
-                if (Math.abs(delta) > SNAP_THRESHOLD) return;
-                if (startEdge !== null && Math.abs(targetPos - startEdge) < 0.5) return;
-                if (bestDy === null || Math.abs(delta) < Math.abs(bestDy)) bestDy = delta;
+                if (Math.abs(delta) > SNAP_THRESHOLD) { return; }
+                if (startEdge !== null && Math.abs(targetPos - startEdge) < 0.5) { return; }
+                if (bestDy === null || Math.abs(delta) < Math.abs(bestDy)) { bestDy = delta; }
             }
 
             const myLeft = aabb.x;
@@ -193,8 +193,8 @@
         }
 
         function resizeBoundBox(oldBox, newBox) {
-            if (layoutBounds.w <= 0 || layoutBounds.h <= 0) return newBox;
-            if (!transformer || transformer.nodes().length === 0) return newBox;
+            if (layoutBounds.w <= 0 || layoutBounds.h <= 0) { return newBox; }
+            if (!transformer || transformer.nodes().length === 0) { return newBox; }
             const draggedNode = transformer.nodes()[0];
             const others = getOtherRects(draggedNode);
 
@@ -216,13 +216,13 @@
             const bottomChanged = Math.abs(newBottom - oldBottom) > 0.5;
 
             function pickBestSnap(value, oldValue, targets) {
-                if (value === oldValue) return null;
+                if (value === oldValue) { return null; }
                 const direction = Math.sign(value - oldValue);
                 let best = null;
                 for (let i = 0; i < targets.length; i++) {
                     const t = targets[i];
                     const offset = t - oldValue;
-                    if (Math.abs(offset) < 0.5 || Math.sign(offset) !== direction) continue;
+                    if (Math.abs(offset) < 0.5 || Math.sign(offset) !== direction) { continue; }
                     const d = t - value;
                     if (Math.abs(d) < SNAP_THRESHOLD && (best === null || Math.abs(d) < Math.abs(best))) {
                         best = d;
@@ -235,25 +235,25 @@
                 const rightTargets = [layoutBounds.w];
                 for (let i = 0; i < others.length; i++) rightTargets.push(others[i].x);
                 const d = pickBestSnap(newRight, oldRight, rightTargets);
-                if (d !== null) newRight = newRight + d;
+                if (d !== null) { newRight = newRight + d; }
             }
             if (leftChanged) {
                 const leftTargets = [0];
                 for (let j = 0; j < others.length; j++) leftTargets.push(others[j].x + others[j].width);
                 const d2 = pickBestSnap(newLeft, oldLeft, leftTargets);
-                if (d2 !== null) newLeft = newLeft + d2;
+                if (d2 !== null) { newLeft = newLeft + d2; }
             }
             if (bottomChanged) {
                 const bottomTargets = [layoutBounds.h];
                 for (let k = 0; k < others.length; k++) bottomTargets.push(others[k].y);
                 const d3 = pickBestSnap(newBottom, oldBottom, bottomTargets);
-                if (d3 !== null) newBottom = newBottom + d3;
+                if (d3 !== null) { newBottom = newBottom + d3; }
             }
             if (topChanged) {
                 const topTargets = [0];
                 for (let m = 0; m < others.length; m++) topTargets.push(others[m].y + others[m].height);
                 const d4 = pickBestSnap(newTop, oldTop, topTargets);
-                if (d4 !== null) newTop = newTop + d4;
+                if (d4 !== null) { newTop = newTop + d4; }
             }
 
             const snappedGeom = {
@@ -263,7 +263,7 @@
                 height: newBottom - newTop
             };
 
-            if (snappedGeom.width <= 0 || snappedGeom.height <= 0) return oldBox;
+            if (snappedGeom.width <= 0 || snappedGeom.height <= 0) { return oldBox; }
             if (snappedGeom.x < 0 || snappedGeom.y < 0 ||
                 snappedGeom.x + snappedGeom.width  > layoutBounds.w ||
                 snappedGeom.y + snappedGeom.height > layoutBounds.h) {
@@ -459,7 +459,7 @@
 
         function appendSpotToSidebar(spot) {
             const sidebar = document.getElementById('spot-sidebar');
-            if (!sidebar) return;
+            if (!sidebar) { return; }
 
             const countEl = sidebar.querySelector('.spot-sidebar__count');
             if (countEl) {
@@ -588,11 +588,11 @@
         const modalErrors = modal ? modal.querySelector('.modal__errors') : null;
 
         function openModal() {
-            if (modal) modal.removeAttribute('hidden');
+            if (modal) { modal.removeAttribute('hidden'); }
         }
 
         function clearModalFieldErrors() {
-            if (!addSpotForm) return;
+            if (!addSpotForm) { return; }
             const inputs = addSpotForm.querySelectorAll('[aria-invalid]');
             for (let i = 0; i < inputs.length; i++) {
                 inputs[i].removeAttribute('aria-invalid');
@@ -604,8 +604,8 @@
         }
 
         function closeModal() {
-            if (modal) modal.setAttribute('hidden', '');
-            if (addSpotForm) addSpotForm.reset();
+            if (modal) { modal.setAttribute('hidden', ''); }
+            if (addSpotForm) { addSpotForm.reset(); }
             clearModalFieldErrors();
             if (modalErrors) {
                 modalErrors.setAttribute('hidden', '');
@@ -683,7 +683,7 @@
                                         } else if (typeof errs === 'string') {
                                             firstMsg = errs;
                                         }
-                                        if (!firstMsg) return;
+                                        if (!firstMsg) { return; }
 
                                         const input = addSpotForm.querySelector('[name="' + key + '"]');
                                         if (input) {
@@ -715,7 +715,7 @@
         }
 
         function showModalErrors(messages) {
-            if (!modalErrors) return;
+            if (!modalErrors) { return; }
             modalErrors.removeAttribute('hidden');
             modalErrors.innerHTML = messages.map(function (m) {
                 return '<p>' + escapeHtml(m) + '</p>';
@@ -788,17 +788,17 @@
 
         function openDeleteModal(spotId, spotName) {
             pendingDeleteSpotId = spotId;
-            if (deleteModalName) deleteModalName.textContent = spotName;
+            if (deleteModalName) { deleteModalName.textContent = spotName; }
             if (deleteModalErrors) {
                 deleteModalErrors.setAttribute('hidden', '');
                 deleteModalErrors.innerHTML = '';
             }
-            if (deleteModal) deleteModal.removeAttribute('hidden');
+            if (deleteModal) { deleteModal.removeAttribute('hidden'); }
         }
 
         function closeDeleteModal() {
             pendingDeleteSpotId = null;
-            if (deleteModal) deleteModal.setAttribute('hidden', '');
+            if (deleteModal) { deleteModal.setAttribute('hidden', ''); }
         }
 
         if (deleteModal) {
@@ -811,13 +811,13 @@
 
         document.addEventListener('click', function (e) {
             const btn = e.target.closest('.spot-sidebar__delete');
-            if (!btn) return;
+            if (!btn) { return; }
             openDeleteModal(btn.dataset.spotId, btn.dataset.spotName);
         });
 
         if (deleteConfirmBtn) {
             deleteConfirmBtn.addEventListener('click', function () {
-                if (!pendingDeleteSpotId) return;
+                if (!pendingDeleteSpotId) { return; }
                 const spotId = pendingDeleteSpotId;
                 const url = '/placeowner/marinas/' + marinaId + '/spots/' + spotId + '/delete';
 
@@ -863,16 +863,16 @@
                     transformer.nodes([]);
                 }
                 entry.node.destroy();
-                if (entry.label) entry.label.destroy();
+                if (entry.label) { entry.label.destroy(); }
                 spotsById.delete(spotId);
                 layer.batchDraw();
             }
 
             const sidebar = document.getElementById('spot-sidebar');
-            if (!sidebar) return;
+            if (!sidebar) { return; }
 
             const item = sidebar.querySelector('.spot-sidebar__item[data-spot-id="' + spotId + '"]');
-            if (item && item.parentNode) item.parentNode.removeChild(item);
+            if (item && item.parentNode) { item.parentNode.removeChild(item); }
 
             const countEl = sidebar.querySelector('.spot-sidebar__count');
             if (countEl) {
@@ -901,11 +901,11 @@
                 clearBgModalErrors.setAttribute('hidden', '');
                 clearBgModalErrors.innerHTML = '';
             }
-            if (clearBgModal) clearBgModal.removeAttribute('hidden');
+            if (clearBgModal) { clearBgModal.removeAttribute('hidden'); }
         }
 
         function closeClearBgModal() {
-            if (clearBgModal) clearBgModal.setAttribute('hidden', '');
+            if (clearBgModal) { clearBgModal.setAttribute('hidden', ''); }
             clearBgUrl = null;
         }
 
@@ -918,13 +918,13 @@
 
         if (clearBgModal) {
             clearBgModal.addEventListener('click', function (e) {
-                if (e.target.closest('[data-modal-dismiss]')) closeClearBgModal();
+                if (e.target.closest('[data-modal-dismiss]')) { closeClearBgModal(); }
             });
         }
 
         if (clearBgConfirmBtn) {
             clearBgConfirmBtn.addEventListener('click', function () {
-                if (!clearBgUrl) return;
+                if (!clearBgUrl) { return; }
                 fetch(clearBgUrl, {
                     method: 'POST',
                     headers: {
@@ -966,10 +966,10 @@
 
     function moveButtonsToSidebar() {
         const sidebar = document.getElementById('spot-sidebar');
-        if (!sidebar) return;
+        if (!sidebar) { return; }
         const btnAdd = document.getElementById('btn-add-spot');
         const btnSave = document.getElementById('btn-save-layout');
-        if (!btnAdd || !btnSave || !btnFullscreen) return;
+        if (!btnAdd || !btnSave || !btnFullscreen) { return; }
 
         let container = sidebar.querySelector('.spot-sidebar__toolbar');
         if (!container) {
@@ -985,15 +985,15 @@
     function moveButtonsBackToToolbar() {
         const toolbar = document.querySelector('.workspace__head .toolbar');
         const sidebar = document.getElementById('spot-sidebar');
-        if (!sidebar) return;
+        if (!sidebar) { return; }
         const container = sidebar.querySelector('.spot-sidebar__toolbar');
-        if (!container || !toolbar) return;
+        if (!container || !toolbar) { return; }
 
         const btnAdd = document.getElementById('btn-add-spot');
         const btnSave = document.getElementById('btn-save-layout');
-        if (btnAdd) toolbar.appendChild(btnAdd);
-        if (btnFullscreen) toolbar.appendChild(btnFullscreen);
-        if (btnSave) toolbar.appendChild(btnSave);
+        if (btnAdd) { toolbar.appendChild(btnAdd); }
+        if (btnFullscreen) { toolbar.appendChild(btnFullscreen); }
+        if (btnSave) { toolbar.appendChild(btnSave); }
 
         container.remove();
     }
@@ -1003,19 +1003,19 @@
     }
 
     function enterFullscreen() {
-        if (!workspaceEl) return;
+        if (!workspaceEl) { return; }
         workspaceEl.classList.add('workspace--fullscreen');
         document.body.classList.add('body--fullscreen-editor');
         moveButtonsToSidebar();
-        if (btnFullscreen) btnFullscreen.textContent = 'Exit fullscreen';
+        if (btnFullscreen) { btnFullscreen.textContent = 'Exit fullscreen'; }
     }
 
     function exitFullscreen() {
-        if (!workspaceEl) return;
+        if (!workspaceEl) { return; }
         moveButtonsBackToToolbar();
         workspaceEl.classList.remove('workspace--fullscreen');
         document.body.classList.remove('body--fullscreen-editor');
-        if (btnFullscreen) btnFullscreen.textContent = 'Fullscreen';
+        if (btnFullscreen) { btnFullscreen.textContent = 'Fullscreen'; }
     }
 
     if (btnFullscreen) {
@@ -1029,11 +1029,11 @@
     }
 
     document.addEventListener('keydown', function (e) {
-        if (e.key !== 'Escape') return;
+        if (e.key !== 'Escape') { return; }
         const addModalOpen = modal && !modal.hasAttribute('hidden');
         const deleteModalOpen = deleteModal && !deleteModal.hasAttribute('hidden');
         const clearBgModalOpen = clearBgModal && !clearBgModal.hasAttribute('hidden');
-        if (addModalOpen || deleteModalOpen || clearBgModalOpen) return;
+        if (addModalOpen || deleteModalOpen || clearBgModalOpen) { return; }
         if (isFullscreen()) {
             exitFullscreen();
         }

@@ -39,7 +39,9 @@ public class LocalFileStorageServiceTests
         finally
         {
             if (Directory.Exists(webRoot))
+            {
                 Directory.Delete(webRoot, recursive: true);
+            }
         }
     }
 }

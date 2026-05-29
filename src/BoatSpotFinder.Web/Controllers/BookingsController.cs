@@ -56,10 +56,16 @@ public class BookingsController : Controller
     [HttpGet("create")]
     public async Task<IActionResult> Create(Guid? spotId, DateOnly? startDate, DateOnly? endDate, Guid? vesselId)
     {
-        if (spotId == null) return NotFound();
+        if (spotId == null)
+        {
+            return NotFound();
+        }
 
         var spot = await _spotRepository.GetActiveByIdAsync(spotId.Value);
-        if (spot is null) return NotFound();
+        if (spot is null)
+        {
+            return NotFound();
+        }
 
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
         var vessels = await _vesselRepository.GetByOwnerIdAsync(userId);
@@ -99,7 +105,9 @@ public class BookingsController : Controller
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
         if (model.VesselId == null)
+        {
             ModelState.AddModelError(nameof(model.VesselId), "Please select a vessel.");
+        }
 
         if (!ModelState.IsValid)
         {
@@ -134,9 +142,13 @@ public class BookingsController : Controller
         var result = await _bookingService.CancelAsync(id, userId);
 
         if (!result.Success)
+        {
             TempData["Error"] = string.Join(" ", result.Errors);
+        }
         else
+        {
             TempData["Success"] = "Booking cancelled.";
+        }
 
         return RedirectToAction(nameof(MyBookings));
     }

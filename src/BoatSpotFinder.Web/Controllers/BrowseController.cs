@@ -21,7 +21,9 @@ public class BrowseController : Controller
     {
         var marina = await _marinaRepository.GetByIdAsync(id);
         if (marina is null)
+        {
             return NotFound();
+        }
 
         var spots = await _spotRepository.GetByMarinaIdAsync(id, includeInactive: true);
 

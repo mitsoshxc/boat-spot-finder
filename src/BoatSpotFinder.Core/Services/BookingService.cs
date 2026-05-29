@@ -52,28 +52,45 @@ public class BookingService : IBookingService
     public async Task<ServiceResult> CreateAsync(Guid spotId, Guid vesselId, string boatOwnerId, DateOnly start, DateOnly end)
     {
         var vessel = await _vesselRepository.GetByIdAsync(vesselId);
-        if (vessel is null) return ServiceResult.Fail("Vessel not found");
+        if (vessel is null)
+        {
+            return ServiceResult.Fail("Vessel not found");
+        }
 
         var spot = await _spotRepository.GetActiveByIdAsync(spotId);
-        if (spot is null) return ServiceResult.Fail("Spot not available");
+        if (spot is null)
+        {
+            return ServiceResult.Fail("Spot not available");
+        }
 
         var marina = await _marinaRepository.GetByIdAsync(spot.MarinaId);
-        if (marina is null) return ServiceResult.Fail("Marina not found");
+        if (marina is null)
+        {
+            return ServiceResult.Fail("Marina not found");
+        }
 
         if (spot.AllowedVesselTypes != VesselType.None && (spot.AllowedVesselTypes & vessel.Type) == 0)
+        {
             return ServiceResult.Fail("Vessel type is not allowed for this spot");
+        }
 
         if (vessel.LengthMeters > spot.LengthMeters || vessel.WidthMeters > spot.WidthMeters || vessel.DepthMeters > spot.DepthMeters)
+        {
             return ServiceResult.Fail("Vessel dimensions exceed spot limits");
+        }
 
         if (!await _bookingRepository.IsSpotAvailableAsync(spotId, start, end, null))
+        {
             return ServiceResult.Fail("Spot is not available for the selected dates");
+        }
 
         var (resolvedPricePerDay, resolvedMinBookingDays) = await ResolvePricingAsync(spot, marina, start);
         var totalPrice = resolvedPricePerDay * (end.DayNumber - start.DayNumber);
 
         if ((end.DayNumber - start.DayNumber) < resolvedMinBookingDays)
+        {
             return ServiceResult.Fail($"Minimum booking duration is {resolvedMinBookingDays} days");
+        }
 
         var booking = new Booking
         {
@@ -91,7 +108,10 @@ public class BookingService : IBookingService
         foreach (var admin in admins)
         {
             var adminUser = await _userManager.FindByIdAsync(admin.UserId);
-            if (adminUser?.Email is null) continue;
+            if (adminUser?.Email is null)
+            {
+                continue;
+            }
             try
             {
                 await _emailSender.SendAsync(
@@ -124,7 +144,10 @@ public class BookingService : IBookingService
     public async Task<ServiceResult> CancelAsync(Guid bookingId, string cancellerUserId)
     {
         var booking = await _bookingRepository.GetByIdAsync(bookingId);
-        if (booking is null) return ServiceResult.Fail("Booking not found");
+        if (booking is null)
+        {
+            return ServiceResult.Fail("Booking not found");
+        }
 
         string callerRole;
         if (booking.BoatOwnerId == cancellerUserId)
@@ -139,16 +162,24 @@ public class BookingService : IBookingService
         {
             var user = await _userManager.FindByIdAsync(cancellerUserId);
             if (user != null && await _userManager.IsInRoleAsync(user, "Admin"))
+            {
                 callerRole = "Admin";
+            }
             else
+            {
                 return ServiceResult.Fail("Forbidden");
+            }
         }
 
         if (booking.Status != BookingStatus.Pending && booking.Status != BookingStatus.Confirmed)
+        {
             return ServiceResult.Fail("Only pending or confirmed bookings can be cancelled");
+        }
 
         if (callerRole != "Admin" && booking.StartDate <= DateOnly.FromDateTime(DateTime.UtcNow))
+        {
             return ServiceResult.Fail("Cannot cancel a booking that has already started");
+        }
 
         booking.Cancel();
         await _bookingRepository.UpdateAsync(booking);
@@ -159,7 +190,10 @@ public class BookingService : IBookingService
             foreach (var admin in admins)
             {
                 var adminUser = await _userManager.FindByIdAsync(admin.UserId);
-                if (adminUser?.Email is null) continue;
+                if (adminUser?.Email is null)
+                {
+                    continue;
+                }
                 try
                 {
                     await _emailSender.SendAsync(
@@ -217,7 +251,10 @@ public class BookingService : IBookingService
             foreach (var admin in admins)
             {
                 var adminUser = await _userManager.FindByIdAsync(admin.UserId);
-                if (adminUser?.Email is null) continue;
+                if (adminUser?.Email is null)
+                {
+                    continue;
+                }
                 try
                 {
                     await _emailSender.SendAsync(
@@ -240,13 +277,20 @@ public class BookingService : IBookingService
     public async Task<ServiceResult> ConfirmAsync(Guid bookingId, string performerUserId)
     {
         var booking = await _bookingRepository.GetByIdAsync(bookingId);
-        if (booking is null) return ServiceResult.Fail("Booking not found");
+        if (booking is null)
+        {
+            return ServiceResult.Fail("Booking not found");
+        }
 
         if (!await _marinaAdminRepository.ExistsAsync(booking.Spot.MarinaId, performerUserId))
+        {
             return ServiceResult.Fail("Forbidden");
+        }
 
         if (booking.Status != BookingStatus.Pending)
+        {
             return ServiceResult.Fail("Only pending bookings can be confirmed");
+        }
 
         return await ConfirmCoreAsync(booking);
     }
@@ -254,13 +298,20 @@ public class BookingService : IBookingService
     public async Task<ServiceResult> RejectAsync(Guid bookingId, string performerUserId)
     {
         var booking = await _bookingRepository.GetByIdAsync(bookingId);
-        if (booking is null) return ServiceResult.Fail("Booking not found");
+        if (booking is null)
+        {
+            return ServiceResult.Fail("Booking not found");
+        }
 
         if (!await _marinaAdminRepository.ExistsAsync(booking.Spot.MarinaId, performerUserId))
+        {
             return ServiceResult.Fail("Forbidden");
+        }
 
         if (booking.Status != BookingStatus.Pending)
+        {
             return ServiceResult.Fail("Only pending bookings can be rejected");
+        }
 
         return await RejectCoreAsync(booking);
     }
@@ -279,9 +330,13 @@ public class BookingService : IBookingService
         foreach (var booking in timedOut)
         {
             if (settings.AutoActionType == AutoActionType.AutoApprove)
+            {
                 await ConfirmCoreAsync(booking);
+            }
             else
+            {
                 await RejectCoreAsync(booking);
+            }
         }
     }
 

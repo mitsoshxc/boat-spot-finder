@@ -24,7 +24,9 @@ public class CustomSignInManager : SignInManager<ApplicationUser>
     public override async Task<bool> CanSignInAsync(ApplicationUser user)
     {
         if (!user.IsActive)
+        {
             return false;
+        }
 
         return await base.CanSignInAsync(user);
     }

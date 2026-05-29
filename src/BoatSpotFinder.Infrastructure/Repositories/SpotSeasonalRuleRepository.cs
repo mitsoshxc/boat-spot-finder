@@ -42,7 +42,10 @@ public class SpotSeasonalRuleRepository : ISpotSeasonalRuleRepository
     public async Task DeleteAsync(Guid id)
     {
         var rule = await _context.SpotSeasonalRules.FirstOrDefaultAsync(r => r.Id == id);
-        if (rule is null) return;
+        if (rule is null)
+        {
+            return;
+        }
         _context.SpotSeasonalRules.Remove(rule);
         await _context.SaveChangesAsync();
     }

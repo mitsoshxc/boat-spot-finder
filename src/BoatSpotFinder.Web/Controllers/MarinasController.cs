@@ -55,11 +55,15 @@ public class MarinasController : Controller
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
         if (!await _marinaAdminRepository.ExistsAsync(id, userId))
+        {
             return Forbid();
+        }
 
         var marina = await _marinaRepository.GetByIdAsync(id);
         if (marina is null)
+        {
             return NotFound();
+        }
 
         var model = new MarinaEditViewModel
         {
@@ -82,17 +86,25 @@ public class MarinasController : Controller
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
         if (!await _marinaAdminRepository.ExistsAsync(id, userId))
+        {
             return Forbid();
+        }
 
         if (id != model.Id)
+        {
             return BadRequest();
+        }
 
         if (!ModelState.IsValid)
+        {
             return View(model);
+        }
 
         var marina = await _marinaRepository.GetByIdAsync(id);
         if (marina is null)
+        {
             return NotFound();
+        }
 
         marina.UpdateDetails(
             model.Name,
@@ -109,7 +121,9 @@ public class MarinasController : Controller
         await _marinaRepository.UpdateAsync(marina);
 
         if (marina.IsActive)
+        {
             await _marinaSearchService.IndexAsync(marina);
+        }
 
         _auditLogger.Log(
             userId: userId,
@@ -128,11 +142,15 @@ public class MarinasController : Controller
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
         if (!await _marinaAdminRepository.ExistsAsync(id, userId))
+        {
             return Forbid();
+        }
 
         var marina = await _marinaRepository.GetByIdAsync(id);
         if (marina is null)
+        {
             return NotFound();
+        }
 
         var spots = marina.Spots
             .OrderBy(s => s.Name)
@@ -167,29 +185,43 @@ public class MarinasController : Controller
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
         if (!await _marinaAdminRepository.ExistsAsync(id, userId))
+        {
             return Forbid();
+        }
 
         if (backgroundImage == null || backgroundImage.Length == 0)
+        {
             return BadRequest("No file uploaded.");
+        }
 
         var allowedMimeTypes = new[] { "image/jpeg", "image/png", "image/webp" };
         if (!allowedMimeTypes.Contains(backgroundImage.ContentType))
+        {
             return BadRequest("Invalid file type.");
+        }
 
         var ext = Path.GetExtension(backgroundImage.FileName).ToLowerInvariant();
         var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
         if (!allowedExtensions.Contains(ext))
+        {
             return BadRequest("Invalid file type.");
+        }
 
         if (backgroundImage.Length > 5 * 1024 * 1024)
+        {
             return BadRequest("File exceeds 5 MB.");
+        }
 
         var marina = await _marinaRepository.GetByIdAsync(id);
         if (marina is null)
+        {
             return NotFound();
+        }
 
         if (!string.IsNullOrEmpty(marina.BackgroundImagePath))
+        {
             await _fileStorageService.DeleteAsync(marina.BackgroundImagePath);
+        }
 
         var saved = await _fileStorageService.SaveAsync(
             backgroundImage.OpenReadStream(),
@@ -207,11 +239,15 @@ public class MarinasController : Controller
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
         if (!await _marinaAdminRepository.ExistsAsync(id, userId))
+        {
             return Forbid();
+        }
 
         var marina = await _marinaRepository.GetByIdAsync(id);
         if (marina is null)
+        {
             return NotFound();
+        }
 
         var isJson = Request.Headers.Accept.ToString().Contains("application/json");
 
@@ -223,7 +259,9 @@ public class MarinasController : Controller
         }
 
         if (isJson)
+        {
             return Json(new { ok = true });
+        }
 
         return RedirectToAction(nameof(Layout), new { id });
     }

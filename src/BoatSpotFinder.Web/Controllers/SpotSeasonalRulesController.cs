@@ -35,10 +35,16 @@ public class SpotSeasonalRulesController : Controller
     public async Task<IActionResult> Index(Guid marinaId, Guid spotId)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId)) return Forbid();
+        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId))
+        {
+            return Forbid();
+        }
 
         var spot = await _spotRepository.GetByIdAsync(spotId);
-        if (spot is null || spot.MarinaId != marinaId) return Forbid();
+        if (spot is null || spot.MarinaId != marinaId)
+        {
+            return Forbid();
+        }
 
         var marina = await _marinaRepository.GetByIdAsync(marinaId);
         var rules = await _ruleRepository.GetBySpotIdAsync(spotId);
@@ -65,10 +71,16 @@ public class SpotSeasonalRulesController : Controller
     public async Task<IActionResult> Create(Guid marinaId, Guid spotId)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId)) return Forbid();
+        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId))
+        {
+            return Forbid();
+        }
 
         var spot = await _spotRepository.GetByIdAsync(spotId);
-        if (spot is null || spot.MarinaId != marinaId) return Forbid();
+        if (spot is null || spot.MarinaId != marinaId)
+        {
+            return Forbid();
+        }
 
         var marina = await _marinaRepository.GetByIdAsync(marinaId);
 
@@ -84,10 +96,16 @@ public class SpotSeasonalRulesController : Controller
     public async Task<IActionResult> Create(Guid marinaId, Guid spotId, SpotSeasonalRuleCreateViewModel model)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId)) return Forbid();
+        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId))
+        {
+            return Forbid();
+        }
 
         var spot = await _spotRepository.GetByIdAsync(spotId);
-        if (spot is null || spot.MarinaId != marinaId) return Forbid();
+        if (spot is null || spot.MarinaId != marinaId)
+        {
+            return Forbid();
+        }
 
         if (!ModelState.IsValid)
         {
@@ -122,13 +140,22 @@ public class SpotSeasonalRulesController : Controller
     public async Task<IActionResult> Edit(Guid marinaId, Guid spotId, Guid id)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId)) return Forbid();
+        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId))
+        {
+            return Forbid();
+        }
 
         var spot = await _spotRepository.GetByIdAsync(spotId);
-        if (spot is null || spot.MarinaId != marinaId) return Forbid();
+        if (spot is null || spot.MarinaId != marinaId)
+        {
+            return Forbid();
+        }
 
         var rule = await _ruleRepository.GetByIdAsync(id);
-        if (rule is null || rule.SpotId != spotId) return NotFound();
+        if (rule is null || rule.SpotId != spotId)
+        {
+            return NotFound();
+        }
 
         var marina = await _marinaRepository.GetByIdAsync(marinaId);
 
@@ -155,15 +182,27 @@ public class SpotSeasonalRulesController : Controller
     public async Task<IActionResult> Edit(Guid marinaId, Guid spotId, Guid id, SpotSeasonalRuleEditViewModel model)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId)) return Forbid();
+        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId))
+        {
+            return Forbid();
+        }
 
         var spot = await _spotRepository.GetByIdAsync(spotId);
-        if (spot is null || spot.MarinaId != marinaId) return Forbid();
+        if (spot is null || spot.MarinaId != marinaId)
+        {
+            return Forbid();
+        }
 
-        if (id != model.Id) return BadRequest();
+        if (id != model.Id)
+        {
+            return BadRequest();
+        }
 
         var rule = await _ruleRepository.GetByIdAsync(id);
-        if (rule is null || rule.SpotId != spotId) return NotFound();
+        if (rule is null || rule.SpotId != spotId)
+        {
+            return NotFound();
+        }
 
         if (!ModelState.IsValid)
         {
@@ -198,13 +237,22 @@ public class SpotSeasonalRulesController : Controller
     public async Task<IActionResult> Delete(Guid marinaId, Guid spotId, Guid id)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId)) return Forbid();
+        if (!await _marinaAdminRepository.ExistsAsync(marinaId, userId))
+        {
+            return Forbid();
+        }
 
         var spot = await _spotRepository.GetByIdAsync(spotId);
-        if (spot is null || spot.MarinaId != marinaId) return Forbid();
+        if (spot is null || spot.MarinaId != marinaId)
+        {
+            return Forbid();
+        }
 
         var rule = await _ruleRepository.GetByIdAsync(id);
-        if (rule is null || rule.SpotId != spotId) return RedirectToAction(nameof(Index), new { marinaId, spotId });
+        if (rule is null || rule.SpotId != spotId)
+        {
+            return RedirectToAction(nameof(Index), new { marinaId, spotId });
+        }
 
         await _ruleService.DeleteAsync(id);
 

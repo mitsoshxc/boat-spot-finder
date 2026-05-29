@@ -276,6 +276,39 @@ Do not add comments unless the reason behind the code is non-obvious. "What" com
 
 ---
 
+## Always-Braces for Conditionals
+
+Every `if`, `else if`, and `else` body is wrapped in `{ }`, even when the body is a single statement.
+
+Rationale: eliminates the dangling-else / missed-statement class of bug and keeps diffs clean when a body later grows to multiple statements.
+
+| Language | Brace style | Rule |
+|---|---|---|
+| C# (`.cs`) | Allman — `{` and `}` each on their own line, indented to match the `if`/`else` keyword | Applies to all `.cs` files |
+| JavaScript (`.js` and inline `<script>` in `.cshtml`) | K&R — `{` at the end of the `if (...)` line, `}` on its own line aligned with the `if` | Applies to all `.js` files and inline script blocks |
+
+Scope: `.cs`, `.js`, and inline `<script>` in `.cshtml`. Razor `@if (...) { ... }` blocks are already braced multi-line and are unaffected by this rule. `for` / `while` / `foreach` bodies follow the same intent informally but are not the enforcement target of this rule.
+
+C# Allman example:
+
+```csharp
+if (vessel is null)
+{
+    return ServiceResult.Fail("Vessel not found");
+}
+```
+
+JavaScript K&R example:
+
+```js
+if (e.key === 'Escape') {
+    e.preventDefault();
+    close();
+}
+```
+
+---
+
 ## JavaScript
 
 Use `const` by default for every variable declaration. Use `let` only when the binding is reassigned. **Never use `var`** in any `.js` file or in inline `<script>` blocks inside `.cshtml`.

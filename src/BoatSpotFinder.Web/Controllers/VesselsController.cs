@@ -81,8 +81,14 @@ public class VesselsController : Controller
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
         var vessel = await _vesselRepository.GetByIdAsync(id);
-        if (vessel is null) return NotFound();
-        if (vessel.OwnerId != userId) return Forbid();
+        if (vessel is null)
+        {
+            return NotFound();
+        }
+        if (vessel.OwnerId != userId)
+        {
+            return Forbid();
+        }
 
         var model = new VesselEditViewModel
         {
@@ -110,8 +116,14 @@ public class VesselsController : Controller
 
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
         var vessel = await _vesselRepository.GetByIdAsync(id);
-        if (vessel is null) return NotFound();
-        if (vessel.OwnerId != userId) return Forbid();
+        if (vessel is null)
+        {
+            return NotFound();
+        }
+        if (vessel.OwnerId != userId)
+        {
+            return Forbid();
+        }
 
         vessel.UpdateDetails(
             model.Name,
@@ -131,8 +143,14 @@ public class VesselsController : Controller
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
         var vessel = await _vesselRepository.GetByIdAsync(id);
-        if (vessel is null) return NotFound();
-        if (vessel.OwnerId != userId) return Forbid();
+        if (vessel is null)
+        {
+            return NotFound();
+        }
+        if (vessel.OwnerId != userId)
+        {
+            return Forbid();
+        }
 
         var bookings = await _bookingRepository.GetByVesselIdAsync(vessel.Id);
         var hasActiveBookings = bookings.Any(b =>
