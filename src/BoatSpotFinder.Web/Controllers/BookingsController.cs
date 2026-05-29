@@ -16,29 +16,36 @@ public class BookingsController : Controller
     private readonly IBookingRepository _bookingRepository;
     private readonly ISpotRepository _spotRepository;
     private readonly IVesselRepository _vesselRepository;
+    private readonly IReviewRepository _reviewRepository;
 
     public BookingsController(
         IBookingService bookingService,
         IBookingRepository bookingRepository,
         ISpotRepository spotRepository,
-        IVesselRepository vesselRepository)
+        IVesselRepository vesselRepository,
+        IReviewRepository reviewRepository)
     {
         _bookingService = bookingService;
         _bookingRepository = bookingRepository;
         _spotRepository = spotRepository;
         _vesselRepository = vesselRepository;
+        _reviewRepository = reviewRepository;
     }
 
     [HttpGet("")]
     public async Task<IActionResult> MyBookings()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        var bookings = await _bookingRepository.GetByBoatOwnerIdAsync(userId);
-
-        var viewModels = bookings
+        var bookings = (await _bookingRepository.GetByBoatOwnerIdAsync(userId))
             .OrderByDescending(b => b.StartDate)
             .ThenByDescending(b => b.CreatedAt)
-            .Select(b => new BookingListItemViewModel
+            .ToList();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        var viewModels = new List<BookingListItemViewModel>();
+        foreach (var b in bookings)
+        {
+            var vm = new BookingListItemViewModel
             {
                 Id = b.Id,
                 SpotName = b.Spot.Name,
@@ -48,7 +55,20 @@ public class BookingsController : Controller
                 EndDate = b.EndDate,
                 TotalPrice = b.TotalPrice,
                 Status = b.Status
-            });
+            };
+
+            if (b.Status == BookingStatus.Completed)
+            {
+                var deadline = b.EndDate.AddDays(14);
+                vm.ReviewDeadline = deadline;
+                var reviews = (await _reviewRepository.GetByBookingIdAsync(b.Id)).ToList();
+                var myReview = reviews.FirstOrDefault(r => r.ReviewerRole == ReviewerRole.BoatOwner);
+                vm.CurrentUserScore = myReview?.Score;
+                vm.CanCurrentUserReview = myReview == null && today <= deadline;
+            }
+
+            viewModels.Add(vm);
+        }
 
         return View(viewModels);
     }
@@ -123,7 +143,9 @@ public class BookingsController : Controller
         if (!result.Success)
         {
             foreach (var error in result.Errors)
+            {
                 ModelState.AddModelError("", error);
+            }
 
             var vessels = await _vesselRepository.GetByOwnerIdAsync(userId);
             model.Vessels = vessels.Select(v => new SelectListItem(v.Name, v.Id.ToString())).ToList();

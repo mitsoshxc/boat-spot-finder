@@ -55,7 +55,7 @@ public class BookingRepository : IBookingRepository
     public async Task<IEnumerable<Booking>> GetAllAsync()
     {
         return await _context.Bookings
-            .Include(b => b.Spot)
+            .Include(b => b.Spot).ThenInclude(s => s.Marina)
             .ToListAsync();
     }
 

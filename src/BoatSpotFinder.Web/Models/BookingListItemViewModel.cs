@@ -15,4 +15,9 @@ public class BookingListItemViewModel
     public string BoatOwnerName { get; set; } = string.Empty;
     public DateTime BookingCreatedAt { get; set; }
     public DateTime? AutoActionDeadline { get; set; }
+    public bool CanCurrentUserReview { get; set; }
+    public DateOnly? ReviewDeadline { get; set; }
+    public int? CurrentUserScore { get; set; }
+    public decimal? BoatOwnerAverageRating { get; set; }
+    public int BoatOwnerReviewCount { get; set; }
 }

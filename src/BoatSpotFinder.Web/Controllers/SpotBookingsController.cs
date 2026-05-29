@@ -16,17 +16,20 @@ public class SpotBookingsController : Controller
     private readonly IBookingRepository _bookingRepository;
     private readonly IAdminSettingsRepository _adminSettingsRepository;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IReviewRepository _reviewRepository;
 
     public SpotBookingsController(
         IBookingService bookingService,
         IBookingRepository bookingRepository,
         IAdminSettingsRepository adminSettingsRepository,
-        UserManager<ApplicationUser> userManager)
+        UserManager<ApplicationUser> userManager,
+        IReviewRepository reviewRepository)
     {
         _bookingService = bookingService;
         _bookingRepository = bookingRepository;
         _adminSettingsRepository = adminSettingsRepository;
         _userManager = userManager;
+        _reviewRepository = reviewRepository;
     }
 
     [HttpGet("")]
@@ -46,7 +49,7 @@ public class SpotBookingsController : Controller
                 ? b.CreatedAt.AddHours(settings.AutoActionTimeoutHours)
                 : (DateTime?)null;
 
-            viewModels.Add(new BookingListItemViewModel
+            var vm = new BookingListItemViewModel
             {
                 Id = b.Id,
                 SpotName = b.Spot.Name,
@@ -58,8 +61,22 @@ public class SpotBookingsController : Controller
                 Status = b.Status,
                 BoatOwnerName = displayName,
                 BookingCreatedAt = b.CreatedAt,
-                AutoActionDeadline = deadline
-            });
+                AutoActionDeadline = deadline,
+                BoatOwnerAverageRating = owner?.AverageRatingAsBoatOwner,
+                BoatOwnerReviewCount = owner?.ReviewCountAsBoatOwner ?? 0,
+            };
+
+            if (b.Status == BookingStatus.Completed)
+            {
+                var reviewDeadline = b.EndDate.AddDays(14);
+                vm.ReviewDeadline = reviewDeadline;
+                var reviews = (await _reviewRepository.GetByBookingIdAsync(b.Id)).ToList();
+                var myReview = reviews.FirstOrDefault(r => r.ReviewerRole == ReviewerRole.PlaceOwner);
+                vm.CurrentUserScore = myReview?.Score;
+                vm.CanCurrentUserReview = myReview == null && DateOnly.FromDateTime(DateTime.UtcNow) <= reviewDeadline;
+            }
+
+            viewModels.Add(vm);
         }
 
         var ordered = viewModels

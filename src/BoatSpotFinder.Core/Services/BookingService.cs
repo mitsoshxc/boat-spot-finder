@@ -353,6 +353,47 @@ public class BookingService : IBookingService
         {
             booking.Complete();
             await _bookingRepository.UpdateAsync(booking);
+
+            var boatOwner = await _userManager.FindByIdAsync(booking.BoatOwnerId);
+            if (boatOwner?.Email != null)
+            {
+                try
+                {
+                    await _emailSender.SendAsync(
+                        boatOwner.Email,
+                        $"How was your stay at {booking.Spot.Marina.Name}?",
+                        $"Your stay at <strong>{booking.Spot.Marina.Name}</strong> ({booking.StartDate:yyyy-MM-dd} to {booking.EndDate:yyyy-MM-dd}) is complete.<br>" +
+                        $"Share your experience: <a href=\"{_appSettings.BaseUrl}/reviews/create?bookingId={booking.Id}\">{_appSettings.BaseUrl}/reviews/create?bookingId={booking.Id}</a><br>" +
+                        $"Review window closes {booking.EndDate.AddDays(14):yyyy-MM-dd}.");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send review-invite email to boat owner {UserId}", boatOwner.Id);
+                }
+            }
+
+            var ownerName = boatOwner?.UserName ?? boatOwner?.Email ?? "your guest";
+            var admins = await _marinaAdminRepository.GetByMarinaIdAsync(booking.Spot.MarinaId);
+            foreach (var admin in admins)
+            {
+                var adminUser = await _userManager.FindByIdAsync(admin.UserId);
+                if (adminUser?.Email != null)
+                {
+                    try
+                    {
+                        await _emailSender.SendAsync(
+                            adminUser.Email,
+                            $"Rate {ownerName} — stay complete at {booking.Spot.Name}",
+                            $"<strong>{ownerName}</strong>'s stay at <strong>{booking.Spot.Name}</strong> ({booking.StartDate:yyyy-MM-dd} to {booking.EndDate:yyyy-MM-dd}) is complete.<br>" +
+                            $"Share your experience: <a href=\"{_appSettings.BaseUrl}/placeowner/reviews/create?bookingId={booking.Id}\">{_appSettings.BaseUrl}/placeowner/reviews/create?bookingId={booking.Id}</a><br>" +
+                            $"Review window closes {booking.EndDate.AddDays(14):yyyy-MM-dd}.");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to send review-invite email to marina admin {UserId}", admin.UserId);
+                    }
+                }
+            }
         }
     }
 
