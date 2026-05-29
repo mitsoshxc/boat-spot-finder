@@ -222,19 +222,23 @@ The real implementation (`ElasticsearchMarinaSearchService`) never returns null 
 
 ### Sync rules
 
+These rules apply to all `*SearchService` implementations (`IMarinaSearchService`, `IReviewSearchService`, and any future search services).
+
 - ES sync always happens **after** a DB write succeeds. Never sync before the DB write.
 - On ES exception, log and continue — the DB is the source of truth. Index drift is recovered by the startup seed on next process start.
 - In `MarinasController.Edit POST`, `IndexAsync` is called only when `marina.IsActive == true`. Inactive marinas are not indexed. Admin-side deactivation/reactivation sync (including `DeleteAsync` on deactivate) is deferred to Phase 6 task 6.2.
-- `IndexAsync` and `DeleteAsync` swallow exceptions internally (log + continue), so callers do not need try/catch.
+- `IndexAsync` and `DeleteAsync` swallow exceptions internally (log + continue), so callers do not need try/catch. `ReviewService.CreateReviewAsync` wraps both `IReviewSearchService.IndexAsync` and the follow-up `IMarinaSearchService.IndexAsync` in a single `try/catch` — a single logged error covers both.
 
 ### Implementations
 
 | Class | Location | Behaviour |
 |---|---|---|
-| `ElasticsearchMarinaSearchService` | `Infrastructure/Search/` | Real ES client. Index name `"marinas"`. Multi-match across name, region, phone, address, description with fuzziness AUTO. Size 10000. |
+| `ElasticsearchMarinaSearchService` | `Infrastructure/Search/` | Real ES client. Index name `"marinas"`. Multi-match across name, region, phone, address, description with fuzziness AUTO. Size 10000. `MarinaDocument` now includes `averageRating` and `reviewCount` fields. |
 | `NullMarinaSearchService` | `Infrastructure/Search/` | No-op stub. `IndexAsync`/`DeleteAsync` return `Task.CompletedTask`. `SearchAsync` returns `null`. |
+| `ElasticsearchReviewSearchService` | `Infrastructure/Search/` | Real ES client. Index name `"reviews"`. Writes a `ReviewDocument` containing `Id`, `BookingId`, `ReviewerRole` (string), `MarinaId` (for BoatOwner reviews), `BoatOwnerId` (for PlaceOwner reviews), `Score`, `Comment`, `CreatedAt`. |
+| `NullReviewSearchService` | `Infrastructure/Search/` | No-op stub. `IndexAsync` returns `Task.CompletedTask`. |
 
-DI wiring is controlled by a config guard in `Program.cs`: if `Elasticsearch:Uri` is blank, `NullMarinaSearchService` is registered; otherwise `ElasticsearchClient` (singleton) + `ElasticsearchMarinaSearchService` (scoped) are registered.
+DI wiring is controlled by a single config guard in `Program.cs`: if `Elasticsearch:Uri` is blank, both `NullMarinaSearchService` and `NullReviewSearchService` are registered; otherwise `ElasticsearchClient` (singleton) + both real implementations (scoped) are registered. All future `*SearchService` pairs follow the same pattern.
 
 ---
 

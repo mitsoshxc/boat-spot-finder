@@ -109,7 +109,27 @@ Both jobs are registered in `Web/Program.cs` immediately after `UseHangfireDashb
 | Job id | Cron | Calls | Effect |
 |---|---|---|---|
 | `booking-auto-action` | `*/5 * * * *` | `IBookingService.AutoActionAsync()` | Processes Pending bookings where `CreatedAt + AdminSettings.AutoActionTimeoutHours < UtcNow`. Calls `ConfirmCoreAsync` or `RejectCoreAsync` based on `AdminSettings.AutoActionType`. |
-| `booking-complete-overdue` | `0 2 * * *` | `IBookingService.CompleteOverdueAsync()` | Transitions Confirmed bookings to Completed where `EndDate < DateOnly.FromDateTime(DateTime.UtcNow)`. Review-invite emails are deferred to Phase 5b. |
+| `booking-complete-overdue` | `0 2 * * *` | `IBookingService.CompleteOverdueAsync()` | Transitions Confirmed bookings to Completed where `EndDate < DateOnly.FromDateTime(DateTime.UtcNow)`. After each transition, fires review-invite emails to the BoatOwner and all marina admins (see § Review-Invite Emails below). |
+
+---
+
+## Review-Invite Emails
+
+After `booking.Complete()` is persisted inside `CompleteOverdueAsync`, two email fan-outs run for each completed booking:
+
+**BoatOwner (single recipient).** `UserManager.FindByIdAsync(booking.BoatOwnerId)` resolves the user. If the user exists and has a non-null email, one email is sent with:
+- Subject: `"How was your stay at {marina.Name}?"`
+- Review link: `{AppSettings.BaseUrl}/reviews/create?bookingId={booking.Id}`
+- Deadline note: `booking.EndDate.AddDays(14)` formatted `yyyy-MM-dd`.
+
+**PlaceOwner fan-out (all marina admins).** `IMarinaAdminRepository.GetByMarinaIdAsync(booking.Spot.MarinaId)` returns all admin records. For each, `UserManager.FindByIdAsync(admin.UserId)` resolves the user. One email per admin with:
+- Subject: `"Rate {ownerName} — stay complete at {spot.Name}"` (`ownerName` = `UserName ?? Email ?? "your guest"`).
+- Review link: `{AppSettings.BaseUrl}/placeowner/reviews/create?bookingId={booking.Id}`
+- Deadline note: same 14-day window.
+
+**First-to-submit race.** All marina admins for the booking's marina receive the invite. Only one PlaceOwner review is permitted per booking (`(BookingId, ReviewerRole)` unique index). The first admin to submit wins. Later admins who click their link receive `"You have already reviewed this booking"` from `CanReviewAsync` and the `Create GET` action returns 404. This is a benign UX outcome — no data is corrupted.
+
+Each send is individually wrapped in `try/catch(Exception ex)` + `ILogger.LogError`. Failure of one admin's email does not block the others. See § Email Failure Policy for the general contract.
 
 ---
 
@@ -127,6 +147,7 @@ Emails fired per event:
 | `CancelAsync` by Admin | BoatOwner + all MarinaAdmins |
 | `ConfirmCoreAsync` | BoatOwner |
 | `RejectCoreAsync` | BoatOwner |
+| `CompleteOverdueAsync` (per booking) | BoatOwner (review invite) + all MarinaAdmins (review invite, one email each) |
 
 ---
 
