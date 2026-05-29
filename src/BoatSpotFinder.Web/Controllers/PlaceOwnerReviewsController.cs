@@ -14,19 +14,25 @@ public class PlaceOwnerReviewsController : Controller
 {
     private readonly IReviewService _reviewService;
     private readonly IBookingRepository _bookingRepository;
+    private readonly IReviewRepository _reviewRepository;
     private readonly IMarinaRepository _marinaRepository;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IAuditLogger _auditLogger;
 
     public PlaceOwnerReviewsController(
         IReviewService reviewService,
         IBookingRepository bookingRepository,
+        IReviewRepository reviewRepository,
         IMarinaRepository marinaRepository,
-        UserManager<ApplicationUser> userManager)
+        UserManager<ApplicationUser> userManager,
+        IAuditLogger auditLogger)
     {
         _reviewService = reviewService;
         _bookingRepository = bookingRepository;
+        _reviewRepository = reviewRepository;
         _marinaRepository = marinaRepository;
         _userManager = userManager;
+        _auditLogger = auditLogger;
     }
 
     [HttpGet("create")]
@@ -68,6 +74,13 @@ public class PlaceOwnerReviewsController : Controller
             }
             await RepopulateSummaryAsync(model);
             return View("~/Views/Reviews/Create.cshtml", model);
+        }
+
+        var booking = await _bookingRepository.GetByIdAsync(model.BookingId);
+        var review = (await _reviewRepository.GetByBookingIdAsync(model.BookingId)).FirstOrDefault(r => r.ReviewerRole == ReviewerRole.PlaceOwner);
+        if (booking != null && review != null)
+        {
+            _auditLogger.Log(userId, User.Identity!.Name ?? "", action: "ReviewCreated", entityType: "Review", entityId: review.Id.ToString(), marinaId: booking.Spot.MarinaId.ToString(), details: new { score = review.Score, bookingId = review.BookingId });
         }
 
         TempData["Success"] = "Thank you — your review has been recorded.";

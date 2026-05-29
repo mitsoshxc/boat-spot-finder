@@ -17,19 +17,22 @@ public class SpotBookingsController : Controller
     private readonly IAdminSettingsRepository _adminSettingsRepository;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IReviewRepository _reviewRepository;
+    private readonly IAuditLogger _auditLogger;
 
     public SpotBookingsController(
         IBookingService bookingService,
         IBookingRepository bookingRepository,
         IAdminSettingsRepository adminSettingsRepository,
         UserManager<ApplicationUser> userManager,
-        IReviewRepository reviewRepository)
+        IReviewRepository reviewRepository,
+        IAuditLogger auditLogger)
     {
         _bookingService = bookingService;
         _bookingRepository = bookingRepository;
         _adminSettingsRepository = adminSettingsRepository;
         _userManager = userManager;
         _reviewRepository = reviewRepository;
+        _auditLogger = auditLogger;
     }
 
     [HttpGet("")]
@@ -99,6 +102,11 @@ public class SpotBookingsController : Controller
         }
         else
         {
+            var booking = await _bookingRepository.GetByIdAsync(id);
+            if (booking != null)
+            {
+                _auditLogger.Log(userId, User.Identity!.Name ?? "", action: "BookingConfirmed", entityType: "Booking", entityId: id.ToString(), marinaId: booking.Spot.MarinaId.ToString(), details: null);
+            }
             TempData["Success"] = "Booking confirmed.";
         }
 
@@ -117,6 +125,11 @@ public class SpotBookingsController : Controller
         }
         else
         {
+            var booking = await _bookingRepository.GetByIdAsync(id);
+            if (booking != null)
+            {
+                _auditLogger.Log(userId, User.Identity!.Name ?? "", action: "BookingRejected", entityType: "Booking", entityId: id.ToString(), marinaId: booking.Spot.MarinaId.ToString(), details: null);
+            }
             TempData["Success"] = "Booking rejected.";
         }
 
