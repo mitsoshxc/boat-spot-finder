@@ -29,6 +29,7 @@ Use the Agent tool with:
 - `subagent_type`: `"claude"`
 - `model`: `"sonnet"`
 - `description`: a short (5-10 word) description of the task derived from the brief
+- **Do NOT pass the `isolation` parameter.** Dev edits the working tree directly so the tech lead can verify the diff in place (`git status` / `git diff`) and re-call `/dev` with a correction brief if anything is off. No worktree, no stash-transfer, no risk of stale-base merge conflicts.
 - `prompt`: assembled as follows:
 
 ```
@@ -58,7 +59,7 @@ The subagent must receive everything it needs in the prompt. It has no access to
 
 ## After Dev completes
 
-Dev will end its response with an `IMPLEMENTATION REPORT`. Present that report to the tech lead and prompt:
+Dev will end its response with an `IMPLEMENTATION REPORT`. The edits are already on the working tree — review with `git status` / `git diff` directly. Present the report to the tech lead and prompt:
 
 ```
 Dev has finished. Run `/verify <original brief>` to validate the implementation.
@@ -70,3 +71,4 @@ Dev has finished. Run `/verify <original brief>` to validate the implementation.
 - **NEVER** summarize or paraphrase the project docs — embed them verbatim.
 - **NEVER** skip reading `.claude/agents/dev.md` before spawning — it is the agent's instruction set.
 - **NEVER** split a single brief across multiple Dev invocations — one brief, one agent.
+- **NEVER** pass `isolation: "worktree"` to the Agent tool — Dev must edit master's working tree directly.

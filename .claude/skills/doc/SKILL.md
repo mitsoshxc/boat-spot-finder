@@ -31,6 +31,7 @@ Use the Agent tool with:
 - `subagent_type`: `"claude"`
 - `model`: `"sonnet"`
 - `description`: a short description such as "update docs after <feature> implementation"
+- **Do NOT pass the `isolation` parameter.** Doc edits the working tree directly so the tech lead can review the doc diff in place (`git diff docs/`) and re-call `/doc` with a correction brief if needed. No worktree, no stash-transfer.
 - `prompt`: assembled as follows:
 
 ```
@@ -66,7 +67,7 @@ The subagent must receive everything it needs in the prompt. It has no access to
 
 ## After Doc completes
 
-Doc will end its response with a `DOCUMENTATION REPORT`. Present that report to the tech lead.
+Doc will end its response with a `DOCUMENTATION REPORT`. The doc edits are already on the working tree — review with `git diff docs/` directly. Present the report to the tech lead.
 
 The implementation cycle is now complete:
 ```
@@ -78,3 +79,4 @@ The implementation cycle is now complete:
 - **NEVER** invoke Doc before `/verify` returns APPROVED.
 - **NEVER** summarize or paraphrase the doc files — embed them verbatim.
 - **NEVER** skip reading `.claude/agents/doc.md` before spawning.
+- **NEVER** pass `isolation: "worktree"` to the Agent tool — Doc must edit master's working tree directly.
