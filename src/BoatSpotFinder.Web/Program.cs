@@ -77,11 +77,13 @@ builder.Services.AddScoped<IVesselRepository, VesselRepository>();
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<IReviewRepository, ReviewRepository>();
+builder.Services.AddScoped<IReviewService, ReviewService>();
 
 var esUri = builder.Configuration["Elasticsearch:Uri"];
 if (string.IsNullOrWhiteSpace(esUri))
 {
     builder.Services.AddScoped<IMarinaSearchService, NullMarinaSearchService>();
+    builder.Services.AddScoped<IReviewSearchService, NullReviewSearchService>();
 }
 else
 {
@@ -89,6 +91,7 @@ else
         .DefaultIndex("marinas");
     builder.Services.AddSingleton(new ElasticsearchClient(esSettings));
     builder.Services.AddScoped<IMarinaSearchService, ElasticsearchMarinaSearchService>();
+    builder.Services.AddScoped<IReviewSearchService, ElasticsearchReviewSearchService>();
 }
 
 builder.Services.AddHangfire(c =>

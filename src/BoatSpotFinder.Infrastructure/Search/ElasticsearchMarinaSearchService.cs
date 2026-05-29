@@ -13,7 +13,7 @@ public class ElasticsearchMarinaSearchService : IMarinaSearchService
     private readonly ElasticsearchClient _client;
     private readonly ILogger<ElasticsearchMarinaSearchService> _logger;
 
-    private record MarinaDocument(Guid Id, string Name, string Region, string Phone, string Address, string Description);
+    private record MarinaDocument(Guid Id, string Name, string Region, string Phone, string Address, string Description, decimal? AverageRating, int ReviewCount);
 
     public ElasticsearchMarinaSearchService(
         ElasticsearchClient client,
@@ -33,7 +33,9 @@ public class ElasticsearchMarinaSearchService : IMarinaSearchService
                 marina.Region,
                 marina.Phone,
                 marina.Address,
-                marina.Description);
+                marina.Description,
+                marina.AverageRating,
+                marina.ReviewCount);
 
             await _client.IndexAsync(doc, i => i.Index(IndexName).Id(marina.Id.ToString()));
         }
