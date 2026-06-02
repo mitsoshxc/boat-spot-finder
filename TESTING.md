@@ -1,116 +1,69 @@
-# Testing — Phase 3 Milestone
+# Testing
 
-This document tracks tests to add to `tests/BoatSpotFinder.Tests/` and manual smoke tests to run for what's implemented through Phase 3.
+Tracks automated tests in `tests/BoatSpotFinder.Tests/` and manual smoke tests, organized by phase. Refreshed at phase milestones — not after every task.
 
-Scope: Phase 1 (Foundation), Phase 2 (Auth), Phase 2b.1–2b.4a (Audit Logging — partial), Phase 3 (PlaceOwner Marina/Spot/SeasonalRules). Phase 3b onward not yet covered here.
+**Scope (refreshed 2026-06-02).** Covers everything implemented through Phase 6:
+Phase 1 (Foundation), Phase 2 + 2b (Auth + Audit Logging, incl. Admin actions 2b.5), Phase 3 + 3b (PlaceOwner Marina/Spot/SeasonalRules + Elasticsearch indexing), Phase 4 (Vessels), Phase 5 (Booking lifecycle + Hangfire jobs), Phase 5b (Reviews & Ratings), Phase 6 (Admin surface + invitations).
+
+**Not covered — not yet implemented:** Phase 7 (Browse public marina list, interactive canvas viewer, ES search UI — only the `/browse/marina/{id}/layout-data` endpoint exists; `marina-viewer.js` is not yet created, so the Admin read-only canvas in §16 does not render yet) and Phase 2c (Audit Log Search & Admin Viewer). See § Out of Scope.
 
 ---
 
 ## Test Project Status
 
-Current state of `tests/BoatSpotFinder.Tests/`:
+Current state of `tests/BoatSpotFinder.Tests/` — **89 tests, all green as of 2026-06-02**:
 
 | Item | Value |
 |---|---|
-| Framework | xUnit 2.9.3 |
+| Framework | xUnit |
 | Target | `net10.0` |
-| Project references | `BoatSpotFinder.Core` only |
-| Existing tests | 1 placeholder in `UnitTest1.cs` |
+| Project references | `BoatSpotFinder.Core` + `BoatSpotFinder.Infrastructure` |
+| Data layer in tests | SQLite in-memory via `TestDbContextFactory.CreateSqliteInMemory()` — relational semantics; honours global query filters and FK constraints |
+| Mocking | `NSubstitute` (search services, `IEmailSender`, `UserManager`, `ILogger`) |
 
-**Constraint:** the test project references **only Core**. To exercise repositories and `AppDbContext`, the project must add:
-- `ProjectReference` to `BoatSpotFinder.Infrastructure`
-- `Microsoft.EntityFrameworkCore.InMemory` (or `Microsoft.EntityFrameworkCore.Sqlite` for closer-to-prod relational semantics)
+**`TestDbContextFactory`** (`Infrastructure/TestDbContextFactory.cs`) opens a shared `:memory:` SQLite connection, builds an `AppDbContext`, and calls `EnsureCreated()`. Each test gets a fresh isolated DB via `using var db = TestDbContextFactory.CreateSqliteInMemory();`.
 
-Pure Core tests (`TokenHasher`, `SpotSeasonalRuleService`, `ServiceResult`) need no project changes.
+**Gotcha pinned by the suite:** `AppDbContext.SetTimestamps()` overwrites `CreatedAt`/`UpdatedAt` on every `SaveChangesAsync`, so any test that depends on distinct `CreatedAt` values must save rows in separate `SaveChangesAsync` calls with a small delay between them (see `ReviewRepositoryTests.GetRecentByMarinaIdAsync_OrdersByCreatedAtDescAndRespectsCount`).
 
 ---
 
 ## Automated Tests
 
-Grouped by phase. The high-value tests are starred — write these first.
+### Implemented (89 tests)
 
-### Phase 1 — Foundation
+Run all: `dotnet test BoatSpotFinder.slnx`.
 
-| Test | Subject | Assertion |
-|---|---|---|
-| `AppDbContext_SetTimestamps_OnInsert` | `SaveChangesAsync` after `Add` | `CreatedAt` and `UpdatedAt` set to ~`UtcNow` |
-| `AppDbContext_SetTimestamps_OnUpdate` | `SaveChangesAsync` after mutation | `UpdatedAt` advances; `CreatedAt` unchanged |
+| Test file | Count | Phase | What it pins |
+|---|---|---|---|
+| `Helpers/TokenHasherTests.cs` | 2 | 2 | SHA-256 hash is deterministic; different inputs → different hashes |
+| `Repositories/InvitationRepositoryTests.cs` | 3 | 2 | `GetByTokenHashAsync` returns the row regardless of `IsUsed`/`ExpiresAt` — the caller does the filtering |
+| `Repositories/SpotRepositoryTests.cs` | 3 | 3 | `GetByIdAsync` returns inactive (ignores filter); `GetActiveByIdAsync` respects it; include-inactive listing |
+| `Services/SpotSeasonalRuleServiceTests.cs` | 6 | 3 | Overlap predicate — exact/partial/boundary overlap rejected, adjacent-next-day allowed, update excludes self |
+| `Infrastructure/LocalFileStorageServiceTests.cs` | 1 | 3 | Storage save/delete + stream-ownership contract |
+| `Services/BookingServiceTests.cs` | 35 | 5 | **Create** (overlap/strict-adjacency, pricing cascade spot→seasonal→marina-default, vessel fit + type flags, min-days); **Cancel** for BoatOwner/PlaceOwner/Admin (StartDate guard + Admin skip, Forbidden, terminal-status reject); **Confirm/Reject** ownership gate + transition + email + non-Pending reject; **`AutoActionAsync`** (auto-approve/reject + timeout filter) and **`CompleteOverdueAsync`** (overdue→Completed + review-invite email fan-out) — the two Hangfire jobs; **`PreviewPrice`** (no persist) |
+| `Services/ReviewServiceTests.cs` | 14 | 5b | `CanReviewAsync` gates (not-found / not-completed / window closed / **14-day boundary inclusive** / BoatOwner / PlaceOwner-via-MarinaAdmin / unrelated / already-reviewed); `CreateReviewAsync` persist + marina & boat-owner rating recompute + averaging + ES `IndexAsync` call + **ES-failure-is-swallowed** |
+| `Repositories/ReviewRepositoryTests.cs` | 5 | 5b | `ExistsAsync` role discrimination; `GetAllByMarinaId`/`GetAllByBoatOwnerId` role+scope filtering; `GetRecentByMarinaId` ordering + count |
+| `Repositories/MarinaRepositoryTests.cs` | 5 | 3/6 | `GetByUserIdAsync` MarinaAdmin join; `GetActiveWithActiveSpotsAsync` excludes empty/inactive, applies id filter, returns marina with an active spot |
+| `Repositories/MarinaAdminRepositoryTests.cs` | 4 | 3/6 | `ExistsAsync` present/absent; `GetByUserId`/`GetByMarinaId` filtering |
+| `Repositories/BookingRepositoryTests.cs` | 6 | 5 | `IsSpotAvailableAsync` overlap / strict-adjacency / Cancelled-ignored / exclude-self; `GetByMarinaOwnerIdAsync` Booking→Spot→MarinaAdmin join; `GetByBoatOwnerIdAsync` filter |
+| `Repositories/VesselRepositoryTests.cs` | 3 | 4 | `GetByOwnerIdAsync` owner filtering; null-for-missing; delete |
+| `Repositories/AdminSettingsRepositoryTests.cs` | 2 | 6 | Seeded-singleton fetch; `UpdateSettings` round-trip (the config the auto-action job reads) |
 
-### Phase 2 — Auth
+### Not yet automated (gaps — covered by smoke tests)
 
-| Test | Subject | Assertion |
-|---|---|---|
-| ★ `TokenHasher_Deterministic` | `TokenHasher.Hash` | Same input → same hash |
-| ★ `TokenHasher_DifferentInputs` | `TokenHasher.Hash` | Different inputs → different hashes |
-| `CustomSignInManager_RejectsInactiveUser` | `CanSignInAsync(inactiveUser)` | Returns `SignInResult.NotAllowed` |
-| `CustomSignInManager_AllowsActiveUser` | `CanSignInAsync(activeUser)` | Delegates to base (EmailConfirmed gate) |
-| `InvitationRepository_GetByTokenHashAsync_NoFiltering` | Repo lookup | Returns row regardless of `IsUsed`/`ExpiresAt` — caller filters |
+High-value units without direct automated coverage, exercised via the smoke sections below:
 
-### Phase 2b — Audit Logging
+- **Phase 1** — `AppDbContext.SetTimestamps` on insert/update. No standalone test; behaviour is exercised indirectly throughout and pinned via the ordering gotcha noted above.
+- **Phase 2** — `CustomSignInManager` inactive-user rejection. Needs an Identity harness; verified via smoke §4.
+- **Phase 2b** — `NLogAuditLogger` structured-field output. Needs a memory/list NLog sink; verified via smoke §5 / §17 by tailing the log file.
+- **Phase 5 / 6 controllers** — `BookingsController`, `SpotBookingsController`, `AdminController` action wiring + ownership / `Forbid()` paths. Verified via smoke §13 / §16.
+- **Phase 3b** — Elasticsearch marina indexing + search round-trip needs a live ES node (integration test). The null-stub sentinel path and the `GetActiveWithActiveSpotsAsync` query Browse will consume are covered by the repository tests above.
 
-| Test | Subject | Assertion |
-|---|---|---|
-| `NLogAuditLogger_StructuredFields` | `Log(...)` | All 7 parameters appear in the captured log entry |
+### Test infrastructure notes
 
-Verifiable with a `ListLogger` test sink or by configuring NLog to write to memory in test setup.
-
-### Phase 3 — PlaceOwner Marina & Spot Management
-
-**SpotRepository** — the soft-delete behavior is invisible state and must be pinned.
-
-| Test | Subject | Assertion |
-|---|---|---|
-| ★ `Spot_GetByIdAsync_ReturnsInactive` | `GetByIdAsync(inactiveId)` | Returns the spot (bypasses `IsActive` filter) |
-| ★ `Spot_GetActiveByIdAsync_NullForInactive` | `GetActiveByIdAsync(inactiveId)` | Returns `null` (respects filter) |
-| `Spot_GetActiveByIdAsync_ActiveReturned` | `GetActiveByIdAsync(activeId)` | Returns the spot |
-| `Spot_GetByMarinaIdAsync_IncludeInactive_True` | `GetByMarinaIdAsync(mid, true)` | Returns active + inactive |
-| `Spot_GetByMarinaIdAsync_IncludeInactive_False` | `GetByMarinaIdAsync(mid, false)` | Returns active only |
-| `Spot_UpdatePositionsAsync_WritesAllFields` | After save | All 5 canvas fields persisted per spot |
-
-**MarinaRepository**
-
-| Test | Subject | Assertion |
-|---|---|---|
-| `Marina_GetByUserIdAsync_JoinsMarinaAdmin` | Via `MarinaAdmin` | Returns only marinas where user has a `MarinaAdmin` row |
-| `Marina_GetActiveWithActiveSpotsAsync_ExcludesEmpty` | Marina with no active spots | Not returned |
-| `Marina_GetActiveWithActiveSpotsAsync_ExcludesInactive` | `IsActive=false` marina | Not returned |
-| `Marina_GetActiveWithActiveSpotsAsync_AppliesIdFilter` | With `marinaIds` argument | Returns only matching IDs |
-
-**MarinaAdminRepository**
-
-| Test | Subject | Assertion |
-|---|---|---|
-| `MarinaAdmin_ExistsAsync_Present` | Record exists | Returns `true` |
-| `MarinaAdmin_ExistsAsync_Absent` | No record | Returns `false` |
-
-**SpotSeasonalRuleService** — highest-value because the overlap predicate has inclusive bounds that are easy to misread.
-
-| Test | Subject | Assertion |
-|---|---|---|
-| ★ `Seasonal_Create_RejectsExactOverlap` | Same range as existing | `ServiceResult.Fail` |
-| ★ `Seasonal_Create_RejectsPartialOverlap` | New rule overlaps mid-range | `Fail` |
-| ★ `Seasonal_Create_RejectsBoundaryOverlap` | `newStart == existingEnd` | `Fail` — inclusive bounds |
-| ★ `Seasonal_Create_AllowsAdjacentNextDay` | New rule starts day after existing ends | `Ok` |
-| `Seasonal_Create_AllowsNonOverlapping` | Wholly outside existing range | `Ok` |
-| ★ `Seasonal_Update_ExcludesSelfFromOverlap` | Update existing rule keeping dates | `Ok` |
-| `Seasonal_Update_DetectsConflictWithOther` | Update into another rule's range | `Fail` |
-
-**LocalFileStorageService**
-
-| Test | Subject | Assertion |
-|---|---|---|
-| `Storage_Save_CreatesParentDirectory` | New `marina-backgrounds/x.jpg` | Parent dir created; file written |
-| ★ `Storage_Save_DoesNotDisposeStream` | After `SaveAsync` | Supplied stream is still readable (stream-ownership contract) |
-| `Storage_Save_ReturnsRelativeUrlPath` | After save | Returns `/uploads/marina-backgrounds/x.jpg` |
-| `Storage_Delete_RemovesFile` | After `DeleteAsync` | File no longer exists |
-| `Storage_Delete_MissingFileNoThrow` | `DeleteAsync(nonExistent)` | Completes without throwing |
-
-### Test Infrastructure
-
-- One shared `TestDbContextFactory` that builds an `AppDbContext` against EF in-memory or SQLite-in-memory. Reuse across repository tests.
-- EF Core in-memory provider honors global query filters — fine for soft-delete tests.
-- For tests that must observe `HasDefaultValueSql("GETUTCDATE()")` or other SQL-specific behavior, use SQLite in-memory (closer to relational semantics) and skip the rest.
-- `SpotSeasonalRuleService` tests need only a stub `ISpotSeasonalRuleRepository` (in-memory list) — no DbContext required.
+- All repository/service tests share `TestDbContextFactory.CreateSqliteInMemory()` (SQLite in-memory — closer to relational/SQL-Server semantics than the EF in-memory provider; honours global query filters and FK constraints).
+- `SpotSeasonalRuleServiceTests` builds the service against the real repository over SQLite; service tests (`BookingService`, `ReviewService`) wire **real** repositories + `NSubstitute` for search services, `IEmailSender`, `UserManager`, and `ILogger`.
+- `UserManager<ApplicationUser>` is substituted via `Substitute.For<UserManager<…>>(store, null × 8)`; configure `FindByIdAsync` to return a held instance so post-call rating mutations are observable.
 
 ---
 
@@ -122,7 +75,9 @@ Audit log file: `logs/audit-YYYY-MM-DD.log` (at repo root).
 
 ### Prerequisite for PlaceOwner flows
 
-`AdminController` is not yet implemented (Phase 6), so there is no UI to create marinas or send PlaceOwner invitations. Run the idempotent seed script:
+**Phase 6 update:** the Admin UI now provisions PlaceOwners end-to-end — log in as the seeded admin, create a marina, and send an invite (see §16). That is the preferred path. The seed script below remains a faster shortcut for setting up §6–§10, and is how those sections were originally run.
+
+Run the idempotent seed script:
 
 ```
 sqlcmd -S localhost\SQLEXPRESS -E -i scripts\seed-placeowners.sql
@@ -232,11 +187,83 @@ Requires a second seeded PlaceOwner (Option A above, second invitation for a dif
 
 ---
 
+## Smoke Tests (Manual) — Phases 4, 5, 5b, 6 (not yet run)
+
+Sections §12–§17 cover everything shipped since the Phase 3 milestone. **All unchecked — to be run together.** Booking/review/admin flows print email links to the **console** (`ConsoleEmailSender` in Development). Audit entries land in `logs/audit-YYYY-MM-DD.log`.
+
+Setup assumed: one BoatOwner account (§1), one active marina with at least one **active** spot owned by a PlaceOwner (§6–§8 or via §16), and the seeded admin (`admin@boatspotfinder.com`).
+
+### 12. Vessel management (Phase 4) — BoatOwner
+
+- [ ] Log in as a BoatOwner → `/vessels` → list (empty initially)
+- [ ] `/vessels/create` → the `Type` dropdown lists vessel types **excluding `None`**, with integer `value` attributes (flag-enum binding). Submit name/type/dimensions → redirect to `/vessels`, vessel listed
+- [ ] `/vessels/edit/{id}` → change a field → save → updated values shown
+- [ ] Delete a vessel with **no bookings** → removed from list
+- [ ] Delete a vessel with a `Pending`/`Confirmed` booking → redirected to `/vessels` with `TempData["Error"]` "Cannot delete a vessel with active bookings"; vessel remains
+- [ ] Delete a vessel that has only `Cancelled`/`Completed` bookings → allowed (SQL `SET NULL` cascades `Booking.VesselId` to null; those rows show "Vessel deleted")
+
+### 13. Booking creation & lifecycle (Phase 5)
+
+Booking create is reached directly at `/bookings/create?spotId={id}` (the Browse canvas that normally links here is Phase 7, not built — use the URL).
+
+- [ ] BoatOwner with **no vessel** visits `/bookings/create?spotId={activeSpotId}` → redirect to `/vessels/create` with `TempData["Error"]` "Please register a vessel before making a booking"
+- [ ] `/bookings/create?spotId={activeSpotId}` with a vessel → form renders; selecting vessel + start + end shows the **price preview** block (only when vesselId+start+end are all present and the vessel belongs to the current user)
+- [ ] Submit a valid booking → status `Pending`; redirect to `/bookings`; row listed as Pending. Console shows a "New booking request for {spot}" email to the marina admins
+- [ ] Create a second booking overlapping the first → rejected, ModelState error contains "not available" (adjacent back-to-back dates, where one ends the day the next starts, are **allowed**)
+- [ ] Vessel larger than the spot, or a type not in `AllowedVesselTypes` → rejected with a dimensions/type error
+- [ ] Booking shorter than the resolved min-booking-days → rejected ("minimum")
+- [ ] Deactivate the spot, then `/bookings/create?spotId={inactiveSpotId}` → `NotFound` (uses `GetActiveByIdAsync`)
+- [ ] As PlaceOwner, `/placeowner/spot-bookings` (Incoming) lists the Pending booking → **Confirm** → status Confirmed; console email to BoatOwner. On another booking → **Reject** → Cancelled; console email to BoatOwner
+- [ ] BoatOwner cancels a future Pending/Confirmed booking via the Cancel button (`POST /bookings/{id}/cancel`) → Cancelled. Cancelling a booking whose `StartDate` is today/past → rejected with `TempData["Error"]`
+- [ ] PlaceOwner cancels a future booking via `/placeowner/spot-bookings/{id}/cancel` → Cancelled; console email to BoatOwner
+
+### 14. Hangfire recurring jobs (Phase 5 / 5b)
+
+- [ ] `/hangfire` opens **only as Admin** (other roles redirect to login / are denied). Two recurring jobs are registered: `booking-auto-action` (`*/5 * * * *`) and `booking-complete-overdue` (`0 2 * * *`)
+- [ ] **Auto-action:** in Admin → Settings set `AutoActionTimeoutHours` low; create a Pending booking older than the timeout (or wait); "Trigger now" `booking-auto-action` → booking auto-Confirms or auto-Cancels per `AutoActionType`; console email fires
+- [ ] **Complete-overdue:** set a `Confirmed` booking's `EndDate` to yesterday (SQL), "Trigger now" `booking-complete-overdue` → status → `Completed`; console shows **two** review-invite emails — BoatOwner (`/reviews/create?bookingId=…`) and each marina admin (`/placeowner/reviews/create?bookingId=…`), each noting a 14-day deadline (`EndDate + 14`)
+
+### 15. Reviews & ratings (Phase 5b)
+
+Prereq: a `Completed` booking (from §14).
+
+- [ ] BoatOwner opens `/reviews/create?bookingId={id}` → star form + booking summary, "Rate the marina". Submit score 1–5 (+ optional comment) → redirect to `/bookings`; the completed row now shows the submitted score instead of the CTA
+- [ ] After the BoatOwner review, the marina's `AverageRating` / `ReviewCount` update (verify in SQL; the public marina page is Phase 7)
+- [ ] PlaceOwner opens `/placeowner/reviews/create?bookingId={id}` → "Rate the boat owner". Submit → redirect to `/placeowner/spot-bookings`; the BoatOwner's `AverageRatingAsBoatOwner` / `ReviewCountAsBoatOwner` update; Incoming rows show the BoatOwner rating
+- [ ] A booking whose `EndDate` is more than 14 days ago → `/reviews/create?bookingId={id}` returns **404** (window closed)
+- [ ] Revisit the same review link after submitting → **404** (already reviewed). A second marina admin clicking their invite after the first already reviewed → 404 (benign first-to-submit race)
+- [ ] `logs/audit-*.log` gains a `ReviewCreated` entry (PlaceOwner review) with `details` `{ score, bookingId }`
+
+### 16. Admin surface (Phase 6) — Admin
+
+Log in as the seeded admin (`admin@boatspotfinder.com`).
+
+- [ ] `/admin/dashboard` → console grid of navigation cards
+- [ ] `/admin/users` → all users; BoatOwner rows show `AverageRatingAsBoatOwner`
+- [ ] `/admin/marinas` → all marinas **including inactive** (status pill, admin count, spot count)
+- [ ] `/admin/marinas/create` (name + region) → on save redirects to the **InviteAdmin** form for the new marina (new marina is **not** indexed in ES at creation)
+- [ ] On the invite form enter an email → POST → redirect to MarinaInvitations; console shows the invite email with `/account/invite-register?token=…`. Register via that link → new PlaceOwner appears under `/admin/marinas/{id}/admins`
+- [ ] `/admin/marinas/{id}/edit` → change details → save (ES `IndexAsync` only when the marina is active)
+- [ ] `/admin/marinas/{id}/toggle-active` → deactivate (ES `DeleteAsync`) then reactivate (ES `IndexAsync`); existing bookings are **not** cancelled; marina is never hard-deleted
+- [ ] `/admin/marinas/{id}/spots` → lists spots **including inactive**; toggle a spot via `/admin/spots/{id}/toggle-active`
+- [ ] `/admin/marinas/{id}/layout` → read-only canvas. **Known limitation:** `marina-viewer.js` (Phase 7) is not built, so the canvas does not render yet — the container + script tag are wired but inert. Expected until Phase 7
+- [ ] Revoke an admin via `/admin/marinas/{marinaId}/admins/{userId}/revoke` → membership removed; if it was the user's **last** membership, the PlaceOwner role is stripped (confirm they can no longer reach `/placeowner/marinas`)
+- [ ] From `/admin/bookings`, Cancel a Pending/Confirmed booking → Cancelled (Admin override **skips** the StartDate guard); `TempData["Success"]` "Booking cancelled."
+- [ ] `/admin/settings` → change `AutoActionType` + `AutoActionTimeoutHours` → save → success flash
+
+### 17. Audit log — Admin & state-changing actions (Phase 2b full)
+
+Tail `logs/audit-YYYY-MM-DD.log` and confirm structured JSON entries (`action` / `entityType` / `entityId` / `marinaId` / `details`) for:
+
+- [ ] Admin: `MarinaCreated` `{ name }`, `MarinaActivated` / `MarinaDeactivated`, `SpotActivated` / `SpotDeactivated`, `AdminInvited` `{ email }`, `AdminRevoked`, `BookingCancelledByAdmin` `{ previousStatus }`, `SettingsUpdated`
+- [ ] PlaceOwner: `BookingConfirmed` / `BookingRejected` (with `booking.Spot.MarinaId`)
+- [ ] PlaceOwner: `ReviewCreated` `{ score, bookingId }`
+- [ ] `userRole` is always blank (reserved field — documented in `docs/features/audit-logging.md`)
+
+---
+
 ## Out of Scope (not yet implementable)
 
-- Browse marina list / public marina view (Phase 7)
-- Elasticsearch search (Phase 3b — next)
-- Vessel CRUD (Phase 4)
-- Booking flow + Hangfire auto-action (Phase 5)
-- Reviews & ratings (Phase 5b)
-- Admin dashboard / marina creation / PlaceOwner invitations / spot deactivation by Admin (Phase 6)
+- **Phase 7 — Browse & Search:** public marina list, ES-backed search box, interactive Konva canvas viewer, spot-status colors, click-to-book. Only the `/browse/marina/{id}/layout-data` endpoint exists; `marina-viewer.js` is not yet created (so the Admin read-only canvas in §16 is wired but inert). Elasticsearch marina **search** is reachable only once Phase 7 ships — indexing-on-write and the startup seed (Phase 3b) are already in place.
+- **Phase 2c — Audit Log Search & Admin Viewer:** `eventId` idempotency, file→ES reindex Hangfire jobs, rolling 30-day window, `/admin/audit-log` grid. Planned only.
+- **Phase 8 — Polish:** pagination, error pages, Docker, k8s.
