@@ -351,6 +351,18 @@ Enforced on every JS Dev brief.
 
 ---
 
+## Audit Logging
+
+When a controller action adds a new audited operation:
+
+- Call `_auditLogger.Log(...)` on the **success path only**, after the DB write or service call has completed and succeeded.
+- Do **not** wrap the call in `try/catch` — NLog handles internal errors and never propagates them to callers.
+- Use the caller's `User.FindFirstValue(ClaimTypes.NameIdentifier)` for `userId` and `User.Identity!.Name` for `userEmail`. For `Logout`, capture these before calling `SignOutAsync` because the claims context is cleared by sign-out.
+- Pass `details: null` unless carrying business context that is not derivable from the other fields (e.g., `previousStatus`, `spotName`, `email`). Keep anonymous objects flat.
+- See [`docs/features/audit-logging.md`](features/audit-logging.md) for the full audited-action catalog and log schema.
+
+---
+
 ## Tooling Triggers
 
 - `/simplify` is run on `BookingsController`, `SpotBookingsController`, and `AdminController` whenever any of them exceeds 150 lines.
