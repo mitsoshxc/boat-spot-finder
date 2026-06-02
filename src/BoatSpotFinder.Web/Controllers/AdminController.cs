@@ -26,6 +26,7 @@ public class AdminController : Controller
     private readonly IEmailSender _emailSender;
     private readonly IBookingService _bookingService;
     private readonly AppSettings _appSettings;
+    private readonly IAuditLogger _auditLogger;
 
     public AdminController(
         UserManager<ApplicationUser> userManager,
@@ -38,7 +39,8 @@ public class AdminController : Controller
         IMarinaSearchService marinaSearchService,
         IEmailSender emailSender,
         IBookingService bookingService,
-        IOptions<AppSettings> appSettings)
+        IOptions<AppSettings> appSettings,
+        IAuditLogger auditLogger)
     {
         _userManager = userManager;
         _bookingRepository = bookingRepository;
@@ -51,6 +53,7 @@ public class AdminController : Controller
         _emailSender = emailSender;
         _bookingService = bookingService;
         _appSettings = appSettings.Value;
+        _auditLogger = auditLogger;
     }
 
     [HttpGet("dashboard")]
@@ -301,6 +304,8 @@ public class AdminController : Controller
         var settings = await _adminSettingsRepository.GetAsync();
         settings.UpdateSettings(model.AutoActionType, model.AutoActionTimeoutHours);
         await _adminSettingsRepository.UpdateAsync(settings);
+        var settingsUserId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        _auditLogger.Log(settingsUserId, User.Identity!.Name ?? "", action: "SettingsUpdated", entityType: "AdminSettings", entityId: "10000000-0000-0000-0000-000000000001", marinaId: null, details: null);
         TempData["Success"] = "Settings saved.";
         return RedirectToAction(nameof(Settings));
     }
@@ -330,6 +335,8 @@ public class AdminController : Controller
             defaultPricePerDay: 0);
 
         await _marinaRepository.AddAsync(marina);
+        var createMarinaUserId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        _auditLogger.Log(createMarinaUserId, User.Identity!.Name ?? "", action: "MarinaCreated", entityType: "Marina", entityId: marina.Id.ToString(), marinaId: marina.Id.ToString(), details: new { name = marina.Name });
         return RedirectToAction(nameof(InviteAdmin), new { marinaId = marina.Id });
     }
 
@@ -420,6 +427,9 @@ public class AdminController : Controller
         }
 
         await _marinaRepository.UpdateAsync(marina);
+        var toggleMarinaUserId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var toggleMarinaAction = marina.IsActive ? "MarinaActivated" : "MarinaDeactivated";
+        _auditLogger.Log(toggleMarinaUserId, User.Identity!.Name ?? "", action: toggleMarinaAction, entityType: "Marina", entityId: marinaId.ToString(), marinaId: marinaId.ToString(), details: null);
         return RedirectToAction(nameof(AllMarinas));
     }
 
@@ -442,6 +452,9 @@ public class AdminController : Controller
         }
 
         await _spotRepository.UpdateAsync(spot);
+        var toggleSpotUserId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var toggleSpotAction = spot.IsActive ? "SpotActivated" : "SpotDeactivated";
+        _auditLogger.Log(toggleSpotUserId, User.Identity!.Name ?? "", action: toggleSpotAction, entityType: "Spot", entityId: spotId.ToString(), marinaId: spot.MarinaId.ToString(), details: null);
         return RedirectToAction(nameof(MarinaSpots), new { marinaId = spot.MarinaId });
     }
 
@@ -482,6 +495,8 @@ public class AdminController : Controller
             "You're invited to manage a marina",
             $"You have been invited to manage a marina on Boat Spot Finder. Click <a href='{link}'>here</a> to set up your account. This link expires in 48 hours.");
 
+        var inviteUserId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        _auditLogger.Log(inviteUserId, User.Identity!.Name ?? "", action: "AdminInvited", entityType: "Invitation", entityId: invitation.Id.ToString(), marinaId: invitation.MarinaId.ToString(), details: new { email = invitation.Email });
         return RedirectToAction(nameof(MarinaInvitations), new { marinaId = model.MarinaId });
     }
 
@@ -495,6 +510,7 @@ public class AdminController : Controller
             return NotFound();
         }
 
+        var actingUserId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
         await _marinaAdminRepository.RemoveAsync(record);
 
         var remaining = await _marinaAdminRepository.GetByUserIdAsync(userId);
@@ -507,6 +523,7 @@ public class AdminController : Controller
             }
         }
 
+        _auditLogger.Log(actingUserId, User.Identity!.Name ?? "", action: "AdminRevoked", entityType: "MarinaAdmin", entityId: userId, marinaId: marinaId.ToString(), details: null);
         return RedirectToAction(nameof(MarinaAdmins), new { marinaId });
     }
 
@@ -514,6 +531,8 @@ public class AdminController : Controller
     public async Task<IActionResult> CancelBooking(Guid bookingId)
     {
         var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var booking = await _bookingRepository.GetByIdAsync(bookingId);
+        var previousStatus = booking?.Status;
         var result = await _bookingService.CancelAsync(bookingId, currentUserId);
 
         if (!result.Success)
@@ -522,6 +541,10 @@ public class AdminController : Controller
         }
         else
         {
+            if (booking != null)
+            {
+                _auditLogger.Log(currentUserId, User.Identity!.Name ?? "", action: "BookingCancelledByAdmin", entityType: "Booking", entityId: bookingId.ToString(), marinaId: booking.Spot.MarinaId.ToString(), details: new { previousStatus = previousStatus!.Value.ToString() });
+            }
             TempData["Success"] = "Booking cancelled.";
         }
 
