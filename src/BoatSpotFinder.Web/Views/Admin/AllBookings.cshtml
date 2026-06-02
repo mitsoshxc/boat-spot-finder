@@ -1,0 +1,100 @@
+@model IEnumerable<BookingListItemViewModel>
+@{
+    ViewData["Title"] = "All Bookings";
+}
+
+<section class="workspace">
+    <header class="workspace__head">
+        <span class="workspace__eyebrow">Admin &middot; Reservations</span>
+        <h1 class="workspace__title">All bookings</h1>
+        <p class="workspace__lede">Every reservation across the platform. Cancel a pending or confirmed booking on the owner's behalf.</p>
+    </header>
+
+    @if (TempData["Success"] is string successMsg)
+    {
+        <div class="notice notice--success" style="margin-bottom: 24px;">
+            <p class="notice__body">@successMsg</p>
+        </div>
+    }
+    @if (TempData["Error"] is string errorMsg)
+    {
+        <div class="notice notice--warning" style="margin-bottom: 24px;">
+            <p class="notice__body">@errorMsg</p>
+        </div>
+    }
+
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <span class="vignette vignette--muted" aria-hidden="true">
+                <svg viewBox="0 0 64 48" fill="none" stroke="currentColor" stroke-width="0.7">
+                    <rect x="12" y="10" width="40" height="30" rx="1.5" />
+                    <path d="M12 18 H52 M22 6 V12 M42 6 V12" />
+                </svg>
+            </span>
+            <p class="empty-state__title">No bookings yet.</p>
+            <p class="empty-state__body">Reservations made by boat owners will be listed here.</p>
+        </div>
+    }
+    else
+    {
+        <div class="ledger-scroll">
+            <table class="ledger">
+                <thead class="ledger__head">
+                    <tr class="ledger__row">
+                        <th class="ledger__th" scope="col">Marina</th>
+                        <th class="ledger__th" scope="col">Spot</th>
+                        <th class="ledger__th" scope="col">Boat Owner</th>
+                        <th class="ledger__th" scope="col">Dates</th>
+                        <th class="ledger__th ledger__th--num" scope="col">Total</th>
+                        <th class="ledger__th" scope="col">Status</th>
+                        <th class="ledger__th ledger__th--actions" scope="col">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="ledger__body">
+                    @foreach (var b in Model)
+                    {
+                        var statusKey = b.Status.ToString().ToLowerInvariant();
+                        var canCancel = b.Status == BookingStatus.Pending || b.Status == BookingStatus.Confirmed;
+                        <tr class="ledger__row">
+                            <td class="ledger__cell ledger__cell--primary" data-label="Marina">
+                                <span class="ledger__value">@b.MarinaName</span>
+                            </td>
+                            <td class="ledger__cell" data-label="Spot">
+                                <span class="ledger__value">@b.SpotName</span>
+                            </td>
+                            <td class="ledger__cell" data-label="Boat Owner">
+                                <span class="ledger__value">@b.BoatOwnerName</span>
+                            </td>
+                            <td class="ledger__cell" data-label="Dates">
+                                <span class="ledger__value ledger__value--mono">@b.StartDate.ToString("yyyy-MM-dd") &rarr; @b.EndDate.ToString("yyyy-MM-dd")</span>
+                            </td>
+                            <td class="ledger__cell ledger__cell--num" data-label="Total">
+                                <span class="ledger__value ledger__value--mono">&euro;@b.TotalPrice.ToString("F2")</span>
+                            </td>
+                            <td class="ledger__cell" data-label="Status">
+                                <span class="pill pill--booking pill--@statusKey"><span class="pill__dot" aria-hidden="true"></span>@b.Status</span>
+                            </td>
+                            <td class="ledger__cell ledger__cell--actions" data-label="Actions">
+                                @if (canCancel)
+                                {
+                                    <span class="ledger__actions">
+                                        <form method="post" action="/admin/bookings/@b.Id/cancel"
+                                              onsubmit="return confirm('Cancel this booking? The boat owner will be notified.');">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn--danger btn--sm">Cancel</button>
+                                        </form>
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="ledger__value ledger__value--muted">&mdash;</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

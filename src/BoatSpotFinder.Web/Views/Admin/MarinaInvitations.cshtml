@@ -1,0 +1,76 @@
+@model IEnumerable<InvitationListItemViewModel>
+@{
+    ViewData["Title"] = "Marina Invitations";
+    var marinaName = ViewData["MarinaName"] as string;
+}
+
+<section class="workspace">
+    <header class="workspace__head">
+        <span class="workspace__eyebrow">Admin &middot; Invitations</span>
+        <h1 class="workspace__title">Invitations</h1>
+        <p class="workspace__lede">
+            @if (!string.IsNullOrEmpty(marinaName))
+            {
+                <text>Place-owner invitations sent for <strong>@marinaName</strong>.</text>
+            }
+            else
+            {
+                <text>Place-owner invitations sent for this marina.</text>
+            }
+        </p>
+    </header>
+
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <span class="vignette vignette--muted" aria-hidden="true">
+                <svg viewBox="0 0 64 48" fill="none" stroke="currentColor" stroke-width="0.7">
+                    <rect x="14" y="12" width="36" height="24" rx="1.5" />
+                    <path d="M14 14 L32 27 L50 14" />
+                </svg>
+            </span>
+            <p class="empty-state__title">No invitations sent for this marina yet.</p>
+            <p class="empty-state__body">Invite a place owner from the marinas list.</p>
+        </div>
+    }
+    else
+    {
+        <div class="ledger-scroll">
+            <table class="ledger">
+                <thead class="ledger__head">
+                    <tr class="ledger__row">
+                        <th class="ledger__th" scope="col">Email</th>
+                        <th class="ledger__th" scope="col">Invited At</th>
+                        <th class="ledger__th" scope="col">Expires At</th>
+                        <th class="ledger__th" scope="col">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="ledger__body">
+                    @foreach (var inv in Model)
+                    {
+                        var pillClass = inv.Status switch
+                        {
+                            "Accepted" => "pill--active",
+                            "Expired" => "pill--inactive",
+                            _ => "pill--pending"
+                        };
+                        <tr class="ledger__row">
+                            <td class="ledger__cell ledger__cell--primary" data-label="Email">
+                                <span class="ledger__value">@inv.Email</span>
+                            </td>
+                            <td class="ledger__cell" data-label="Invited At">
+                                <span class="ledger__value ledger__value--mono">@inv.InvitedAt.ToString("yyyy-MM-dd")</span>
+                            </td>
+                            <td class="ledger__cell" data-label="Expires At">
+                                <span class="ledger__value ledger__value--mono">@inv.ExpiresAt.ToString("yyyy-MM-dd")</span>
+                            </td>
+                            <td class="ledger__cell" data-label="Status">
+                                <span class="pill @pillClass"><span class="pill__dot" aria-hidden="true"></span>@inv.Status</span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

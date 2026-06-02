@@ -1,0 +1,93 @@
+@model IEnumerable<AdminMarinaListItemViewModel>
+@{
+    ViewData["Title"] = "All Marinas";
+}
+
+<section class="workspace">
+    <header class="workspace__head">
+        <span class="workspace__eyebrow">Admin &middot; Harbour</span>
+        <h1 class="workspace__title">All marinas</h1>
+        <p class="workspace__lede">Every marina, active and inactive. Open a marina's layout, spots, admins, or invitations.</p>
+    </header>
+
+    @if (TempData["Success"] is string successMsg)
+    {
+        <div class="notice notice--success" style="margin-bottom: 24px;">
+            <p class="notice__body">@successMsg</p>
+        </div>
+    }
+    @if (TempData["Error"] is string errorMsg)
+    {
+        <div class="notice notice--warning" style="margin-bottom: 24px;">
+            <p class="notice__body">@errorMsg</p>
+        </div>
+    }
+
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <span class="vignette vignette--muted" aria-hidden="true">
+                <svg viewBox="0 0 64 48" fill="none" stroke="currentColor" stroke-width="0.7">
+                    <path d="M32 8 V30 M24 15 L32 11 L40 15" />
+                    <path d="M14 32 C18 38 46 38 50 32" />
+                </svg>
+            </span>
+            <p class="empty-state__title">No marinas yet.</p>
+            <p class="empty-state__body">Create a marina to begin onboarding place owners.</p>
+        </div>
+    }
+    else
+    {
+        <div class="ledger-scroll">
+            <table class="ledger">
+                <thead class="ledger__head">
+                    <tr class="ledger__row">
+                        <th class="ledger__th" scope="col">Name</th>
+                        <th class="ledger__th" scope="col">Region</th>
+                        <th class="ledger__th" scope="col">Status</th>
+                        <th class="ledger__th ledger__th--num" scope="col">Admins</th>
+                        <th class="ledger__th ledger__th--num" scope="col">Spots</th>
+                        <th class="ledger__th ledger__th--actions" scope="col">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="ledger__body">
+                    @foreach (var m in Model)
+                    {
+                        <tr class="ledger__row @(m.IsActive ? "" : "ledger__row--inactive")">
+                            <td class="ledger__cell ledger__cell--primary" data-label="Name">
+                                <span class="ledger__value">@m.Name</span>
+                            </td>
+                            <td class="ledger__cell" data-label="Region">
+                                <span class="ledger__value">@m.Region</span>
+                            </td>
+                            <td class="ledger__cell" data-label="Status">
+                                @if (m.IsActive)
+                                {
+                                    <span class="pill pill--active"><span class="pill__dot" aria-hidden="true"></span>Active</span>
+                                }
+                                else
+                                {
+                                    <span class="pill pill--inactive"><span class="pill__dot" aria-hidden="true"></span>Inactive</span>
+                                }
+                            </td>
+                            <td class="ledger__cell ledger__cell--num" data-label="Admins">
+                                <span class="ledger__value ledger__value--mono">@m.AdminCount</span>
+                            </td>
+                            <td class="ledger__cell ledger__cell--num" data-label="Spots">
+                                <span class="ledger__value ledger__value--mono">@m.SpotCount</span>
+                            </td>
+                            <td class="ledger__cell ledger__cell--actions" data-label="Actions">
+                                <span class="ledger__actions">
+                                    <a class="btn btn--ghost btn--sm" href="/admin/marinas/@m.Id/layout">Layout</a>
+                                    <a class="btn btn--ghost btn--sm" href="/admin/marinas/@m.Id/spots">Spots</a>
+                                    <a class="btn btn--ghost btn--sm" href="/admin/marinas/@m.Id/admins">Admins</a>
+                                    <a class="btn btn--ghost btn--sm" href="/admin/marinas/@m.Id/invitations">Invites</a>
+                                </span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

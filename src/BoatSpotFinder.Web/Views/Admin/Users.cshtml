@@ -1,0 +1,89 @@
+@model IEnumerable<UserListItemViewModel>
+@{
+    ViewData["Title"] = "Users";
+}
+
+<section class="workspace">
+    <header class="workspace__head">
+        <span class="workspace__eyebrow">Admin &middot; Directory</span>
+        <h1 class="workspace__title">Users</h1>
+        <p class="workspace__lede">Every registered account across all roles. Boat-owner reputation is shown where reviews exist.</p>
+    </header>
+
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <span class="vignette vignette--muted" aria-hidden="true">
+                <svg viewBox="0 0 64 48" fill="none" stroke="currentColor" stroke-width="0.7">
+                    <circle cx="32" cy="20" r="9" />
+                    <path d="M14 40 C14 30 23 26 32 26 C41 26 50 30 50 40" />
+                </svg>
+            </span>
+            <p class="empty-state__title">No users yet.</p>
+            <p class="empty-state__body">Registered accounts will appear here as people join.</p>
+        </div>
+    }
+    else
+    {
+        <div class="ledger-scroll">
+            <table class="ledger">
+                <thead class="ledger__head">
+                    <tr class="ledger__row">
+                        <th class="ledger__th" scope="col">Email</th>
+                        <th class="ledger__th" scope="col">Roles</th>
+                        <th class="ledger__th" scope="col">Active</th>
+                        <th class="ledger__th ledger__th--num" scope="col">Rating as Boat Owner</th>
+                    </tr>
+                </thead>
+                <tbody class="ledger__body">
+                    @foreach (var u in Model)
+                    {
+                        var isBoatOwner = u.Roles.Contains("BoatOwner");
+                        <tr class="ledger__row">
+                            <td class="ledger__cell ledger__cell--primary" data-label="Email">
+                                <span class="ledger__value">@u.Email</span>
+                            </td>
+                            <td class="ledger__cell ledger__cell--tags" data-label="Roles">
+                                <span class="ledger__tags">
+                                    @foreach (var role in u.Roles)
+                                    {
+                                        <span class="pill">@role</span>
+                                    }
+                                    @if (!u.Roles.Any())
+                                    {
+                                        <span class="ledger__value ledger__value--muted">&mdash;</span>
+                                    }
+                                </span>
+                            </td>
+                            <td class="ledger__cell" data-label="Active">
+                                @if (u.IsActive)
+                                {
+                                    <span class="pill pill--active"><span class="pill__dot" aria-hidden="true"></span>Active</span>
+                                }
+                                else
+                                {
+                                    <span class="pill pill--inactive"><span class="pill__dot" aria-hidden="true"></span>Inactive</span>
+                                }
+                            </td>
+                            <td class="ledger__cell ledger__cell--num" data-label="Rating as Boat Owner">
+                                @if (isBoatOwner && u.AverageRatingAsBoatOwner.HasValue)
+                                {
+                                    <span class="ledger-rating" aria-label="@($"{u.AverageRatingAsBoatOwner.Value.ToString("0.0")} out of 5")">
+                                        <svg viewBox="0 0 24 24" class="ledger-rating__star" aria-hidden="true">
+                                            <path d="M12 3.4 L14.45 9.2 L20.6 9.7 L15.9 13.85 L17.45 19.85 L12 16.55 L6.55 19.85 L8.1 13.85 L3.4 9.7 L9.55 9.2 Z" />
+                                        </svg>
+                                        <span class="ledger-rating__value">@u.AverageRatingAsBoatOwner.Value.ToString("0.0")</span>
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="ledger__value ledger__value--muted">&mdash;</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
