@@ -417,4 +417,612 @@ public class BookingServiceTests
 
         Assert.False(result.Success);
     }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // ConfirmAsync
+    // ──────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ConfirmAsync_PerformerNotMarinaAdmin_Forbidden()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (_, spot, vessel, boatOwnerId) = await SeedBasicAsync(db.Context);
+
+        var booking = new Booking
+        {
+            SpotId = spot.Id,
+            VesselId = vessel.Id,
+            BoatOwnerId = boatOwnerId,
+            StartDate = new DateOnly(2027, 8, 1),
+            EndDate = new DateOnly(2027, 8, 7),
+            TotalPrice = 300m
+        };
+        await db.Context.Bookings.AddAsync(booking);
+        await db.Context.SaveChangesAsync();
+
+        var service = BuildService(db.Context);
+        var result = await service.ConfirmAsync(booking.Id, "non-admin-user");
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("Forbidden", StringComparison.OrdinalIgnoreCase));
+        var reloaded = await db.Context.Bookings.FindAsync(booking.Id);
+        Assert.Equal(BookingStatus.Pending, reloaded!.Status);
+    }
+
+    [Fact]
+    public async Task ConfirmAsync_MarinaAdmin_ConfirmsAndEmailsBoatOwner()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (marina, spot, vessel, boatOwnerId) = await SeedBasicAsync(db.Context);
+
+        const string performerId = "performer-1";
+        await SeedUserAsync(db.Context, performerId, "performer@test.com");
+        await SeedUserAsync(db.Context, "inviter-1", "inviter@test.com");
+        await db.Context.SaveChangesAsync();
+
+        await db.Context.MarinaAdmins.AddAsync(new MarinaAdmin
+        {
+            MarinaId = marina.Id,
+            UserId = performerId,
+            InvitedAt = DateTimeOffset.UtcNow,
+            InvitedById = "inviter-1"
+        });
+
+        var booking = new Booking
+        {
+            SpotId = spot.Id,
+            VesselId = vessel.Id,
+            BoatOwnerId = boatOwnerId,
+            StartDate = new DateOnly(2027, 8, 1),
+            EndDate = new DateOnly(2027, 8, 7),
+            TotalPrice = 300m
+        };
+        await db.Context.Bookings.AddAsync(booking);
+        await db.Context.SaveChangesAsync();
+
+        var emailSender = Substitute.For<IEmailSender>();
+        var service = BuildService(db.Context, emailSender: emailSender);
+        var result = await service.ConfirmAsync(booking.Id, performerId);
+
+        Assert.True(result.Success);
+        var reloaded = await db.Context.Bookings.FindAsync(booking.Id);
+        Assert.Equal(BookingStatus.Confirmed, reloaded!.Status);
+        await emailSender.Received().SendAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task ConfirmAsync_NonPendingBooking_Rejected()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (marina, spot, vessel, boatOwnerId) = await SeedBasicAsync(db.Context);
+
+        const string performerId = "performer-1";
+        await SeedUserAsync(db.Context, performerId, "performer@test.com");
+        await SeedUserAsync(db.Context, "inviter-1", "inviter@test.com");
+        await db.Context.SaveChangesAsync();
+
+        await db.Context.MarinaAdmins.AddAsync(new MarinaAdmin
+        {
+            MarinaId = marina.Id,
+            UserId = performerId,
+            InvitedAt = DateTimeOffset.UtcNow,
+            InvitedById = "inviter-1"
+        });
+
+        var booking = new Booking
+        {
+            SpotId = spot.Id,
+            VesselId = vessel.Id,
+            BoatOwnerId = boatOwnerId,
+            StartDate = new DateOnly(2027, 8, 1),
+            EndDate = new DateOnly(2027, 8, 7),
+            TotalPrice = 300m
+        };
+        booking.Confirm();
+        await db.Context.Bookings.AddAsync(booking);
+        await db.Context.SaveChangesAsync();
+
+        var service = BuildService(db.Context);
+        var result = await service.ConfirmAsync(booking.Id, performerId);
+
+        Assert.False(result.Success);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // RejectAsync
+    // ──────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task RejectAsync_PerformerNotMarinaAdmin_Forbidden()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (_, spot, vessel, boatOwnerId) = await SeedBasicAsync(db.Context);
+
+        var booking = new Booking
+        {
+            SpotId = spot.Id,
+            VesselId = vessel.Id,
+            BoatOwnerId = boatOwnerId,
+            StartDate = new DateOnly(2027, 8, 1),
+            EndDate = new DateOnly(2027, 8, 7),
+            TotalPrice = 300m
+        };
+        await db.Context.Bookings.AddAsync(booking);
+        await db.Context.SaveChangesAsync();
+
+        var service = BuildService(db.Context);
+        var result = await service.RejectAsync(booking.Id, "non-admin-user");
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("Forbidden", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task RejectAsync_MarinaAdmin_CancelsAndEmailsBoatOwner()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (marina, spot, vessel, boatOwnerId) = await SeedBasicAsync(db.Context);
+
+        const string performerId = "performer-1";
+        await SeedUserAsync(db.Context, performerId, "performer@test.com");
+        await SeedUserAsync(db.Context, "inviter-1", "inviter@test.com");
+        await db.Context.SaveChangesAsync();
+
+        await db.Context.MarinaAdmins.AddAsync(new MarinaAdmin
+        {
+            MarinaId = marina.Id,
+            UserId = performerId,
+            InvitedAt = DateTimeOffset.UtcNow,
+            InvitedById = "inviter-1"
+        });
+
+        var booking = new Booking
+        {
+            SpotId = spot.Id,
+            VesselId = vessel.Id,
+            BoatOwnerId = boatOwnerId,
+            StartDate = new DateOnly(2027, 8, 1),
+            EndDate = new DateOnly(2027, 8, 7),
+            TotalPrice = 300m
+        };
+        await db.Context.Bookings.AddAsync(booking);
+        await db.Context.SaveChangesAsync();
+
+        var emailSender = Substitute.For<IEmailSender>();
+        var service = BuildService(db.Context, emailSender: emailSender);
+        var result = await service.RejectAsync(booking.Id, performerId);
+
+        Assert.True(result.Success);
+        var reloaded = await db.Context.Bookings.FindAsync(booking.Id);
+        Assert.Equal(BookingStatus.Cancelled, reloaded!.Status);
+        await emailSender.Received().SendAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // CancelAsync — additional cases
+    // ──────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task CancelAsync_UnrelatedUser_Forbidden()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (_, spot, vessel, boatOwnerId) = await SeedBasicAsync(db.Context);
+
+        var booking = new Booking
+        {
+            SpotId = spot.Id,
+            VesselId = vessel.Id,
+            BoatOwnerId = boatOwnerId,
+            StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)),
+            EndDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(10)),
+            TotalPrice = 250m
+        };
+        await db.Context.Bookings.AddAsync(booking);
+        await db.Context.SaveChangesAsync();
+
+        var service = BuildService(db.Context);
+        var result = await service.CancelAsync(booking.Id, "unrelated-user-99");
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("Forbidden", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task CancelAsync_AdminOnStartDate_Allowed()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (_, spot, vessel, boatOwnerId) = await SeedBasicAsync(db.Context);
+
+        const string adminUserId = "admin-caller-1";
+        await SeedUserAsync(db.Context, adminUserId, "admincaller@test.com");
+        await db.Context.SaveChangesAsync();
+
+        var booking = new Booking
+        {
+            SpotId = spot.Id,
+            VesselId = vessel.Id,
+            BoatOwnerId = boatOwnerId,
+            StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
+            EndDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)),
+            TotalPrice = 250m
+        };
+        booking.Confirm();
+        await db.Context.Bookings.AddAsync(booking);
+        await db.Context.SaveChangesAsync();
+
+        var adminUser = new ApplicationUser { Id = adminUserId, Email = "admincaller@test.com", UserName = "admincaller@test.com" };
+        var userManager = BuildAdminUserManager(adminUser);
+        var service = BuildService(db.Context, userManager: userManager);
+        var result = await service.CancelAsync(booking.Id, adminUserId);
+
+        Assert.True(result.Success);
+        var reloaded = await db.Context.Bookings.FindAsync(booking.Id);
+        Assert.Equal(BookingStatus.Cancelled, reloaded!.Status);
+    }
+
+    [Fact]
+    public async Task CancelAsync_AdminCompletedBooking_Rejected()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (_, spot, vessel, boatOwnerId) = await SeedBasicAsync(db.Context);
+
+        const string adminUserId = "admin-caller-1";
+        await SeedUserAsync(db.Context, adminUserId, "admincaller@test.com");
+        await db.Context.SaveChangesAsync();
+
+        var booking = new Booking
+        {
+            SpotId = spot.Id,
+            VesselId = vessel.Id,
+            BoatOwnerId = boatOwnerId,
+            StartDate = new DateOnly(2027, 1, 1),
+            EndDate = new DateOnly(2027, 1, 7),
+            TotalPrice = 250m
+        };
+        booking.Complete();
+        await db.Context.Bookings.AddAsync(booking);
+        await db.Context.SaveChangesAsync();
+
+        var adminUser = new ApplicationUser { Id = adminUserId, Email = "admincaller@test.com", UserName = "admincaller@test.com" };
+        var userManager = BuildAdminUserManager(adminUser);
+        var service = BuildService(db.Context, userManager: userManager);
+        var result = await service.CancelAsync(booking.Id, adminUserId);
+
+        Assert.False(result.Success);
+    }
+
+    [Fact]
+    public async Task CancelAsync_AlreadyCancelledBooking_Rejected()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (_, spot, vessel, boatOwnerId) = await SeedBasicAsync(db.Context);
+
+        var booking = new Booking
+        {
+            SpotId = spot.Id,
+            VesselId = vessel.Id,
+            BoatOwnerId = boatOwnerId,
+            StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)),
+            EndDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(10)),
+            TotalPrice = 250m
+        };
+        booking.Cancel();
+        await db.Context.Bookings.AddAsync(booking);
+        await db.Context.SaveChangesAsync();
+
+        var service = BuildService(db.Context);
+        var result = await service.CancelAsync(booking.Id, boatOwnerId);
+
+        Assert.False(result.Success);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // AutoActionAsync
+    // ──────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task AutoActionAsync_AutoApprove_ConfirmsTimedOutPending()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (_, spot, vessel, boatOwnerId) = await SeedBasicAsync(db.Context);
+
+        var settings = await new AdminSettingsRepository(db.Context).GetAsync();
+        settings.UpdateSettings(AutoActionType.AutoApprove, 0);
+        await new AdminSettingsRepository(db.Context).UpdateAsync(settings);
+
+        var booking = new Booking
+        {
+            SpotId = spot.Id,
+            VesselId = vessel.Id,
+            BoatOwnerId = boatOwnerId,
+            StartDate = new DateOnly(2027, 9, 1),
+            EndDate = new DateOnly(2027, 9, 7),
+            TotalPrice = 300m
+        };
+        await db.Context.Bookings.AddAsync(booking);
+        await db.Context.SaveChangesAsync();
+
+        var service = BuildService(db.Context);
+        await service.AutoActionAsync();
+
+        var reloaded = await db.Context.Bookings.FindAsync(booking.Id);
+        Assert.Equal(BookingStatus.Confirmed, reloaded!.Status);
+    }
+
+    [Fact]
+    public async Task AutoActionAsync_AutoReject_CancelsTimedOutPending()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (_, spot, vessel, boatOwnerId) = await SeedBasicAsync(db.Context);
+
+        var settings = await new AdminSettingsRepository(db.Context).GetAsync();
+        settings.UpdateSettings(AutoActionType.AutoReject, 0);
+        await new AdminSettingsRepository(db.Context).UpdateAsync(settings);
+
+        var booking = new Booking
+        {
+            SpotId = spot.Id,
+            VesselId = vessel.Id,
+            BoatOwnerId = boatOwnerId,
+            StartDate = new DateOnly(2027, 9, 1),
+            EndDate = new DateOnly(2027, 9, 7),
+            TotalPrice = 300m
+        };
+        await db.Context.Bookings.AddAsync(booking);
+        await db.Context.SaveChangesAsync();
+
+        var service = BuildService(db.Context);
+        await service.AutoActionAsync();
+
+        var reloaded = await db.Context.Bookings.FindAsync(booking.Id);
+        Assert.Equal(BookingStatus.Cancelled, reloaded!.Status);
+    }
+
+    [Fact]
+    public async Task AutoActionAsync_WithinTimeout_LeavesPending()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (_, spot, vessel, boatOwnerId) = await SeedBasicAsync(db.Context);
+
+        var settings = await new AdminSettingsRepository(db.Context).GetAsync();
+        settings.UpdateSettings(AutoActionType.AutoApprove, 24);
+        await new AdminSettingsRepository(db.Context).UpdateAsync(settings);
+
+        var booking = new Booking
+        {
+            SpotId = spot.Id,
+            VesselId = vessel.Id,
+            BoatOwnerId = boatOwnerId,
+            StartDate = new DateOnly(2027, 9, 1),
+            EndDate = new DateOnly(2027, 9, 7),
+            TotalPrice = 300m
+        };
+        await db.Context.Bookings.AddAsync(booking);
+        await db.Context.SaveChangesAsync();
+
+        var service = BuildService(db.Context);
+        await service.AutoActionAsync();
+
+        var reloaded = await db.Context.Bookings.FindAsync(booking.Id);
+        Assert.Equal(BookingStatus.Pending, reloaded!.Status);
+    }
+
+    [Fact]
+    public async Task AutoActionAsync_IgnoresNonPendingBookings()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (_, spot, vessel, boatOwnerId) = await SeedBasicAsync(db.Context);
+
+        var settings = await new AdminSettingsRepository(db.Context).GetAsync();
+        settings.UpdateSettings(AutoActionType.AutoReject, 0);
+        await new AdminSettingsRepository(db.Context).UpdateAsync(settings);
+
+        var booking = new Booking
+        {
+            SpotId = spot.Id,
+            VesselId = vessel.Id,
+            BoatOwnerId = boatOwnerId,
+            StartDate = new DateOnly(2027, 9, 1),
+            EndDate = new DateOnly(2027, 9, 7),
+            TotalPrice = 300m
+        };
+        booking.Confirm();
+        await db.Context.Bookings.AddAsync(booking);
+        await db.Context.SaveChangesAsync();
+
+        var service = BuildService(db.Context);
+        await service.AutoActionAsync();
+
+        var reloaded = await db.Context.Bookings.FindAsync(booking.Id);
+        Assert.Equal(BookingStatus.Confirmed, reloaded!.Status);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // CompleteOverdueAsync
+    // ──────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task CompleteOverdueAsync_OverdueConfirmed_TransitionsToCompleted()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (_, spot, vessel, boatOwnerId) = await SeedBasicAsync(db.Context);
+
+        var yesterday = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1));
+        var twoDaysAgo = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-2));
+
+        var booking = new Booking
+        {
+            SpotId = spot.Id,
+            VesselId = vessel.Id,
+            BoatOwnerId = boatOwnerId,
+            StartDate = twoDaysAgo,
+            EndDate = yesterday,
+            TotalPrice = 100m
+        };
+        booking.Confirm();
+        await db.Context.Bookings.AddAsync(booking);
+        await db.Context.SaveChangesAsync();
+
+        var service = BuildService(db.Context);
+        await service.CompleteOverdueAsync();
+
+        var reloaded = await db.Context.Bookings.FindAsync(booking.Id);
+        Assert.Equal(BookingStatus.Completed, reloaded!.Status);
+    }
+
+    [Fact]
+    public async Task CompleteOverdueAsync_FutureConfirmed_Unchanged()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (_, spot, vessel, boatOwnerId) = await SeedBasicAsync(db.Context);
+
+        var booking = new Booking
+        {
+            SpotId = spot.Id,
+            VesselId = vessel.Id,
+            BoatOwnerId = boatOwnerId,
+            StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(3)),
+            EndDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(8)),
+            TotalPrice = 250m
+        };
+        booking.Confirm();
+        await db.Context.Bookings.AddAsync(booking);
+        await db.Context.SaveChangesAsync();
+
+        var service = BuildService(db.Context);
+        await service.CompleteOverdueAsync();
+
+        var reloaded = await db.Context.Bookings.FindAsync(booking.Id);
+        Assert.Equal(BookingStatus.Confirmed, reloaded!.Status);
+    }
+
+    [Fact]
+    public async Task CompleteOverdueAsync_NonConfirmed_Unchanged()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (_, spot, vessel, boatOwnerId) = await SeedBasicAsync(db.Context);
+
+        var yesterday = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1));
+        var twoDaysAgo = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-2));
+
+        var booking = new Booking
+        {
+            SpotId = spot.Id,
+            VesselId = vessel.Id,
+            BoatOwnerId = boatOwnerId,
+            StartDate = twoDaysAgo,
+            EndDate = yesterday,
+            TotalPrice = 100m
+        };
+        await db.Context.Bookings.AddAsync(booking);
+        await db.Context.SaveChangesAsync();
+
+        var service = BuildService(db.Context);
+        await service.CompleteOverdueAsync();
+
+        var reloaded = await db.Context.Bookings.FindAsync(booking.Id);
+        Assert.Equal(BookingStatus.Pending, reloaded!.Status);
+    }
+
+    [Fact]
+    public async Task CompleteOverdueAsync_SendsReviewInviteEmails()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (marina, spot, vessel, boatOwnerId) = await SeedBasicAsync(db.Context);
+
+        const string marinaAdminId = "ma-1";
+        const string inviterId = "inviter-1";
+        await SeedUserAsync(db.Context, marinaAdminId, "marinaadmin@test.com");
+        await SeedUserAsync(db.Context, inviterId, "inviter@test.com");
+        await db.Context.SaveChangesAsync();
+
+        await db.Context.MarinaAdmins.AddAsync(new MarinaAdmin
+        {
+            MarinaId = marina.Id,
+            UserId = marinaAdminId,
+            InvitedAt = DateTimeOffset.UtcNow,
+            InvitedById = inviterId
+        });
+
+        var yesterday = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1));
+        var twoDaysAgo = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-2));
+
+        var booking = new Booking
+        {
+            SpotId = spot.Id,
+            VesselId = vessel.Id,
+            BoatOwnerId = boatOwnerId,
+            StartDate = twoDaysAgo,
+            EndDate = yesterday,
+            TotalPrice = 100m
+        };
+        booking.Confirm();
+        await db.Context.Bookings.AddAsync(booking);
+        await db.Context.SaveChangesAsync();
+
+        var boatOwnerUser = new ApplicationUser { Id = boatOwnerId, Email = "owner@test.com", UserName = "owner@test.com" };
+        var marinaAdminUser = new ApplicationUser { Id = marinaAdminId, Email = "marinaadmin@test.com", UserName = "marinaadmin@test.com" };
+
+        var store = Substitute.For<IUserStore<ApplicationUser>>();
+        var userManager = Substitute.For<UserManager<ApplicationUser>>(store, null, null, null, null, null, null, null, null);
+        userManager.FindByIdAsync(boatOwnerId).Returns(Task.FromResult<ApplicationUser?>(boatOwnerUser));
+        userManager.FindByIdAsync(marinaAdminId).Returns(Task.FromResult<ApplicationUser?>(marinaAdminUser));
+        userManager.IsInRoleAsync(Arg.Any<ApplicationUser>(), Arg.Any<string>()).Returns(Task.FromResult(false));
+
+        var emailSender = Substitute.For<IEmailSender>();
+        var service = BuildService(db.Context, userManager: userManager, emailSender: emailSender);
+        await service.CompleteOverdueAsync();
+
+        await emailSender.Received(2).SendAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // PreviewPriceAsync
+    // ──────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task PreviewPriceAsync_ReturnsResolvedPricingWithoutPersisting()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (_, spot, vessel, _) = await SeedBasicAsync(db.Context, spotPricePerDay: 50m);
+
+        var service = BuildService(db.Context);
+        var preview = await service.PreviewPriceAsync(spot.Id, vessel.Id, new DateOnly(2027, 7, 1), new DateOnly(2027, 7, 6));
+
+        Assert.Equal(50m, preview.PricePerDay);
+        Assert.Equal(250m, preview.TotalPrice);
+        Assert.Empty(db.Context.Bookings);
+    }
+
+    [Fact]
+    public async Task PreviewPriceAsync_SeasonalRule_UsesRulePrice()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (_, spot, vessel, _) = await SeedBasicAsync(db.Context, spotPricePerDay: 50m);
+
+        var rule = new SpotSeasonalRule("Summer", new DateOnly(2027, 6, 1), new DateOnly(2027, 8, 31), 100m, 1, spot.Id);
+        await db.Context.SpotSeasonalRules.AddAsync(rule);
+        await db.Context.SaveChangesAsync();
+
+        var service = BuildService(db.Context);
+        var preview = await service.PreviewPriceAsync(spot.Id, vessel.Id, new DateOnly(2027, 7, 1), new DateOnly(2027, 7, 6));
+
+        Assert.Equal(100m, preview.PricePerDay);
+        Assert.Equal(500m, preview.TotalPrice);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // Helpers
+    // ──────────────────────────────────────────────────────────────────────
+
+    private static UserManager<ApplicationUser> BuildAdminUserManager(ApplicationUser adminUser)
+    {
+        var store = Substitute.For<IUserStore<ApplicationUser>>();
+        var mgr = Substitute.For<UserManager<ApplicationUser>>(store, null, null, null, null, null, null, null, null);
+        mgr.FindByIdAsync(adminUser.Id).Returns(Task.FromResult<ApplicationUser?>(adminUser));
+        mgr.FindByIdAsync(Arg.Is<string>(id => id != adminUser.Id)).Returns(Task.FromResult<ApplicationUser?>(null));
+        mgr.IsInRoleAsync(Arg.Any<ApplicationUser>(), "Admin").Returns(Task.FromResult(true));
+        mgr.IsInRoleAsync(Arg.Any<ApplicationUser>(), Arg.Is<string>(r => r != "Admin")).Returns(Task.FromResult(false));
+        return mgr;
+    }
 }
