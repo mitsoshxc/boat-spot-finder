@@ -57,3 +57,4 @@ The tech lead reads `PLAN.md` to write `/dev` briefs. Dev reads `PLAN.md` to und
 | [`docs/workflow.md`](docs/workflow.md) | Team structure, mandatory step sequence, skills, branch strategy, doc cadence |
 | [`docs/features/booking-lifecycle.md`](docs/features/booking-lifecycle.md) | Booking status flow, pricing cascade, role-resolution in CancelAsync, Hangfire recurring jobs, email failure policy |
 | [`docs/features/reviews-and-ratings.md`](docs/features/reviews-and-ratings.md) | Bidirectional post-stay reviews, eligibility rules, rating recompute, ES sync, review-invite email fan-out |
+| [`docs/features/admin-and-invitations.md`](docs/features/admin-and-invitations.md) | Admin management surface (AdminController actions), invite-to-PlaceOwner lifecycle, RevokeAdmin role-strip logic |

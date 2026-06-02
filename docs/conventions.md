@@ -226,7 +226,7 @@ These rules apply to all `*SearchService` implementations (`IMarinaSearchService
 
 - ES sync always happens **after** a DB write succeeds. Never sync before the DB write.
 - On ES exception, log and continue — the DB is the source of truth. Index drift is recovered by the startup seed on next process start.
-- In `MarinasController.Edit POST`, `IndexAsync` is called only when `marina.IsActive == true`. Inactive marinas are not indexed. Admin-side deactivation/reactivation sync (including `DeleteAsync` on deactivate) is deferred to Phase 6 task 6.2.
+- In `MarinasController.Edit POST`, `IndexAsync` is called only when `marina.IsActive == true`. Inactive marinas are not indexed. Admin-side sync is implemented in `AdminController` (Phase 6): `EditMarina POST` calls `IndexAsync` only when the marina is active; `ToggleMarinaActive POST` calls `DeleteAsync` on deactivation and `IndexAsync` on reactivation; `CreateMarina POST` does not index (new marinas are incomplete and have no spots).
 - `IndexAsync` and `DeleteAsync` swallow exceptions internally (log + continue), so callers do not need try/catch. `ReviewService.CreateReviewAsync` wraps both `IReviewSearchService.IndexAsync` and the follow-up `IMarinaSearchService.IndexAsync` in a single `try/catch` — a single logged error covers both.
 
 ### Implementations
@@ -262,7 +262,7 @@ Enables Nginx Ingress to route `/admin/` and `/placeowner/` path prefixes to a d
 
 ## Security — Tokens
 
-Raw invite tokens are never stored in the database. Only the SHA-256 hash is stored (`Invitation.Token`). `Core/Helpers/TokenHasher.Hash(rawToken)` performs the hash. The raw token is sent in the email link only.
+Raw invite tokens are never stored in the database. Only the SHA-256 hash is stored (`Invitation.Token`). `Core/Helpers/TokenHasher.Hash(rawToken)` performs the hash. The raw token is sent in the email link only. Token generation (a `Guid.NewGuid().ToString("N")` raw value) happens in `AdminController.InviteAdmin POST`; token consumption (hash lookup, expiry check, `MarkUsedAsync`) happens in `AccountController.InviteRegister`.
 
 ---
 
