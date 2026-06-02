@@ -8,6 +8,7 @@
         <span class="workspace__eyebrow">Admin &middot; Harbour</span>
         <h1 class="workspace__title">All marinas</h1>
         <p class="workspace__lede">Every marina, active and inactive. Open a marina's layout, spots, admins, or invitations.</p>
+        <a class="btn btn--primary" href="/admin/marinas/create">Create marina</a>
     </header>
 
     @if (TempData["Success"] is string successMsg)
@@ -78,10 +79,15 @@
                             </td>
                             <td class="ledger__cell ledger__cell--actions" data-label="Actions">
                                 <span class="ledger__actions">
+                                    <a class="btn btn--ghost btn--sm" href="/admin/marinas/@m.Id/edit">Edit</a>
                                     <a class="btn btn--ghost btn--sm" href="/admin/marinas/@m.Id/layout">Layout</a>
                                     <a class="btn btn--ghost btn--sm" href="/admin/marinas/@m.Id/spots">Spots</a>
                                     <a class="btn btn--ghost btn--sm" href="/admin/marinas/@m.Id/admins">Admins</a>
                                     <a class="btn btn--ghost btn--sm" href="/admin/marinas/@m.Id/invitations">Invites</a>
+                                    <form method="post" action="/admin/marinas/@m.Id/toggle-active" onsubmit="return confirm('@(m.IsActive ? "Deactivate this marina? It will be removed from search." : "Reactivate this marina?")');" style="display:inline;">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn--ghost btn--sm">@(m.IsActive ? "Deactivate" : "Activate")</button>
+                                    </form>
                                 </span>
                             </td>
                         </tr>

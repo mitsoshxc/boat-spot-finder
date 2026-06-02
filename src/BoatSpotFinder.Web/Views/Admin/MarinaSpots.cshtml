@@ -43,6 +43,7 @@
                         <th class="ledger__th" scope="col">Dimensions</th>
                         <th class="ledger__th ledger__th--num" scope="col">Price / Day</th>
                         <th class="ledger__th" scope="col">Active</th>
+                        <th class="ledger__th ledger__th--actions" scope="col">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="ledger__body">
@@ -74,6 +75,14 @@
                                 {
                                     <span class="pill pill--inactive"><span class="pill__dot" aria-hidden="true"></span>Inactive</span>
                                 }
+                            </td>
+                            <td class="ledger__cell ledger__cell--actions" data-label="Actions">
+                                <span class="ledger__actions">
+                                    <form method="post" action="/admin/spots/@s.Id/toggle-active" onsubmit="return confirm('@(s.IsActive ? "Deactivate this spot?" : "Reactivate this spot?")');" style="display:inline;">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn--ghost btn--sm">@(s.IsActive ? "Deactivate" : "Activate")</button>
+                                    </form>
+                                </span>
                             </td>
                         </tr>
                     }

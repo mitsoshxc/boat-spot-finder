@@ -1,0 +1,54 @@
+@model MarinaCreateViewModel
+@{
+    ViewData["Title"] = "Create marina";
+}
+
+<section class="workspace workspace--narrow">
+    <header class="workspace__head">
+        <span class="workspace__mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="0.9">
+                <circle cx="16" cy="7" r="2.5" />
+                <line x1="16" y1="9.5" x2="16" y2="28" />
+                <line x1="12" y1="13" x2="20" y2="13" />
+                <path d="M6 21 C 6 25 11 28 16 28 C 21 28 26 25 26 21" />
+                <line x1="6" y1="21" x2="3" y2="21" />
+                <line x1="26" y1="21" x2="29" y2="21" />
+            </svg>
+        </span>
+        <span class="workspace__eyebrow">Admin &middot; Harbour</span>
+        <h1 class="workspace__title">Create marina</h1>
+        <p class="workspace__lede">Register a new marina with its name and region. Once created, you&rsquo;ll be taken straight to invite a place owner to manage it.</p>
+    </header>
+
+    <article class="plate">
+        <form asp-action="CreateMarina" method="post" class="plate-form" novalidate>
+            <div asp-validation-summary="ModelOnly" class="auth-errors"></div>
+
+            <section class="plate-section">
+                <h2 class="plate-section__title">
+                    <span class="plate-section__numeral">I</span>
+                    Identity
+                </h2>
+                <div class="plate-section__body">
+                    <div class="field">
+                        <label asp-for="Name" class="field__label">Name</label>
+                        <input asp-for="Name" class="field__input" autocomplete="off" />
+                        <span asp-validation-for="Name" class="field__error"></span>
+                    </div>
+
+                    <div class="field">
+                        <label asp-for="Region" class="field__label">Region</label>
+                        <input asp-for="Region" class="field__input" autocomplete="off" />
+                        <span asp-validation-for="Region" class="field__error"></span>
+                        <span class="field__meta">You can fill in the full address, pricing, and coordinates after creation.</span>
+                    </div>
+                </div>
+            </section>
+
+            <div class="plate-form__actions">
+                <a class="link--quiet" href="/admin/marinas">&larr; All marinas</a>
+                <button type="submit" class="btn btn--primary">Create marina</button>
+            </div>
+        </form>
+    </article>
+</section>

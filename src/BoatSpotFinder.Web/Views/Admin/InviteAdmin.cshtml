@@ -1,0 +1,45 @@
+@model InviteAdminViewModel
+@{
+    ViewData["Title"] = "Invite a place owner";
+}
+
+<section class="workspace workspace--narrow">
+    <header class="workspace__head">
+        <span class="workspace__mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="0.9">
+                <rect x="5" y="9" width="22" height="15" rx="1.5" />
+                <path d="M5 11 L16 19 L27 11" />
+            </svg>
+        </span>
+        <span class="workspace__eyebrow">Admin &middot; Invitations</span>
+        <h1 class="workspace__title">Invite a place owner</h1>
+        <p class="workspace__lede">We&rsquo;ll email a secure invitation link that stays valid for 48 hours. The recipient sets a password and is registered as a place owner for this marina.</p>
+    </header>
+
+    <article class="plate">
+        <form asp-action="InviteAdmin" method="post" class="plate-form" novalidate>
+            <input type="hidden" asp-for="MarinaId" />
+            <div asp-validation-summary="ModelOnly" class="auth-errors"></div>
+
+            <section class="plate-section">
+                <h2 class="plate-section__title">
+                    <span class="plate-section__numeral">I</span>
+                    Invitation
+                </h2>
+                <div class="plate-section__body">
+                    <div class="field">
+                        <label asp-for="Email" class="field__label">Email address</label>
+                        <input asp-for="Email" type="email" class="field__input" autocomplete="email" />
+                        <span asp-validation-for="Email" class="field__error"></span>
+                        <span class="field__meta">The invitation is tied to this address &mdash; the recipient registers with the same email.</span>
+                    </div>
+                </div>
+            </section>
+
+            <div class="plate-form__actions">
+                <a class="link--quiet" href="/admin/marinas/@Model.MarinaId/invitations">&larr; Invitations</a>
+                <button type="submit" class="btn btn--primary">Send invitation</button>
+            </div>
+        </form>
+    </article>
+</section>

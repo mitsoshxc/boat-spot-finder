@@ -1,9 +1,13 @@
 using BoatSpotFinder.Core.Entities;
+using BoatSpotFinder.Core.Helpers;
 using BoatSpotFinder.Core.Interfaces;
+using BoatSpotFinder.Core.Settings;
 using BoatSpotFinder.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using System.Security.Claims;
 
 namespace BoatSpotFinder.Web.Controllers;
 
@@ -18,6 +22,10 @@ public class AdminController : Controller
     private readonly ISpotRepository _spotRepository;
     private readonly IInvitationRepository _invitationRepository;
     private readonly IAdminSettingsRepository _adminSettingsRepository;
+    private readonly IMarinaSearchService _marinaSearchService;
+    private readonly IEmailSender _emailSender;
+    private readonly IBookingService _bookingService;
+    private readonly AppSettings _appSettings;
 
     public AdminController(
         UserManager<ApplicationUser> userManager,
@@ -26,7 +34,11 @@ public class AdminController : Controller
         IMarinaAdminRepository marinaAdminRepository,
         ISpotRepository spotRepository,
         IInvitationRepository invitationRepository,
-        IAdminSettingsRepository adminSettingsRepository)
+        IAdminSettingsRepository adminSettingsRepository,
+        IMarinaSearchService marinaSearchService,
+        IEmailSender emailSender,
+        IBookingService bookingService,
+        IOptions<AppSettings> appSettings)
     {
         _userManager = userManager;
         _bookingRepository = bookingRepository;
@@ -35,6 +47,10 @@ public class AdminController : Controller
         _spotRepository = spotRepository;
         _invitationRepository = invitationRepository;
         _adminSettingsRepository = adminSettingsRepository;
+        _marinaSearchService = marinaSearchService;
+        _emailSender = emailSender;
+        _bookingService = bookingService;
+        _appSettings = appSettings.Value;
     }
 
     [HttpGet("dashboard")]
@@ -168,6 +184,7 @@ public class AdminController : Controller
         }
 
         ViewData["MarinaName"] = marina.Name;
+        ViewData["MarinaId"] = marinaId;
 
         var marinaAdmins = await _marinaAdminRepository.GetByMarinaIdAsync(marinaId);
         var viewModels = new List<MarinaAdminListItemViewModel>();
@@ -200,6 +217,7 @@ public class AdminController : Controller
         }
 
         ViewData["MarinaName"] = marina.Name;
+        ViewData["MarinaId"] = marinaId;
 
         var invitations = await _invitationRepository.GetByMarinaIdAsync(marinaId);
         var viewModels = new List<InvitationListItemViewModel>();
@@ -270,5 +288,243 @@ public class AdminController : Controller
             AutoActionTimeoutHours = settings.AutoActionTimeoutHours
         };
         return View(vm);
+    }
+
+    [HttpPost("settings")]
+    public async Task<IActionResult> Settings(AdminSettingsViewModel model)
+    {
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        var settings = await _adminSettingsRepository.GetAsync();
+        settings.UpdateSettings(model.AutoActionType, model.AutoActionTimeoutHours);
+        await _adminSettingsRepository.UpdateAsync(settings);
+        TempData["Success"] = "Settings saved.";
+        return RedirectToAction(nameof(Settings));
+    }
+
+    [HttpGet("marinas/create")]
+    public IActionResult CreateMarina()
+    {
+        return View(new MarinaCreateViewModel());
+    }
+
+    [HttpPost("marinas/create")]
+    public async Task<IActionResult> CreateMarina(MarinaCreateViewModel model)
+    {
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        var marina = new Marina(
+            name: model.Name,
+            description: "",
+            address: "",
+            region: model.Region,
+            phone: "",
+            latitude: 0,
+            longitude: 0,
+            defaultPricePerDay: 0);
+
+        await _marinaRepository.AddAsync(marina);
+        return RedirectToAction(nameof(InviteAdmin), new { marinaId = marina.Id });
+    }
+
+    [HttpGet("marinas/{marinaId:guid}/edit")]
+    public async Task<IActionResult> EditMarina(Guid marinaId)
+    {
+        var marina = await _marinaRepository.GetByIdAsync(marinaId);
+        if (marina == null)
+        {
+            return NotFound();
+        }
+
+        var model = new MarinaEditViewModel
+        {
+            Id = marina.Id,
+            Name = marina.Name,
+            Description = marina.Description,
+            Address = marina.Address,
+            Region = marina.Region,
+            Phone = marina.Phone,
+            Latitude = marina.Latitude,
+            Longitude = marina.Longitude,
+            DefaultPricePerDay = marina.DefaultPricePerDay
+        };
+        return View(model);
+    }
+
+    [HttpPost("marinas/{marinaId:guid}/edit")]
+    public async Task<IActionResult> EditMarina(Guid marinaId, MarinaEditViewModel model)
+    {
+        if (marinaId != model.Id)
+        {
+            return BadRequest();
+        }
+
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        var marina = await _marinaRepository.GetByIdAsync(marinaId);
+        if (marina == null)
+        {
+            return NotFound();
+        }
+
+        marina.UpdateDetails(
+            model.Name,
+            model.Description,
+            model.Address,
+            model.Region,
+            model.Phone,
+            model.Latitude,
+            model.Longitude,
+            model.DefaultPricePerDay,
+            marina.LayoutWidth,
+            marina.LayoutHeight);
+
+        await _marinaRepository.UpdateAsync(marina);
+
+        if (marina.IsActive)
+        {
+            await _marinaSearchService.IndexAsync(marina);
+        }
+
+        TempData["Success"] = "Marina updated.";
+        return RedirectToAction(nameof(EditMarina), new { marinaId = marina.Id });
+    }
+
+    [HttpPost("marinas/{marinaId:guid}/toggle-active")]
+    public async Task<IActionResult> ToggleMarinaActive(Guid marinaId)
+    {
+        var marina = await _marinaRepository.GetByIdAsync(marinaId);
+        if (marina == null)
+        {
+            return NotFound();
+        }
+
+        if (marina.IsActive)
+        {
+            marina.Deactivate();
+            await _marinaSearchService.DeleteAsync(marina.Id);
+        }
+        else
+        {
+            marina.Activate();
+            await _marinaSearchService.IndexAsync(marina);
+        }
+
+        await _marinaRepository.UpdateAsync(marina);
+        return RedirectToAction(nameof(AllMarinas));
+    }
+
+    [HttpPost("spots/{spotId:guid}/toggle-active")]
+    public async Task<IActionResult> ToggleSpotActive(Guid spotId)
+    {
+        var spot = await _spotRepository.GetByIdAsync(spotId);
+        if (spot == null)
+        {
+            return NotFound();
+        }
+
+        if (spot.IsActive)
+        {
+            spot.Deactivate();
+        }
+        else
+        {
+            spot.Activate();
+        }
+
+        await _spotRepository.UpdateAsync(spot);
+        return RedirectToAction(nameof(MarinaSpots), new { marinaId = spot.MarinaId });
+    }
+
+    [HttpGet("marinas/{marinaId:guid}/invite")]
+    public IActionResult InviteAdmin(Guid marinaId)
+    {
+        return View(new InviteAdminViewModel { MarinaId = marinaId });
+    }
+
+    [HttpPost("marinas/{marinaId:guid}/invite")]
+    public async Task<IActionResult> InviteAdmin(Guid marinaId, InviteAdminViewModel model)
+    {
+        if (marinaId != model.MarinaId)
+        {
+            return BadRequest();
+        }
+
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        var rawToken = Guid.NewGuid().ToString("N");
+        var invitation = new Invitation
+        {
+            Email = model.Email,
+            Token = TokenHasher.Hash(rawToken),
+            MarinaId = model.MarinaId,
+            ExpiresAt = DateTimeOffset.UtcNow.AddHours(48),
+            InvitedById = User.FindFirstValue(ClaimTypes.NameIdentifier)!
+        };
+
+        await _invitationRepository.AddAsync(invitation);
+
+        var link = $"{_appSettings.BaseUrl}/account/invite-register?token={rawToken}";
+        await _emailSender.SendAsync(
+            model.Email,
+            "You're invited to manage a marina",
+            $"You have been invited to manage a marina on Boat Spot Finder. Click <a href='{link}'>here</a> to set up your account. This link expires in 48 hours.");
+
+        return RedirectToAction(nameof(MarinaInvitations), new { marinaId = model.MarinaId });
+    }
+
+    [HttpPost("marinas/{marinaId:guid}/admins/{userId}/revoke")]
+    public async Task<IActionResult> RevokeAdmin(Guid marinaId, string userId)
+    {
+        var admins = await _marinaAdminRepository.GetByMarinaIdAsync(marinaId);
+        var record = admins.FirstOrDefault(a => a.UserId == userId);
+        if (record == null)
+        {
+            return NotFound();
+        }
+
+        await _marinaAdminRepository.RemoveAsync(record);
+
+        var remaining = await _marinaAdminRepository.GetByUserIdAsync(userId);
+        if (remaining.Count == 0)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user != null)
+            {
+                await _userManager.RemoveFromRoleAsync(user, "PlaceOwner");
+            }
+        }
+
+        return RedirectToAction(nameof(MarinaAdmins), new { marinaId });
+    }
+
+    [HttpPost("bookings/{bookingId:guid}/cancel")]
+    public async Task<IActionResult> CancelBooking(Guid bookingId)
+    {
+        var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var result = await _bookingService.CancelAsync(bookingId, currentUserId);
+
+        if (!result.Success)
+        {
+            TempData["Error"] = string.Join(" ", result.Errors);
+        }
+        else
+        {
+            TempData["Success"] = "Booking cancelled.";
+        }
+
+        return RedirectToAction(nameof(AllBookings));
     }
 }

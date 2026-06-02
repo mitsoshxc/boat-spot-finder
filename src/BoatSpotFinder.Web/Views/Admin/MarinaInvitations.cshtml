@@ -2,6 +2,7 @@
 @{
     ViewData["Title"] = "Marina Invitations";
     var marinaName = ViewData["MarinaName"] as string;
+    var marinaId = (Guid)ViewData["MarinaId"]!;
 }
 
 <section class="workspace">
@@ -18,6 +19,7 @@
                 <text>Place-owner invitations sent for this marina.</text>
             }
         </p>
+        <a class="btn btn--primary" href="/admin/marinas/@marinaId/invite">Invite place owner</a>
     </header>
 
     @if (!Model.Any())

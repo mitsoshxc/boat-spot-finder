@@ -2,6 +2,7 @@
 @{
     ViewData["Title"] = "Marina Admins";
     var marinaName = ViewData["MarinaName"] as string;
+    var marinaId = (Guid)ViewData["MarinaId"]!;
 }
 
 <section class="workspace">
@@ -42,6 +43,7 @@
                         <th class="ledger__th" scope="col">Email</th>
                         <th class="ledger__th" scope="col">Invited At</th>
                         <th class="ledger__th" scope="col">Invited By</th>
+                        <th class="ledger__th ledger__th--actions" scope="col">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="ledger__body">
@@ -56,6 +58,14 @@
                             </td>
                             <td class="ledger__cell" data-label="Invited By">
                                 <span class="ledger__value">@a.InvitedBy</span>
+                            </td>
+                            <td class="ledger__cell ledger__cell--actions" data-label="Actions">
+                                <span class="ledger__actions">
+                                    <form method="post" action="/admin/marinas/@marinaId/admins/@a.UserId/revoke" onsubmit="return confirm('Revoke this place owner&rsquo;s access to the marina?');" style="display:inline;">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn--danger btn--sm">Revoke</button>
+                                    </form>
+                                </span>
                             </td>
                         </tr>
                     }
