@@ -1,0 +1,103 @@
+@model MarinaLayoutViewModel
+@{
+    ViewData["Title"] = $"Layout · {Model.Name}";
+}
+
+<section class="workspace workspace--editor">
+    <header class="workspace__head workspace__head--editor">
+        <div class="workspace__head-titles">
+            <span class="workspace__mark" aria-hidden="true">
+                <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="0.9">
+                    <rect x="5" y="7" width="22" height="18" rx="1" />
+                    <path d="M5 13 H27 M11 7 V25 M19 13 V25" opacity="0.7" />
+                    <circle cx="8" cy="10" r="0.8" fill="currentColor" stroke="none" />
+                </svg>
+            </span>
+            <span class="workspace__eyebrow">Admin &middot; Layout</span>
+            <h1 class="workspace__title">@Model.Name</h1>
+            <p class="workspace__lede">Read-only placement view. Spot positions and status are shown exactly as configured by the place owner.</p>
+        </div>
+        <div class="toolbar">
+            <a class="btn btn--ghost btn--sm" href="/admin/marinas">&larr; All marinas</a>
+            <a class="btn btn--ghost btn--sm" href="/admin/marinas/@Model.Id/spots">Manage spots</a>
+        </div>
+    </header>
+
+    <div class="editor-grid">
+        <article class="canvas-shell">
+            <header class="canvas-shell__caption">
+                <span class="canvas-shell__caption-label">Plate</span>
+                <span class="canvas-shell__caption-meta">@(Model.LayoutWidth) &times; @(Model.LayoutHeight) <span class="canvas-shell__caption-unit">u</span></span>
+            </header>
+            <div class="canvas-shell__frame">
+                <span class="canvas-shell__corner canvas-shell__corner--tl" aria-hidden="true"></span>
+                <span class="canvas-shell__corner canvas-shell__corner--tr" aria-hidden="true"></span>
+                <span class="canvas-shell__corner canvas-shell__corner--bl" aria-hidden="true"></span>
+                <span class="canvas-shell__corner canvas-shell__corner--br" aria-hidden="true"></span>
+                <div class="canvas-shell__viewport">
+                    <div id="canvas-container"
+                         data-marina-id="@Model.Id"
+                         data-spot-statuses-url="@Url.Action("SpotStatuses", "Browse", new { id = Model.Id })"
+                         style="width:@(Model.LayoutWidth)px; height:@(Model.LayoutHeight)px;">
+                        @if (string.IsNullOrEmpty(Model.BackgroundImagePath))
+                        {
+                            <div class="canvas-placeholder">
+                                <span class="vignette vignette--muted" aria-hidden="true">
+                                    <svg viewBox="0 0 64 48" fill="none" stroke="currentColor" stroke-width="0.7">
+                                        <rect x="6" y="6" width="52" height="36" rx="1" />
+                                        <circle cx="22" cy="20" r="3" />
+                                        <path d="M6 36 L24 22 L36 32 L58 14" />
+                                    </svg>
+                                </span>
+                                <p class="canvas-placeholder__text">No background image set for this marina.</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <aside class="spot-sidebar">
+            <header class="spot-sidebar__head">
+                <h2 class="spot-sidebar__title">Spots</h2>
+                <span class="spot-sidebar__count">@Model.Spots.Count</span>
+            </header>
+
+            <div class="canvas-legend" aria-label="Canvas status key">
+                <span class="canvas-legend__item">
+                    <span class="canvas-legend__swatch canvas-legend__swatch--free" aria-hidden="true"></span>Free
+                </span>
+                <span class="canvas-legend__item">
+                    <span class="canvas-legend__swatch canvas-legend__swatch--unavailable" aria-hidden="true"></span>Unavailable
+                </span>
+            </div>
+
+            @if (!Model.Spots.Any())
+            {
+                <p class="spot-sidebar__empty">This marina has no spots yet.</p>
+            }
+            else
+            {
+                <ul class="spot-sidebar__list">
+                    @foreach (var s in Model.Spots)
+                    {
+                        var unplaced = s.CanvasX == null || s.CanvasY == null || s.CanvasW == null || s.CanvasH == null;
+                        var pillClass = unplaced ? "pill--unplaced" : (s.IsActive ? "pill--active" : "pill--inactive");
+                        var pillLabel = unplaced ? "Unplaced" : (s.IsActive ? "Active" : "Inactive");
+                        <li class="spot-sidebar__item" data-spot-id="@s.Id">
+                            <div class="spot-sidebar__row">
+                                <span class="spot-sidebar__name">@s.Name</span>
+                                <span class="pill @pillClass"><span class="pill__dot" aria-hidden="true"></span>@pillLabel</span>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            }
+        </aside>
+    </div>
+</section>
+
+@section Scripts {
+    <script src="https://unpkg.com/konva@9/konva.min.js"></script>
+    <script src="~/js/marina-viewer.js" asp-append-version="true"></script>
+}

@@ -1,0 +1,61 @@
+@model AdminSettingsViewModel
+@{
+    ViewData["Title"] = "Auto-decision policy";
+}
+
+<section class="workspace workspace--narrow">
+    <header class="workspace__head">
+        <span class="workspace__mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="0.9">
+                <circle cx="16" cy="16" r="4" />
+                <path d="M16 5 V9 M16 23 V27 M5 16 H9 M23 16 H27 M8.2 8.2 L11 11 M21 21 L23.8 23.8 M23.8 8.2 L21 11 M11 21 L8.2 23.8" />
+            </svg>
+        </span>
+        <span class="workspace__eyebrow">Admin &middot; Configuration</span>
+        <h1 class="workspace__title">Auto-decision policy</h1>
+        <p class="workspace__lede">When a place owner does not respond to a pending booking, the system automatically approves or rejects it after the timeout below.</p>
+    </header>
+
+    @if (TempData["Success"] is string successMsg)
+    {
+        <div class="notice notice--success" style="margin-bottom: 24px;">
+            <p class="notice__body">@successMsg</p>
+        </div>
+    }
+
+    <article class="plate">
+        <form asp-action="Settings" method="post" class="plate-form" novalidate>
+            <div asp-validation-summary="ModelOnly" class="auth-errors"></div>
+
+            <section class="plate-section">
+                <h2 class="plate-section__title">
+                    <span class="plate-section__numeral">I</span>
+                    Policy
+                </h2>
+                <div class="plate-section__body">
+                    <div class="field">
+                        <label asp-for="AutoActionType" class="field__label">Automatic decision</label>
+                        <select asp-for="AutoActionType" class="field__input">
+                            <option value="AutoApprove">Auto-approve</option>
+                            <option value="AutoReject">Auto-reject</option>
+                        </select>
+                        <span asp-validation-for="AutoActionType" class="field__error"></span>
+                        <span class="field__meta">Auto-approve confirms unanswered pending bookings; auto-reject cancels them.</span>
+                    </div>
+
+                    <div class="field">
+                        <label asp-for="AutoActionTimeoutHours" class="field__label">Timeout &middot; hours</label>
+                        <input asp-for="AutoActionTimeoutHours" type="number" min="1" max="168" step="1" class="field__input field__input--mono" />
+                        <span asp-validation-for="AutoActionTimeoutHours" class="field__error"></span>
+                        <span class="field__meta">Hours to wait before the automatic decision (1&ndash;168).</span>
+                    </div>
+                </div>
+            </section>
+
+            <div class="plate-form__actions">
+                <a class="link--quiet" href="/admin/dashboard">&larr; Back to console</a>
+                <button type="submit" class="btn btn--primary">Save settings</button>
+            </div>
+        </form>
+    </article>
+</section>

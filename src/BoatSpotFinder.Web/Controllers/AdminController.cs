@@ -17,6 +17,7 @@ public class AdminController : Controller
     private readonly IMarinaAdminRepository _marinaAdminRepository;
     private readonly ISpotRepository _spotRepository;
     private readonly IInvitationRepository _invitationRepository;
+    private readonly IAdminSettingsRepository _adminSettingsRepository;
 
     public AdminController(
         UserManager<ApplicationUser> userManager,
@@ -24,7 +25,8 @@ public class AdminController : Controller
         IMarinaRepository marinaRepository,
         IMarinaAdminRepository marinaAdminRepository,
         ISpotRepository spotRepository,
-        IInvitationRepository invitationRepository)
+        IInvitationRepository invitationRepository,
+        IAdminSettingsRepository adminSettingsRepository)
     {
         _userManager = userManager;
         _bookingRepository = bookingRepository;
@@ -32,6 +34,7 @@ public class AdminController : Controller
         _marinaAdminRepository = marinaAdminRepository;
         _spotRepository = spotRepository;
         _invitationRepository = invitationRepository;
+        _adminSettingsRepository = adminSettingsRepository;
     }
 
     [HttpGet("dashboard")]
@@ -217,5 +220,55 @@ public class AdminController : Controller
 
         var ordered = viewModels.OrderByDescending(i => i.InvitedAt).ToList();
         return View(ordered);
+    }
+
+    [HttpGet("marinas/{marinaId:guid}/layout")]
+    public async Task<IActionResult> MarinaLayout(Guid marinaId)
+    {
+        var marina = await _marinaRepository.GetByIdAsync(marinaId);
+        if (marina == null)
+        {
+            return NotFound();
+        }
+
+        var spots = await _spotRepository.GetByMarinaIdAsync(marinaId, includeInactive: true);
+        var spotViewModels = spots
+            .OrderBy(s => s.Name)
+            .Select(s => new SpotLayoutItemViewModel
+            {
+                Id = s.Id,
+                Name = s.Name,
+                CanvasX = s.CanvasX,
+                CanvasY = s.CanvasY,
+                CanvasW = s.CanvasW,
+                CanvasH = s.CanvasH,
+                CanvasRotation = s.CanvasRotation,
+                IsActive = s.IsActive
+            })
+            .ToList();
+
+        var vm = new MarinaLayoutViewModel
+        {
+            Id = marina.Id,
+            Name = marina.Name,
+            LayoutWidth = marina.LayoutWidth,
+            LayoutHeight = marina.LayoutHeight,
+            BackgroundImagePath = marina.BackgroundImagePath,
+            Spots = spotViewModels
+        };
+
+        return View(vm);
+    }
+
+    [HttpGet("settings")]
+    public async Task<IActionResult> Settings()
+    {
+        var settings = await _adminSettingsRepository.GetAsync();
+        var vm = new AdminSettingsViewModel
+        {
+            AutoActionType = settings.AutoActionType,
+            AutoActionTimeoutHours = settings.AutoActionTimeoutHours
+        };
+        return View(vm);
     }
 }
