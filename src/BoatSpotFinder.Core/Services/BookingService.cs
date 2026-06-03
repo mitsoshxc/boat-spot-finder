@@ -49,39 +49,44 @@ public class BookingService : IBookingService
         _logger = logger;
     }
 
-    public async Task<ServiceResult> CreateAsync(Guid spotId, Guid vesselId, string boatOwnerId, DateOnly start, DateOnly end)
+    public async Task<ServiceResult<Guid>> CreateAsync(Guid spotId, Guid vesselId, string boatOwnerId, DateOnly start, DateOnly end)
     {
         var vessel = await _vesselRepository.GetByIdAsync(vesselId);
         if (vessel is null)
         {
-            return ServiceResult.Fail("Vessel not found");
+            return ServiceResult<Guid>.Fail("Vessel not found");
         }
 
         var spot = await _spotRepository.GetActiveByIdAsync(spotId);
         if (spot is null)
         {
-            return ServiceResult.Fail("Spot not available");
+            return ServiceResult<Guid>.Fail("Spot not available");
         }
 
         var marina = await _marinaRepository.GetByIdAsync(spot.MarinaId);
         if (marina is null)
         {
-            return ServiceResult.Fail("Marina not found");
+            return ServiceResult<Guid>.Fail("Marina not found");
         }
 
         if (spot.AllowedVesselTypes != VesselType.None && (spot.AllowedVesselTypes & vessel.Type) == 0)
         {
-            return ServiceResult.Fail("Vessel type is not allowed for this spot");
+            return ServiceResult<Guid>.Fail("Vessel type is not allowed for this spot");
         }
 
         if (vessel.LengthMeters > spot.LengthMeters || vessel.WidthMeters > spot.WidthMeters || vessel.DepthMeters > spot.DepthMeters)
         {
-            return ServiceResult.Fail("Vessel dimensions exceed spot limits");
+            return ServiceResult<Guid>.Fail("Vessel dimensions exceed spot limits");
+        }
+
+        if (end <= start)
+        {
+            return ServiceResult<Guid>.Fail("Departure must be after the arrival date.");
         }
 
         if (!await _bookingRepository.IsSpotAvailableAsync(spotId, start, end, null))
         {
-            return ServiceResult.Fail("Spot is not available for the selected dates");
+            return ServiceResult<Guid>.Fail("Spot is not available for the selected dates");
         }
 
         var (resolvedPricePerDay, resolvedMinBookingDays) = await ResolvePricingAsync(spot, marina, start);
@@ -89,7 +94,7 @@ public class BookingService : IBookingService
 
         if ((end.DayNumber - start.DayNumber) < resolvedMinBookingDays)
         {
-            return ServiceResult.Fail($"Minimum booking duration is {resolvedMinBookingDays} days");
+            return ServiceResult<Guid>.Fail($"Minimum booking duration is {resolvedMinBookingDays} days");
         }
 
         var booking = new Booking
@@ -127,7 +132,7 @@ public class BookingService : IBookingService
             }
         }
 
-        return ServiceResult.Ok();
+        return ServiceResult<Guid>.Ok(booking.Id);
     }
 
     public async Task<PricePreview> PreviewPriceAsync(Guid spotId, Guid vesselId, DateOnly start, DateOnly end)
@@ -139,6 +144,54 @@ public class BookingService : IBookingService
         var totalPrice = resolvedPricePerDay * (end.DayNumber - start.DayNumber);
 
         return new PricePreview(resolvedPricePerDay, resolvedMinBookingDays, totalPrice);
+    }
+
+    public async Task<ServiceResult> DismissAsync(Guid bookingId, string userId)
+    {
+        var booking = await _bookingRepository.GetByIdAsync(bookingId);
+        if (booking is null)
+        {
+            return ServiceResult.Fail("Booking not found");
+        }
+
+        if (booking.BoatOwnerId != userId)
+        {
+            return ServiceResult.Fail("Forbidden");
+        }
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        if (booking.Status != BookingStatus.Cancelled && booking.Status != BookingStatus.Completed && booking.EndDate >= today)
+        {
+            return ServiceResult.Fail("Only past or cancelled bookings can be dismissed");
+        }
+
+        booking.DismissByOwner();
+        await _bookingRepository.UpdateAsync(booking);
+        return ServiceResult.Ok();
+    }
+
+    public async Task<ServiceResult> DismissByMarinaAsync(Guid bookingId, string userId)
+    {
+        var booking = await _bookingRepository.GetByIdAsync(bookingId);
+        if (booking is null)
+        {
+            return ServiceResult.Fail("Booking not found");
+        }
+
+        if (!await _marinaAdminRepository.ExistsAsync(booking.Spot.MarinaId, userId))
+        {
+            return ServiceResult.Fail("Forbidden");
+        }
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        if (booking.Status != BookingStatus.Cancelled && booking.Status != BookingStatus.Completed && booking.EndDate >= today)
+        {
+            return ServiceResult.Fail("Only past or cancelled bookings can be dismissed");
+        }
+
+        booking.DismissByMarina();
+        await _bookingRepository.UpdateAsync(booking);
+        return ServiceResult.Ok();
     }
 
     public async Task<ServiceResult> CancelAsync(Guid bookingId, string cancellerUserId)

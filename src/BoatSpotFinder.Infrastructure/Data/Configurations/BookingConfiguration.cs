@@ -27,5 +27,7 @@ public class BookingConfiguration : BaseEntityConfiguration<Booking>
 
         builder.Property(b => b.TotalPrice).HasPrecision(18, 2);
         builder.Property(b => b.Status).HasConversion<int>();
+        builder.Property(b => b.DismissedByOwner).HasDefaultValue(false);
+        builder.Property(b => b.DismissedByMarina).HasDefaultValue(false);
     }
 }

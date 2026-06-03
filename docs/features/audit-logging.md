@@ -40,7 +40,8 @@ Calls are explicit per action — there is no global filter or middleware. Each 
 | `src/BoatSpotFinder.Web/Controllers/AccountController.cs` | Emits Login, LoginFailed_*, Logout entries |
 | `src/BoatSpotFinder.Web/Controllers/SpotsController.cs` | Emits SpotCreated, SpotEdited, SpotDeleted, SpotDeactivated, SpotActivated entries |
 | `src/BoatSpotFinder.Web/Controllers/MarinasController.cs` | Emits MarinaEdited entry |
-| `src/BoatSpotFinder.Web/Controllers/SpotBookingsController.cs` | Emits BookingConfirmed, BookingRejected entries |
+| `src/BoatSpotFinder.Web/Controllers/BookingsController.cs` | Emits BookingCreated, BookingCancelledByBoatOwner entries |
+| `src/BoatSpotFinder.Web/Controllers/SpotBookingsController.cs` | Emits BookingConfirmed, BookingRejected, BookingCancelledByPlaceOwner entries |
 | `src/BoatSpotFinder.Web/Controllers/PlaceOwnerReviewsController.cs` | Emits ReviewCreated entry |
 | `src/BoatSpotFinder.Web/Controllers/AdminController.cs` | Emits MarinaCreated, MarinaActivated/Deactivated, SpotActivated/Deactivated, AdminInvited, AdminRevoked, BookingCancelledByAdmin, SettingsUpdated entries |
 
@@ -99,12 +100,22 @@ All `userId` and `userEmail` values are captured from `User.FindFirstValue(Claim
 |---|---|---|---|---|---|
 | `MarinaEdited` | `POST /placeowner/marinas/{id}/edit` | `Marina` | marina's id | marina's id | `null` |
 
+### BookingsController (BoatOwner)
+
+| Action value | Trigger | entityType | entityId | marinaId | details |
+|---|---|---|---|---|---|
+| `BookingCreated` | `POST /bookings/create` (success path) | `Booking` | new booking's id | `booking.Spot.MarinaId` | `{ spotId, startDate, endDate, totalPrice }` |
+| `BookingCancelledByBoatOwner` | `POST /bookings/{id}/cancel` (success path) | `Booking` | booking's id | `booking.Spot.MarinaId` | `null` |
+
+`BookingCreated` audit fires inside the `if (booking != null)` guard after loading the just-created booking by `result.Value` (the returned `Guid`). `startDate` and `endDate` are formatted `yyyy-MM-dd`.
+
 ### SpotBookingsController (PlaceOwner)
 
 | Action value | Trigger | entityType | entityId | marinaId | details |
 |---|---|---|---|---|---|
 | `BookingConfirmed` | `POST /placeowner/spot-bookings/{id}/confirm` | `Booking` | booking's id | `booking.Spot.MarinaId` | `null` |
 | `BookingRejected` | `POST /placeowner/spot-bookings/{id}/reject` | `Booking` | booking's id | `booking.Spot.MarinaId` | `null` |
+| `BookingCancelledByPlaceOwner` | `POST /placeowner/spot-bookings/{id}/cancel` (success path) | `Booking` | booking's id | `booking.Spot.MarinaId` | `null` |
 
 Audit fires only when the booking was successfully loaded after the service call (`booking != null` guard).
 

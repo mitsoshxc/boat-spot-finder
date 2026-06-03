@@ -62,26 +62,23 @@
                 </div>
             </section>
 
-            @if (Model.Preview is not null)
-            {
-                <aside class="booking-preview" aria-label="Estimated cost">
-                    <span class="booking-preview__eyebrow">Estimate</span>
-                    <dl class="booking-preview__rows">
-                        <div class="booking-preview__row">
-                            <dt>Daily rate</dt>
-                            <dd>&euro;@Model.Preview.PricePerDay.ToString("0.00")</dd>
-                        </div>
-                        <div class="booking-preview__row">
-                            <dt>Minimum stay</dt>
-                            <dd>@Model.Preview.MinBookingDays @(Model.Preview.MinBookingDays == 1 ? "night" : "nights")</dd>
-                        </div>
-                    </dl>
-                    <div class="booking-preview__total">
-                        <span class="booking-preview__total-label">Total</span>
-                        <span class="booking-preview__total-value">&euro;@Model.Preview.TotalPrice.ToString("0.00")</span>
+            <aside id="price-estimate" class="booking-preview" aria-label="Estimated cost" hidden>
+                <span class="booking-preview__eyebrow">Estimate</span>
+                <dl class="booking-preview__rows">
+                    <div class="booking-preview__row">
+                        <dt>Daily rate</dt>
+                        <dd id="estimate-daily-rate"></dd>
                     </div>
-                </aside>
-            }
+                    <div class="booking-preview__row">
+                        <dt>Minimum stay</dt>
+                        <dd id="estimate-min-stay"></dd>
+                    </div>
+                </dl>
+                <div class="booking-preview__total">
+                    <span class="booking-preview__total-label">Total</span>
+                    <span class="booking-preview__total-value" id="estimate-total"></span>
+                </div>
+            </aside>
 
             <div class="plate-form__actions">
                 <a class="link--quiet" href="/browse">&larr; Back to browse</a>
@@ -95,3 +92,105 @@
         </p>
     </article>
 </section>
+
+@section Scripts {
+<script>
+(function () {
+    const spotId = document.getElementById('SpotId').value;
+    const vesselSelect = document.getElementById('VesselId');
+    const startInput = document.getElementById('StartDate');
+    const endInput = document.getElementById('EndDate');
+    const endError = endInput.closest('.field').querySelector('.field__error');
+    const estimatePanel = document.getElementById('price-estimate');
+    const dailyRateEl = document.getElementById('estimate-daily-rate');
+    const minStayEl = document.getElementById('estimate-min-stay');
+    const totalEl = document.getElementById('estimate-total');
+
+    function setEndError(msg) {
+        endError.textContent = msg;
+    }
+
+    function clearEndError() {
+        endError.textContent = '';
+    }
+
+    function hideEstimate() {
+        estimatePanel.hidden = true;
+    }
+
+    function showEstimate(data) {
+        dailyRateEl.textContent = '€' + data.pricePerDay.toFixed(2);
+        minStayEl.textContent = data.minBookingDays + (data.minBookingDays === 1 ? ' night' : ' nights');
+        totalEl.textContent = '€' + data.totalPrice.toFixed(2);
+        estimatePanel.hidden = false;
+    }
+
+    function update() {
+        const vesselId = vesselSelect.value;
+        const startVal = startInput.value;
+        const endVal = endInput.value;
+
+        if (startVal && endVal && endVal <= startVal) {
+            setEndError('Departure must be after the arrival date.');
+            hideEstimate();
+            return;
+        }
+
+        clearEndError();
+
+        if (!vesselId || !startVal || !endVal) {
+            hideEstimate();
+            return;
+        }
+
+        const url = '/bookings/preview-price?spotId=' + encodeURIComponent(spotId)
+            + '&vesselId=' + encodeURIComponent(vesselId)
+            + '&startDate=' + encodeURIComponent(startVal)
+            + '&endDate=' + encodeURIComponent(endVal);
+
+        fetch(url)
+            .then(function (res) {
+                if (!res.ok) {
+                    hideEstimate();
+                    return null;
+                }
+                return res.json();
+            })
+            .then(function (data) {
+                if (data) {
+                    showEstimate(data);
+                }
+            })
+            .catch(function () {
+                hideEstimate();
+            });
+    }
+
+    startInput.addEventListener('change', function () {
+        if (startInput.value) {
+            const d = new Date(startInput.value);
+            d.setDate(d.getDate() + 1);
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            endInput.min = yyyy + '-' + mm + '-' + dd;
+        }
+        update();
+    });
+
+    endInput.addEventListener('change', update);
+    vesselSelect.addEventListener('change', update);
+
+    document.querySelector('form').addEventListener('submit', function (e) {
+        const startVal = startInput.value;
+        const endVal = endInput.value;
+        if (startVal && endVal && endVal <= startVal) {
+            e.preventDefault();
+            setEndError('Departure must be after the arrival date.');
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', update);
+}());
+</script>
+}

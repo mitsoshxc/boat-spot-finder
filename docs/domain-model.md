@@ -115,6 +115,8 @@ Unique index on `(SpotId, StartDate, EndDate)`. Overlap with an existing rule is
 | `StartDate` / `EndDate` | `DateOnly` | |
 | `TotalPrice` | `decimal (18,2)` | |
 | `Status` | `BookingStatus` (stored as int) | |
+| `DismissedByOwner` | `bool` | Default `false`. Private set; mutated by `DismissByOwner()`. `HasDefaultValue(false)` in `BookingConfiguration`. Set when the BoatOwner dismisses a past/cancelled booking from their list. The row is never deleted — audit and PlaceOwner/Admin visibility are preserved. |
+| `DismissedByMarina` | `bool` | Default `false`. Private set; mutated by `DismissByMarina()`. `HasDefaultValue(false)` in `BookingConfiguration`. Set when any marina admin dismisses a past/cancelled booking from the Incoming list. Scoped marina-wide — any admin for the marina can set it. The row is never deleted. |
 | `Reviews` | `ICollection<Review>` | Navigation collection. `public set` (not `init`) to allow `ReviewService` to attach the navigation after `AddAsync`. |
 
 ### Review

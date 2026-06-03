@@ -323,6 +323,25 @@ Phase 2c (Audit Log Search & Admin Viewer) depends on Phase 2b + Phase 3b + Phas
 
 ---
 
+## Phase 5c — Booking UX & Lifecycle Refinements
+
+**Goal:** Post-Phase-5/6 refinements to the booking experience, surfaced during smoke testing (2026-06-03). Live price preview + departure-after-arrival validation on the create form; a complete per-role booking audit trail; and status-grouped **Pending → Confirmed → Past** lists with a per-side **Dismiss** (hide-not-delete) on both the BoatOwner (`My Bookings`) and PlaceOwner (`Incoming`) pages, plus the missing PlaceOwner nav link. All shipped via the `/dev` → `/verify` → `/doc` cycle; documented in [`docs/features/booking-lifecycle.md`](docs/features/booking-lifecycle.md) and [`docs/features/audit-logging.md`](docs/features/audit-logging.md).
+
+| # | Task | Files | Status |
+|---|------|-------|--------|
+| 5c.1 | Booking-create date validation + live price preview | `Web/Models/BookingCreateViewModel.cs` (`IValidatableObject` — `EndDate > StartDate`); `Core/Services/BookingService.cs` (`CreateAsync` domain guard `end <= start`, placed before the availability check); `Web/Controllers/BookingsController.cs` (`GET /bookings/preview-price` JSON endpoint); `Web/Views/Bookings/Create.cshtml` (live-preview fetch + client date check — second tech-lead-approved JS carve-out; server-side validation stays authoritative; form keeps `novalidate`) | [x] |
+| 5c.2 | Booking audit trail completion | `Core/Common/ServiceResult.cs` (generic `ServiceResult<T>`); `IBookingService.CreateAsync` → `Task<ServiceResult<Guid>>`; `Web/Controllers/BookingsController.cs` (inject `IAuditLogger`; `BookingCreated` + `BookingCancelledByBoatOwner`); `Web/Controllers/SpotBookingsController.cs` (`BookingCancelledByPlaceOwner` on `Cancel`) — by-role names parallel `BookingCancelledByAdmin` | [x] |
+| 5c.3 | BoatOwner My Bookings — sections + Booked-on + Dismiss | `Core/Entities/Booking.cs` (`DismissedByOwner` + `DismissByOwner()`); `Infrastructure/Data/Configurations/BookingConfiguration.cs` (`HasDefaultValue(false)`); migration `AddBookingDismissedByOwner`; `Core/Services/BookingService.cs` (`DismissAsync` — owner-only, only past/cancelled); `Web/Models/MyBookingsViewModel.cs` (Pending/Confirmed/Past lists); `Web/Controllers/BookingsController.cs` (`MyBookings` partition + `Dismiss POST`); `Web/Views/Bookings/MyBookings.cshtml` (three sections, "Booked on", Dismiss — hides, never deletes) | [x] |
+| 5c.4 | PlaceOwner Incoming — sections + marina-wide Dismiss + nav | `Core/Entities/Booking.cs` (`DismissedByMarina` + `DismissByMarina()`); migration `AddBookingDismissedByMarina`; `Core/Services/BookingService.cs` (`DismissByMarinaAsync` — marina-admin authorized, only past/cancelled, marina-wide); `Web/Models/IncomingBookingsViewModel.cs`; `Web/Controllers/SpotBookingsController.cs` (`Incoming` partition + `Dismiss POST`); `Web/Views/SpotBookings/Incoming.cshtml` (three sections + marina-wide Dismiss); `Web/Views/Shared/_Layout.cshtml` ("Incoming Bookings" nav link for the PlaceOwner role) | [x] |
+
+**Tests:** automated suite 89 → 99 (`DismissAsync` ×5, `DismissByMarinaAsync` ×5 added to `BookingServiceTests.cs`).
+
+**Deferred (planned next):** a paged "All Bookings" ledger for PlaceOwners + a per-booking detail page — introduces pagination (a Phase 8 item, pulled forward).
+
+**Dev brief grouping (as-built):** five sequential `/dev` briefs — 5c.1 (form), 5c.2 (audit), 5c.3 (My Bookings), 5c.4 (Incoming), each `/verify`'d; one consolidated `/doc` pass after all five.
+
+---
+
 ## Phase 6 — Admin Features
 
 **Goal:** Admin invites PlaceOwners per marina, views all users/bookings/spots, sees marina canvas read-only, manages marina admin memberships, deactivates spots.

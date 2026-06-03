@@ -41,9 +41,10 @@ public class SpotBookingsController : Controller
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
         var bookings = await _bookingRepository.GetByMarinaOwnerIdAsync(userId);
         var settings = await _adminSettingsRepository.GetAsync();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
         var viewModels = new List<BookingListItemViewModel>();
-        foreach (var b in bookings)
+        foreach (var b in bookings.Where(b => !b.DismissedByMarina))
         {
             var owner = await _userManager.FindByIdAsync(b.BoatOwnerId);
             var displayName = owner?.UserName ?? owner?.Email ?? "";
@@ -82,12 +83,25 @@ public class SpotBookingsController : Controller
             viewModels.Add(vm);
         }
 
-        var ordered = viewModels
-            .OrderBy(vm => vm.Status == BookingStatus.Pending ? 0 : 1)
-            .ThenBy(vm => vm.StartDate)
+        var pending = viewModels
+            .Where(vm => vm.Status == BookingStatus.Pending && vm.EndDate >= today)
+            .OrderBy(vm => vm.StartDate)
+            .ThenBy(vm => vm.BookingCreatedAt)
             .ToList();
 
-        return View(ordered);
+        var confirmed = viewModels
+            .Where(vm => vm.Status == BookingStatus.Confirmed && vm.EndDate >= today)
+            .OrderBy(vm => vm.StartDate)
+            .ThenBy(vm => vm.BookingCreatedAt)
+            .ToList();
+
+        var past = viewModels
+            .Where(vm => !pending.Contains(vm) && !confirmed.Contains(vm))
+            .OrderByDescending(vm => vm.EndDate)
+            .ThenByDescending(vm => vm.BookingCreatedAt)
+            .ToList();
+
+        return View(new IncomingBookingsViewModel { Pending = pending, Confirmed = confirmed, Past = past });
     }
 
     [HttpPost("{id:guid}/confirm")]
@@ -148,7 +162,30 @@ public class SpotBookingsController : Controller
         }
         else
         {
+            var booking = await _bookingRepository.GetByIdAsync(id);
+            if (booking != null)
+            {
+                _auditLogger.Log(userId, User.Identity!.Name ?? "", action: "BookingCancelledByPlaceOwner", entityType: "Booking", entityId: id.ToString(), marinaId: booking.Spot.MarinaId.ToString(), details: null);
+            }
             TempData["Success"] = "Booking cancelled.";
+        }
+
+        return RedirectToAction(nameof(Incoming));
+    }
+
+    [HttpPost("{id:guid}/dismiss")]
+    public async Task<IActionResult> Dismiss(Guid id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var result = await _bookingService.DismissByMarinaAsync(id, userId);
+
+        if (!result.Success)
+        {
+            TempData["Error"] = string.Join(" ", result.Errors);
+        }
+        else
+        {
+            TempData["Success"] = "Booking dismissed.";
         }
 
         return RedirectToAction(nameof(Incoming));

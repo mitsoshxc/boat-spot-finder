@@ -17,19 +17,22 @@ public class BookingsController : Controller
     private readonly ISpotRepository _spotRepository;
     private readonly IVesselRepository _vesselRepository;
     private readonly IReviewRepository _reviewRepository;
+    private readonly IAuditLogger _auditLogger;
 
     public BookingsController(
         IBookingService bookingService,
         IBookingRepository bookingRepository,
         ISpotRepository spotRepository,
         IVesselRepository vesselRepository,
-        IReviewRepository reviewRepository)
+        IReviewRepository reviewRepository,
+        IAuditLogger auditLogger)
     {
         _bookingService = bookingService;
         _bookingRepository = bookingRepository;
         _spotRepository = spotRepository;
         _vesselRepository = vesselRepository;
         _reviewRepository = reviewRepository;
+        _auditLogger = auditLogger;
     }
 
     [HttpGet("")]
@@ -37,8 +40,7 @@ public class BookingsController : Controller
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
         var bookings = (await _bookingRepository.GetByBoatOwnerIdAsync(userId))
-            .OrderByDescending(b => b.StartDate)
-            .ThenByDescending(b => b.CreatedAt)
+            .Where(b => !b.DismissedByOwner)
             .ToList();
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
@@ -54,7 +56,8 @@ public class BookingsController : Controller
                 StartDate = b.StartDate,
                 EndDate = b.EndDate,
                 TotalPrice = b.TotalPrice,
-                Status = b.Status
+                Status = b.Status,
+                BookingCreatedAt = b.CreatedAt
             };
 
             if (b.Status == BookingStatus.Completed)
@@ -70,7 +73,43 @@ public class BookingsController : Controller
             viewModels.Add(vm);
         }
 
-        return View(viewModels);
+        var pending = viewModels
+            .Where(b => b.Status == BookingStatus.Pending && b.EndDate >= today)
+            .OrderBy(b => b.StartDate)
+            .ThenBy(b => b.BookingCreatedAt)
+            .ToList();
+
+        var confirmed = viewModels
+            .Where(b => b.Status == BookingStatus.Confirmed && b.EndDate >= today)
+            .OrderBy(b => b.StartDate)
+            .ThenBy(b => b.BookingCreatedAt)
+            .ToList();
+
+        var past = viewModels
+            .Where(b => !pending.Contains(b) && !confirmed.Contains(b))
+            .OrderByDescending(b => b.EndDate)
+            .ThenByDescending(b => b.BookingCreatedAt)
+            .ToList();
+
+        return View(new MyBookingsViewModel { Pending = pending, Confirmed = confirmed, Past = past });
+    }
+
+    [HttpPost("{id:guid}/dismiss")]
+    public async Task<IActionResult> Dismiss(Guid id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var result = await _bookingService.DismissAsync(id, userId);
+
+        if (!result.Success)
+        {
+            TempData["Error"] = string.Join(" ", result.Errors);
+        }
+        else
+        {
+            TempData["Success"] = "Booking dismissed.";
+        }
+
+        return RedirectToAction(nameof(MyBookings));
     }
 
     [HttpGet("create")]
@@ -119,6 +158,31 @@ public class BookingsController : Controller
         return View(model);
     }
 
+    [HttpGet("preview-price")]
+    public async Task<IActionResult> PreviewPrice(Guid spotId, Guid vesselId, DateOnly startDate, DateOnly endDate)
+    {
+        var spot = await _spotRepository.GetActiveByIdAsync(spotId);
+        if (spot is null)
+        {
+            return NotFound();
+        }
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var vessel = await _vesselRepository.GetByIdAsync(vesselId);
+        if (vessel is null || vessel.OwnerId != userId)
+        {
+            return Forbid();
+        }
+
+        if (endDate <= startDate)
+        {
+            return BadRequest();
+        }
+
+        var preview = await _bookingService.PreviewPriceAsync(spotId, vesselId, startDate, endDate);
+        return Json(new { pricePerDay = preview.PricePerDay, minBookingDays = preview.MinBookingDays, totalPrice = preview.TotalPrice });
+    }
+
     [HttpPost("create")]
     public async Task<IActionResult> Create(BookingCreateViewModel model)
     {
@@ -153,6 +217,12 @@ public class BookingsController : Controller
             return View(model);
         }
 
+        var booking = await _bookingRepository.GetByIdAsync(result.Value);
+        if (booking != null)
+        {
+            _auditLogger.Log(userId, User.Identity!.Name ?? "", action: "BookingCreated", entityType: "Booking", entityId: result.Value.ToString(), marinaId: booking.Spot.MarinaId.ToString(), details: new { spotId = booking.SpotId, startDate = booking.StartDate.ToString("yyyy-MM-dd"), endDate = booking.EndDate.ToString("yyyy-MM-dd"), totalPrice = booking.TotalPrice });
+        }
+
         TempData["Success"] = "Booking request submitted. The marina will review it shortly.";
         return RedirectToAction(nameof(MyBookings));
     }
@@ -169,6 +239,11 @@ public class BookingsController : Controller
         }
         else
         {
+            var cancelledBooking = await _bookingRepository.GetByIdAsync(id);
+            if (cancelledBooking != null)
+            {
+                _auditLogger.Log(userId, User.Identity!.Name ?? "", action: "BookingCancelledByBoatOwner", entityType: "Booking", entityId: id.ToString(), marinaId: cancelledBooking.Spot.MarinaId.ToString(), details: null);
+            }
             TempData["Success"] = "Booking cancelled.";
         }
 

@@ -199,7 +199,19 @@ public record ServiceResult(bool Success, IEnumerable<string> Errors)
 }
 ```
 
-- A successful operation returns `ServiceResult.Ok()`.
+A generic variant `ServiceResult<T>` also exists in the same file for operations that return a value on success:
+
+```csharp
+public record ServiceResult<T>(bool Success, IEnumerable<string> Errors, T Value)
+{
+    public static ServiceResult<T> Ok(T value) => new(true, Array.Empty<string>(), value);
+    public static ServiceResult<T> Fail(params string[] errors) => new(false, errors, default!);
+}
+```
+
+`IBookingService.CreateAsync` returns `Task<ServiceResult<Guid>>` — the `Value` carries the new booking's `Id`. All other service methods return the non-generic `ServiceResult`. New operations that need to return a value on success should use the generic variant; otherwise prefer the non-generic form.
+
+- A successful operation returns `ServiceResult.Ok()` (or `ServiceResult<T>.Ok(value)`).
 - A failed operation returns `ServiceResult.Fail(...)` with one or more human-readable error messages.
 - Controllers check `result.Success`; on failure they add each error to `ModelState` and return the view.
 - Do not throw for expected validation failures. Reserve exceptions for unexpected infrastructure errors.

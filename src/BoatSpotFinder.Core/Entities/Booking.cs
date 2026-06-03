@@ -9,6 +9,8 @@ public class Booking : BaseEntity
     public DateOnly EndDate { get; init; }
     public decimal TotalPrice { get; init; }
     public BookingStatus Status { get; private set; }
+    public bool DismissedByOwner { get; private set; }
+    public bool DismissedByMarina { get; private set; }
 
     public Spot Spot { get; init; } = null!;
     public Vessel? Vessel { get; init; }
@@ -18,4 +20,6 @@ public class Booking : BaseEntity
     public void Confirm() => Status = BookingStatus.Confirmed;
     public void Cancel() => Status = BookingStatus.Cancelled;
     public void Complete() => Status = BookingStatus.Completed;
+    public void DismissByOwner() => DismissedByOwner = true;
+    public void DismissByMarina() => DismissedByMarina = true;
 }

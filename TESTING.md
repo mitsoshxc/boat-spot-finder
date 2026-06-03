@@ -2,8 +2,8 @@
 
 Tracks automated tests in `tests/BoatSpotFinder.Tests/` and manual smoke tests, organized by phase. Refreshed at phase milestones — not after every task.
 
-**Scope (refreshed 2026-06-02).** Covers everything implemented through Phase 6:
-Phase 1 (Foundation), Phase 2 + 2b (Auth + Audit Logging, incl. Admin actions 2b.5), Phase 3 + 3b (PlaceOwner Marina/Spot/SeasonalRules + Elasticsearch indexing), Phase 4 (Vessels), Phase 5 (Booking lifecycle + Hangfire jobs), Phase 5b (Reviews & Ratings), Phase 6 (Admin surface + invitations).
+**Scope (refreshed 2026-06-03).** Covers everything implemented through Phase 6 + Phase 5c:
+Phase 1 (Foundation), Phase 2 + 2b (Auth + Audit Logging, incl. Admin actions 2b.5), Phase 3 + 3b (PlaceOwner Marina/Spot/SeasonalRules + Elasticsearch indexing), Phase 4 (Vessels), Phase 5 (Booking lifecycle + Hangfire jobs), Phase 5b (Reviews & Ratings), Phase 6 (Admin surface + invitations), Phase 5c (Booking UX & lifecycle refinements — live price preview, departure-after-arrival validation, per-role audit completion, Pending/Confirmed/Past sections + per-side Dismiss).
 
 **Not covered — not yet implemented:** Phase 7 (Browse public marina list, interactive canvas viewer, ES search UI — only the `/browse/marina/{id}/layout-data` endpoint exists; `marina-viewer.js` is not yet created, so the Admin read-only canvas in §16 does not render yet) and Phase 2c (Audit Log Search & Admin Viewer). See § Out of Scope.
 
@@ -11,7 +11,7 @@ Phase 1 (Foundation), Phase 2 + 2b (Auth + Audit Logging, incl. Admin actions 2b
 
 ## Test Project Status
 
-Current state of `tests/BoatSpotFinder.Tests/` — **89 tests, all green as of 2026-06-02**:
+Current state of `tests/BoatSpotFinder.Tests/` — **99 tests, all green as of 2026-06-03**:
 
 | Item | Value |
 |---|---|
@@ -29,7 +29,7 @@ Current state of `tests/BoatSpotFinder.Tests/` — **89 tests, all green as of 2
 
 ## Automated Tests
 
-### Implemented (89 tests)
+### Implemented (99 tests)
 
 Run all: `dotnet test BoatSpotFinder.slnx`.
 
@@ -40,7 +40,7 @@ Run all: `dotnet test BoatSpotFinder.slnx`.
 | `Repositories/SpotRepositoryTests.cs` | 3 | 3 | `GetByIdAsync` returns inactive (ignores filter); `GetActiveByIdAsync` respects it; include-inactive listing |
 | `Services/SpotSeasonalRuleServiceTests.cs` | 6 | 3 | Overlap predicate — exact/partial/boundary overlap rejected, adjacent-next-day allowed, update excludes self |
 | `Infrastructure/LocalFileStorageServiceTests.cs` | 1 | 3 | Storage save/delete + stream-ownership contract |
-| `Services/BookingServiceTests.cs` | 35 | 5 | **Create** (overlap/strict-adjacency, pricing cascade spot→seasonal→marina-default, vessel fit + type flags, min-days); **Cancel** for BoatOwner/PlaceOwner/Admin (StartDate guard + Admin skip, Forbidden, terminal-status reject); **Confirm/Reject** ownership gate + transition + email + non-Pending reject; **`AutoActionAsync`** (auto-approve/reject + timeout filter) and **`CompleteOverdueAsync`** (overdue→Completed + review-invite email fan-out) — the two Hangfire jobs; **`PreviewPrice`** (no persist) |
+| `Services/BookingServiceTests.cs` | 45 | 5/5c | **Create** (overlap/strict-adjacency, pricing cascade spot→seasonal→marina-default, vessel fit + type flags, min-days); **Cancel** for BoatOwner/PlaceOwner/Admin (StartDate guard + Admin skip, Forbidden, terminal-status reject); **Confirm/Reject** ownership gate + transition + email + non-Pending reject; **`AutoActionAsync`** (auto-approve/reject + timeout filter) and **`CompleteOverdueAsync`** (overdue→Completed + review-invite email fan-out) — the two Hangfire jobs; **`PreviewPrice`** (no persist); **`DismissAsync`** (owner-only + past/cancelled/elapsed guard, hide-not-delete) and **`DismissByMarinaAsync`** (marina-admin authorization + past/cancelled/elapsed guard) — the Phase 5c per-side dismiss flags |
 | `Services/ReviewServiceTests.cs` | 14 | 5b | `CanReviewAsync` gates (not-found / not-completed / window closed / **14-day boundary inclusive** / BoatOwner / PlaceOwner-via-MarinaAdmin / unrelated / already-reviewed); `CreateReviewAsync` persist + marina & boat-owner rating recompute + averaging + ES `IndexAsync` call + **ES-failure-is-swallowed** |
 | `Repositories/ReviewRepositoryTests.cs` | 5 | 5b | `ExistsAsync` role discrimination; `GetAllByMarinaId`/`GetAllByBoatOwnerId` role+scope filtering; `GetRecentByMarinaId` ordering + count |
 | `Repositories/MarinaRepositoryTests.cs` | 5 | 3/6 | `GetByUserIdAsync` MarinaAdmin join; `GetActiveWithActiveSpotsAsync` excludes empty/inactive, applies id filter, returns marina with an active spot |
@@ -259,6 +259,35 @@ Tail `logs/audit-YYYY-MM-DD.log` and confirm structured JSON entries (`action` /
 - [ ] PlaceOwner: `BookingConfirmed` / `BookingRejected` (with `booking.Spot.MarinaId`)
 - [ ] PlaceOwner: `ReviewCreated` `{ score, bookingId }`
 - [ ] `userRole` is always blank (reserved field — documented in `docs/features/audit-logging.md`)
+
+---
+
+## Smoke Tests (Manual) — Phase 5c (Booking refinements, 2026-06-03)
+
+Covers the booking-create + My Bookings + Incoming improvements shipped this session. **Restart the app first** so the auto-migration applies `AddBookingDismissedByOwner` + `AddBookingDismissedByMarina`. Checked items were confirmed live this session; unchecked remain to run.
+
+### 18. Booking create — live preview + date validation (BoatOwner)
+
+- [x] On `/bookings/create?spotId=…`, selecting a vessel + arrival + departure shows a live **price estimate** with no page reload (fetched from `GET /bookings/preview-price`; server-side `PreviewPriceAsync` unchanged)
+- [x] Setting departure ≤ arrival → inline error "Departure must be after the arrival date.", the estimate hides, and submit is blocked client-side
+- [x] Server-side remains authoritative: `BookingCreateViewModel : IValidatableObject` + the `BookingService.CreateAsync` `end <= start` guard reject a bad range even if JS is bypassed; the form keeps `novalidate`
+
+### 19. My Bookings — sections + Booked-on + Dismiss (BoatOwner)
+
+- [x] Page renders three sections — **Pending → Confirmed → Past** (muted) — Pending/Confirmed sorted by arrival ascending; each card shows a "Booked on …" line
+- [x] Empty sections are omitted; the big empty-state shows only when all three are empty
+- [x] **Dismiss** on a Past/Cancelled card removes it from the list; the row is NOT deleted — verify `DismissedByOwner = 1` in SQL and that the booking is still visible to the PlaceOwner/Admin
+
+### 20. Incoming — sections + marina-wide Dismiss + nav (PlaceOwner)
+
+- [ ] The PlaceOwner nav menu now shows **Incoming Bookings** (`/placeowner/spot-bookings`) alongside My Marinas
+- [ ] Incoming renders the same three sections (Pending → Confirmed → Past), sorted by arrival; the richer card (requester, boat-owner rating, auto-decision countdown, Confirm/Reject/Cancel) is preserved
+- [ ] **Dismiss** on a Past/Cancelled card → marina-wide: hidden for every admin of that marina (`DismissedByMarina = 1`); row not deleted; a non-admin of the marina cannot dismiss (service `Forbidden`)
+
+### 21. Booking audit trail completion (ties into §13 / §17)
+
+- [ ] Creating a booking writes `BookingCreated` (`details { spotId, startDate, endDate, totalPrice }`)
+- [ ] BoatOwner cancel writes `BookingCancelledByBoatOwner`; PlaceOwner cancel writes `BookingCancelledByPlaceOwner` — both with `entityType:"Booking"` + `marinaId`; dismiss writes NO audit entry (it's a per-side view preference)
 
 ---
 

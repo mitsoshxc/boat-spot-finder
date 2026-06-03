@@ -1,4 +1,4 @@
-@model IEnumerable<BookingListItemViewModel>
+@model IncomingBookingsViewModel
 @{
     ViewData["Title"] = "Incoming bookings";
     var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
@@ -31,7 +31,174 @@
     @@media (min-width: 720px) {
         .review-cta { padding: 12px 16px; }
     }
+
+    /* Booking sections (Pending / Confirmed / Past) */
+    .booking-section { margin-bottom: 40px; }
+    .booking-section:last-child { margin-bottom: 0; }
+    .booking-section__head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--hairline-ink); }
+    .booking-section__label { font-family: var(--font-body); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.22em; color: var(--brass-deep); }
+    .booking-section__count { font-size: 0.6875rem; letter-spacing: 0.06em; color: var(--slate-soft); }
+    .booking-section--past .booking-section__label { color: var(--slate-soft); }
+    .rule-card--past { background: var(--sand); opacity: 0.8; transition: opacity 200ms ease, transform 200ms ease, box-shadow 240ms ease, border-color 200ms ease; }
+    .rule-card--past::after { border-color: rgba(60, 70, 84, 0.10); }
+    .rule-card--past:hover { opacity: 1; }
+    .btn--dismiss { color: var(--slate-soft); background: transparent; border-color: var(--hairline-ink); }
+    .btn--dismiss:hover { color: var(--ink); border-color: var(--hairline-deep); background: rgba(60, 70, 84, 0.05); }
 </style>
+
+@{
+    async Task renderCard(BookingListItemViewModel b, bool isPast)
+    {
+        var statusKey = b.Status.ToString().ToLowerInvariant();
+        var vesselDeleted = string.Equals(b.VesselName, "Vessel deleted", StringComparison.Ordinal);
+        var showOwnerRating = b.BoatOwnerAverageRating.HasValue && b.BoatOwnerReviewCount > 0;
+        var showReviewBlock = b.Status == BookingStatus.Completed;
+        <li class="rule-card booking-card @(isPast ? "rule-card--past" : null)">
+            <div class="booking-card__head">
+                <div class="booking-card__head-text">
+                    <span class="rule-card__eyebrow">@b.MarinaName</span>
+                    <h2 class="rule-card__name">@b.SpotName</h2>
+                    <p class="booking-card__received">
+                        Requested by <strong>@b.BoatOwnerName</strong>
+                        <span aria-hidden="true">&middot;</span>
+                        @b.BookingCreatedAt.ToString("d MMM yyyy · HH:mm") UTC
+                        @if (showOwnerRating)
+                        {
+                            <span class="rating-chip rating-chip--inline"
+                                  aria-label="@($"Boat owner rating {b.BoatOwnerAverageRating!.Value.ToString("0.0")} out of 5, based on {b.BoatOwnerReviewCount} review(s)")">
+                                <svg viewBox="0 0 24 24" class="rating-chip__icon" aria-hidden="true">
+                                    <path d="M12 3.4 L14.45 9.2 L20.6 9.7 L15.9 13.85 L17.45 19.85 L12 16.55 L6.55 19.85 L8.1 13.85 L3.4 9.7 L9.55 9.2 Z" />
+                                </svg>
+                                <span class="rating-chip__value">@b.BoatOwnerAverageRating!.Value.ToString("0.0")</span>
+                                <span class="rating-chip__divider" aria-hidden="true">&middot;</span>
+                                <span class="rating-chip__count">@b.BoatOwnerReviewCount review@(b.BoatOwnerReviewCount == 1 ? "" : "s")</span>
+                            </span>
+                        }
+                    </p>
+                </div>
+                <span class="pill pill--booking pill--@statusKey">
+                    <span class="pill__dot" aria-hidden="true"></span>@b.Status
+                </span>
+            </div>
+
+            <div class="rule-card__range" aria-label="@($"From {b.StartDate.ToString("d MMM yyyy")} to {b.EndDate.ToString("d MMM yyyy")}")">
+                <div class="rule-card__date">
+                    <span class="rule-card__date-label">Arrival</span>
+                    <span class="rule-card__date-value">@b.StartDate.ToString("d MMM yyyy")</span>
+                </div>
+                <span class="rule-card__divider" aria-hidden="true"></span>
+                <div class="rule-card__date">
+                    <span class="rule-card__date-label">Departure</span>
+                    <span class="rule-card__date-value">@b.EndDate.ToString("d MMM yyyy")</span>
+                </div>
+            </div>
+
+            @if (b.Status == BookingStatus.Pending && b.AutoActionDeadline.HasValue)
+            {
+                var deadlineMs = new DateTimeOffset(DateTime.SpecifyKind(b.AutoActionDeadline.Value, DateTimeKind.Utc))
+                    .ToUnixTimeMilliseconds();
+                <p class="booking-card__deadline" data-deadline="@deadlineMs">
+                    <span class="booking-card__deadline-dot" aria-hidden="true"></span>
+                    <span class="booking-card__deadline-text">Auto-decision pending</span>
+                </p>
+            }
+
+            <dl class="rule-card__stats">
+                <div class="rule-card__stat">
+                    <dt class="rule-card__stat-label">Vessel</dt>
+                    <dd class="rule-card__stat-value">
+                        @if (vesselDeleted)
+                        {
+                            <span class="rule-card__stat-value--muted">Vessel deleted</span>
+                        }
+                        else
+                        {
+                            <span>@b.VesselName</span>
+                        }
+                    </dd>
+                </div>
+                <div class="rule-card__stat">
+                    <dt class="rule-card__stat-label">Total</dt>
+                    <dd class="rule-card__stat-value">
+                        <span>&euro;@b.TotalPrice.ToString("0.00")</span>
+                    </dd>
+                </div>
+            </dl>
+
+            @if (showReviewBlock)
+            {
+                if (b.CurrentUserScore.HasValue)
+                {
+                    <div class="review-cta review-cta--complete">
+                        <span class="review-cta__label">You rated this guest</span>
+                        <span class="review-cta__score">
+                            <span class="score-static" aria-label="@($"{b.CurrentUserScore.Value} out of 5 stars")">
+                                @for (var s = 1; s <= 5; s++)
+                                {
+                                    var on = s <= b.CurrentUserScore.Value;
+                                    <svg viewBox="0 0 24 24" class="score-static__star @(on ? "score-static__star--on" : null)" aria-hidden="true">
+                                        <path d="M12 3.4 L14.45 9.2 L20.6 9.7 L15.9 13.85 L17.45 19.85 L12 16.55 L6.55 19.85 L8.1 13.85 L3.4 9.7 L9.55 9.2 Z" />
+                                    </svg>
+                                }
+                            </span>
+                            <span>@b.CurrentUserScore.Value / 5</span>
+                        </span>
+                    </div>
+                }
+                else if (b.CanCurrentUserReview)
+                {
+                    <div class="review-cta">
+                        <span class="review-cta__label">Rate this guest</span>
+                        <span class="review-cta__deadline">Window closes @b.ReviewDeadline?.ToString("d MMM yyyy")</span>
+                        <a class="btn btn--primary btn--sm" href="/placeowner/reviews/create?bookingId=@b.Id">Leave a review</a>
+                    </div>
+                }
+                else if (b.ReviewDeadline.HasValue)
+                {
+                    <p class="review-cta__closed" style="margin: 0;">
+                        Review window closed @b.ReviewDeadline.Value.ToString("d MMM yyyy").
+                    </p>
+                }
+            }
+
+            @if (!isPast && b.Status == BookingStatus.Pending)
+            {
+                <div class="rule-card__actions">
+                    <form method="post" action="/placeowner/spot-bookings/@b.Id/confirm"
+                          onsubmit="return confirm('Confirm this booking?');">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn--primary btn--sm">Confirm</button>
+                    </form>
+                    <form method="post" action="/placeowner/spot-bookings/@b.Id/reject"
+                          onsubmit="return confirm('Reject this booking? The boat owner will be notified.');">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn--danger btn--sm">Reject</button>
+                    </form>
+                </div>
+            }
+            else if (!isPast && b.Status == BookingStatus.Confirmed && b.StartDate > today)
+            {
+                <div class="rule-card__actions">
+                    <form method="post" action="/placeowner/spot-bookings/@b.Id/cancel"
+                          onsubmit="return confirm('Cancel this confirmed booking? The boat owner will be notified.');">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn--danger btn--sm">Cancel</button>
+                    </form>
+                </div>
+            }
+            else if (isPast)
+            {
+                <div class="rule-card__actions">
+                    <form method="post" action="/placeowner/spot-bookings/@b.Id/dismiss"
+                          onsubmit="return confirm('Remove this booking from your inbox? It stays in our records.');">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn--dismiss btn--sm">Dismiss</button>
+                    </form>
+                </div>
+            }
+        </li>
+    }
+}
 
 <section class="workspace">
     <header class="workspace__head">
@@ -62,7 +229,7 @@
         </div>
     }
 
-    @if (!Model.Any())
+    @if (!Model.Pending.Any() && !Model.Confirmed.Any() && !Model.Past.Any())
     {
         <div class="empty-state">
             <span class="vignette vignette--muted" aria-hidden="true">
@@ -76,153 +243,53 @@
             <p class="empty-state__body">When a boat owner requests one of your spots, it will appear here.</p>
         </div>
     }
-    else
+
+    @if (Model.Pending.Any())
     {
-        <ul class="rule-grid">
-            @foreach (var b in Model)
-            {
-                var statusKey = b.Status.ToString().ToLowerInvariant();
-                var canConfirmOrReject = b.Status == BookingStatus.Pending;
-                var canCancel = b.Status == BookingStatus.Confirmed && b.StartDate > today;
-                var vesselDeleted = string.Equals(b.VesselName, "Vessel deleted", StringComparison.Ordinal);
-                var showOwnerRating = b.BoatOwnerAverageRating.HasValue && b.BoatOwnerReviewCount > 0;
-                var showReviewBlock = b.Status == BookingStatus.Completed;
-                <li class="rule-card booking-card">
-                    <div class="booking-card__head">
-                        <div class="booking-card__head-text">
-                            <span class="rule-card__eyebrow">@b.MarinaName</span>
-                            <h2 class="rule-card__name">@b.SpotName</h2>
-                            <p class="booking-card__received">
-                                Requested by <strong>@b.BoatOwnerName</strong>
-                                <span aria-hidden="true">&middot;</span>
-                                @b.BookingCreatedAt.ToString("d MMM yyyy · HH:mm") UTC
-                                @if (showOwnerRating)
-                                {
-                                    <span class="rating-chip rating-chip--inline"
-                                          aria-label="@($"Boat owner rating {b.BoatOwnerAverageRating!.Value.ToString("0.0")} out of 5, based on {b.BoatOwnerReviewCount} review(s)")">
-                                        <svg viewBox="0 0 24 24" class="rating-chip__icon" aria-hidden="true">
-                                            <path d="M12 3.4 L14.45 9.2 L20.6 9.7 L15.9 13.85 L17.45 19.85 L12 16.55 L6.55 19.85 L8.1 13.85 L3.4 9.7 L9.55 9.2 Z" />
-                                        </svg>
-                                        <span class="rating-chip__value">@b.BoatOwnerAverageRating!.Value.ToString("0.0")</span>
-                                        <span class="rating-chip__divider" aria-hidden="true">&middot;</span>
-                                        <span class="rating-chip__count">@b.BoatOwnerReviewCount review@(b.BoatOwnerReviewCount == 1 ? "" : "s")</span>
-                                    </span>
-                                }
-                            </p>
-                        </div>
-                        <span class="pill pill--booking pill--@statusKey">
-                            <span class="pill__dot" aria-hidden="true"></span>@b.Status
-                        </span>
-                    </div>
+        <section class="booking-section">
+            <div class="booking-section__head">
+                <span class="booking-section__label">Pending</span>
+                <span class="booking-section__count">@Model.Pending.Count</span>
+            </div>
+            <ul class="rule-grid">
+                @foreach (var b in Model.Pending)
+                {
+                    await renderCard(b, false);
+                }
+            </ul>
+        </section>
+    }
 
-                    <div class="rule-card__range" aria-label="@($"From {b.StartDate.ToString("d MMM yyyy")} to {b.EndDate.ToString("d MMM yyyy")}")">
-                        <div class="rule-card__date">
-                            <span class="rule-card__date-label">Arrival</span>
-                            <span class="rule-card__date-value">@b.StartDate.ToString("d MMM yyyy")</span>
-                        </div>
-                        <span class="rule-card__divider" aria-hidden="true"></span>
-                        <div class="rule-card__date">
-                            <span class="rule-card__date-label">Departure</span>
-                            <span class="rule-card__date-value">@b.EndDate.ToString("d MMM yyyy")</span>
-                        </div>
-                    </div>
+    @if (Model.Confirmed.Any())
+    {
+        <section class="booking-section">
+            <div class="booking-section__head">
+                <span class="booking-section__label">Confirmed</span>
+                <span class="booking-section__count">@Model.Confirmed.Count</span>
+            </div>
+            <ul class="rule-grid">
+                @foreach (var b in Model.Confirmed)
+                {
+                    await renderCard(b, false);
+                }
+            </ul>
+        </section>
+    }
 
-                    @if (b.Status == BookingStatus.Pending && b.AutoActionDeadline.HasValue)
-                    {
-                        var deadlineMs = new DateTimeOffset(DateTime.SpecifyKind(b.AutoActionDeadline.Value, DateTimeKind.Utc))
-                            .ToUnixTimeMilliseconds();
-                        <p class="booking-card__deadline" data-deadline="@deadlineMs">
-                            <span class="booking-card__deadline-dot" aria-hidden="true"></span>
-                            <span class="booking-card__deadline-text">Auto-decision pending</span>
-                        </p>
-                    }
-
-                    <dl class="rule-card__stats">
-                        <div class="rule-card__stat">
-                            <dt class="rule-card__stat-label">Vessel</dt>
-                            <dd class="rule-card__stat-value">
-                                @if (vesselDeleted)
-                                {
-                                    <span class="rule-card__stat-value--muted">Vessel deleted</span>
-                                }
-                                else
-                                {
-                                    <span>@b.VesselName</span>
-                                }
-                            </dd>
-                        </div>
-                        <div class="rule-card__stat">
-                            <dt class="rule-card__stat-label">Total</dt>
-                            <dd class="rule-card__stat-value">
-                                <span>&euro;@b.TotalPrice.ToString("0.00")</span>
-                            </dd>
-                        </div>
-                    </dl>
-
-                    @if (showReviewBlock)
-                    {
-                        if (b.CurrentUserScore.HasValue)
-                        {
-                            <div class="review-cta review-cta--complete">
-                                <span class="review-cta__label">You rated this guest</span>
-                                <span class="review-cta__score">
-                                    <span class="score-static" aria-label="@($"{b.CurrentUserScore.Value} out of 5 stars")">
-                                        @for (var s = 1; s <= 5; s++)
-                                        {
-                                            var on = s <= b.CurrentUserScore.Value;
-                                            <svg viewBox="0 0 24 24" class="score-static__star @(on ? "score-static__star--on" : null)" aria-hidden="true">
-                                                <path d="M12 3.4 L14.45 9.2 L20.6 9.7 L15.9 13.85 L17.45 19.85 L12 16.55 L6.55 19.85 L8.1 13.85 L3.4 9.7 L9.55 9.2 Z" />
-                                            </svg>
-                                        }
-                                    </span>
-                                    <span>@b.CurrentUserScore.Value / 5</span>
-                                </span>
-                            </div>
-                        }
-                        else if (b.CanCurrentUserReview)
-                        {
-                            <div class="review-cta">
-                                <span class="review-cta__label">Rate this guest</span>
-                                <span class="review-cta__deadline">Window closes @b.ReviewDeadline?.ToString("d MMM yyyy")</span>
-                                <a class="btn btn--primary btn--sm" href="/placeowner/reviews/create?bookingId=@b.Id">Leave a review</a>
-                            </div>
-                        }
-                        else if (b.ReviewDeadline.HasValue)
-                        {
-                            <p class="review-cta__closed" style="margin: 0;">
-                                Review window closed @b.ReviewDeadline.Value.ToString("d MMM yyyy").
-                            </p>
-                        }
-                    }
-
-                    @if (canConfirmOrReject)
-                    {
-                        <div class="rule-card__actions">
-                            <form method="post" action="/placeowner/spot-bookings/@b.Id/confirm"
-                                  onsubmit="return confirm('Confirm this booking?');">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn--primary btn--sm">Confirm</button>
-                            </form>
-                            <form method="post" action="/placeowner/spot-bookings/@b.Id/reject"
-                                  onsubmit="return confirm('Reject this booking? The boat owner will be notified.');">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn--danger btn--sm">Reject</button>
-                            </form>
-                        </div>
-                    }
-                    else if (canCancel)
-                    {
-                        <div class="rule-card__actions">
-                            <form method="post" action="/placeowner/spot-bookings/@b.Id/cancel"
-                                  onsubmit="return confirm('Cancel this confirmed booking? The boat owner will be notified.');">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn--danger btn--sm">Cancel</button>
-                            </form>
-                        </div>
-                    }
-                </li>
-            }
-        </ul>
+    @if (Model.Past.Any())
+    {
+        <section class="booking-section booking-section--past">
+            <div class="booking-section__head">
+                <span class="booking-section__label">Past</span>
+                <span class="booking-section__count">@Model.Past.Count</span>
+            </div>
+            <ul class="rule-grid">
+                @foreach (var b in Model.Past)
+                {
+                    await renderCard(b, true);
+                }
+            </ul>
+        </section>
     }
 </section>
 

@@ -1012,6 +1012,299 @@ public class BookingServiceTests
     }
 
     // ──────────────────────────────────────────────────────────────────────
+    // DismissAsync
+    // ──────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task DismissAsync_BookingNotFound_Fails()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+
+        var service = BuildService(db.Context);
+        var result = await service.DismissAsync(Guid.NewGuid(), "owner-1");
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("Booking not found", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task DismissAsync_WrongUser_Forbidden()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (_, spot, vessel, boatOwnerId) = await SeedBasicAsync(db.Context);
+
+        var booking = new Booking
+        {
+            SpotId = spot.Id,
+            VesselId = vessel.Id,
+            BoatOwnerId = boatOwnerId,
+            StartDate = new DateOnly(2025, 1, 1),
+            EndDate = new DateOnly(2025, 1, 7),
+            TotalPrice = 300m
+        };
+        booking.Cancel();
+        await db.Context.Bookings.AddAsync(booking);
+        await db.Context.SaveChangesAsync();
+
+        var service = BuildService(db.Context);
+        var result = await service.DismissAsync(booking.Id, "other-user-99");
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("Forbidden", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task DismissAsync_ActiveUpcomingConfirmed_Rejected()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (_, spot, vessel, boatOwnerId) = await SeedBasicAsync(db.Context);
+
+        var futureEnd = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(10));
+        var futureStart = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(3));
+
+        var booking = new Booking
+        {
+            SpotId = spot.Id,
+            VesselId = vessel.Id,
+            BoatOwnerId = boatOwnerId,
+            StartDate = futureStart,
+            EndDate = futureEnd,
+            TotalPrice = 300m
+        };
+        booking.Confirm();
+        await db.Context.Bookings.AddAsync(booking);
+        await db.Context.SaveChangesAsync();
+
+        var service = BuildService(db.Context);
+        var result = await service.DismissAsync(booking.Id, boatOwnerId);
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("past or cancelled", StringComparison.OrdinalIgnoreCase));
+        var reloaded = await db.Context.Bookings.FindAsync(booking.Id);
+        Assert.False(reloaded!.DismissedByOwner);
+    }
+
+    [Fact]
+    public async Task DismissAsync_CancelledBooking_SucceedsAndSetsDismissed()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (_, spot, vessel, boatOwnerId) = await SeedBasicAsync(db.Context);
+
+        var booking = new Booking
+        {
+            SpotId = spot.Id,
+            VesselId = vessel.Id,
+            BoatOwnerId = boatOwnerId,
+            StartDate = new DateOnly(2025, 3, 1),
+            EndDate = new DateOnly(2025, 3, 7),
+            TotalPrice = 300m
+        };
+        booking.Cancel();
+        await db.Context.Bookings.AddAsync(booking);
+        await db.Context.SaveChangesAsync();
+
+        var service = BuildService(db.Context);
+        var result = await service.DismissAsync(booking.Id, boatOwnerId);
+
+        Assert.True(result.Success);
+        var reloaded = await db.Context.Bookings.FindAsync(booking.Id);
+        Assert.True(reloaded!.DismissedByOwner);
+    }
+
+    [Fact]
+    public async Task DismissAsync_CompletedBooking_Succeeds()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (_, spot, vessel, boatOwnerId) = await SeedBasicAsync(db.Context);
+
+        var booking = new Booking
+        {
+            SpotId = spot.Id,
+            VesselId = vessel.Id,
+            BoatOwnerId = boatOwnerId,
+            StartDate = new DateOnly(2025, 2, 1),
+            EndDate = new DateOnly(2025, 2, 7),
+            TotalPrice = 300m
+        };
+        booking.Complete();
+        await db.Context.Bookings.AddAsync(booking);
+        await db.Context.SaveChangesAsync();
+
+        var service = BuildService(db.Context);
+        var result = await service.DismissAsync(booking.Id, boatOwnerId);
+
+        Assert.True(result.Success);
+        var reloaded = await db.Context.Bookings.FindAsync(booking.Id);
+        Assert.True(reloaded!.DismissedByOwner);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // DismissByMarinaAsync
+    // ──────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task DismissByMarinaAsync_BookingNotFound_Fails()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+
+        var service = BuildService(db.Context);
+        var result = await service.DismissByMarinaAsync(Guid.NewGuid(), "po-1");
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("Booking not found", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task DismissByMarinaAsync_UserNotMarinaAdmin_Forbidden()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (_, spot, vessel, boatOwnerId) = await SeedBasicAsync(db.Context);
+
+        var booking = new Booking
+        {
+            SpotId = spot.Id,
+            VesselId = vessel.Id,
+            BoatOwnerId = boatOwnerId,
+            StartDate = new DateOnly(2025, 1, 1),
+            EndDate = new DateOnly(2025, 1, 7),
+            TotalPrice = 300m
+        };
+        booking.Cancel();
+        await db.Context.Bookings.AddAsync(booking);
+        await db.Context.SaveChangesAsync();
+
+        var service = BuildService(db.Context);
+        var result = await service.DismissByMarinaAsync(booking.Id, "not-an-admin-99");
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("Forbidden", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task DismissByMarinaAsync_ActiveUpcomingConfirmed_Rejected()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (marina, spot, vessel, boatOwnerId) = await SeedBasicAsync(db.Context);
+
+        const string placeOwnerId = "po-1";
+        await SeedUserAsync(db.Context, placeOwnerId, "po@test.com");
+        await SeedUserAsync(db.Context, "inviter-1", "inviter@test.com");
+        await db.Context.SaveChangesAsync();
+
+        await db.Context.MarinaAdmins.AddAsync(new MarinaAdmin
+        {
+            MarinaId = marina.Id,
+            UserId = placeOwnerId,
+            InvitedAt = DateTimeOffset.UtcNow,
+            InvitedById = "inviter-1"
+        });
+
+        var futureStart = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(3));
+        var futureEnd = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(10));
+
+        var booking = new Booking
+        {
+            SpotId = spot.Id,
+            VesselId = vessel.Id,
+            BoatOwnerId = boatOwnerId,
+            StartDate = futureStart,
+            EndDate = futureEnd,
+            TotalPrice = 300m
+        };
+        booking.Confirm();
+        await db.Context.Bookings.AddAsync(booking);
+        await db.Context.SaveChangesAsync();
+
+        var service = BuildService(db.Context);
+        var result = await service.DismissByMarinaAsync(booking.Id, placeOwnerId);
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("past or cancelled", StringComparison.OrdinalIgnoreCase));
+        var reloaded = await db.Context.Bookings.FindAsync(booking.Id);
+        Assert.False(reloaded!.DismissedByMarina);
+    }
+
+    [Fact]
+    public async Task DismissByMarinaAsync_CancelledBooking_SucceedsAndSetsDismissed()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (marina, spot, vessel, boatOwnerId) = await SeedBasicAsync(db.Context);
+
+        const string placeOwnerId = "po-1";
+        await SeedUserAsync(db.Context, placeOwnerId, "po@test.com");
+        await SeedUserAsync(db.Context, "inviter-1", "inviter@test.com");
+        await db.Context.SaveChangesAsync();
+
+        await db.Context.MarinaAdmins.AddAsync(new MarinaAdmin
+        {
+            MarinaId = marina.Id,
+            UserId = placeOwnerId,
+            InvitedAt = DateTimeOffset.UtcNow,
+            InvitedById = "inviter-1"
+        });
+
+        var booking = new Booking
+        {
+            SpotId = spot.Id,
+            VesselId = vessel.Id,
+            BoatOwnerId = boatOwnerId,
+            StartDate = new DateOnly(2025, 3, 1),
+            EndDate = new DateOnly(2025, 3, 7),
+            TotalPrice = 300m
+        };
+        booking.Cancel();
+        await db.Context.Bookings.AddAsync(booking);
+        await db.Context.SaveChangesAsync();
+
+        var service = BuildService(db.Context);
+        var result = await service.DismissByMarinaAsync(booking.Id, placeOwnerId);
+
+        Assert.True(result.Success);
+        var reloaded = await db.Context.Bookings.FindAsync(booking.Id);
+        Assert.True(reloaded!.DismissedByMarina);
+    }
+
+    [Fact]
+    public async Task DismissByMarinaAsync_CompletedBooking_Succeeds()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (marina, spot, vessel, boatOwnerId) = await SeedBasicAsync(db.Context);
+
+        const string placeOwnerId = "po-1";
+        await SeedUserAsync(db.Context, placeOwnerId, "po@test.com");
+        await SeedUserAsync(db.Context, "inviter-1", "inviter@test.com");
+        await db.Context.SaveChangesAsync();
+
+        await db.Context.MarinaAdmins.AddAsync(new MarinaAdmin
+        {
+            MarinaId = marina.Id,
+            UserId = placeOwnerId,
+            InvitedAt = DateTimeOffset.UtcNow,
+            InvitedById = "inviter-1"
+        });
+
+        var booking = new Booking
+        {
+            SpotId = spot.Id,
+            VesselId = vessel.Id,
+            BoatOwnerId = boatOwnerId,
+            StartDate = new DateOnly(2025, 2, 1),
+            EndDate = new DateOnly(2025, 2, 7),
+            TotalPrice = 300m
+        };
+        booking.Complete();
+        await db.Context.Bookings.AddAsync(booking);
+        await db.Context.SaveChangesAsync();
+
+        var service = BuildService(db.Context);
+        var result = await service.DismissByMarinaAsync(booking.Id, placeOwnerId);
+
+        Assert.True(result.Success);
+        var reloaded = await db.Context.Bookings.FindAsync(booking.Id);
+        Assert.True(reloaded!.DismissedByMarina);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
     // Helpers
     // ──────────────────────────────────────────────────────────────────────
 
