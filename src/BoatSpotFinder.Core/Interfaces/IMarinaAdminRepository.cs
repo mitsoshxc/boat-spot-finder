@@ -8,5 +8,6 @@ public interface IMarinaAdminRepository
     Task<IReadOnlyList<MarinaAdmin>> GetByUserIdAsync(string userId);
     Task AddAsync(MarinaAdmin marinaAdmin);
     Task RemoveAsync(MarinaAdmin marinaAdmin);
+    Task UpdateAsync(MarinaAdmin marinaAdmin);
     Task<bool> ExistsAsync(Guid marinaId, string userId);
 }

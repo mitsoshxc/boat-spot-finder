@@ -40,9 +40,15 @@ public class MarinaAdminRepository : IMarinaAdminRepository
         await _context.SaveChangesAsync();
     }
 
+    public async Task UpdateAsync(MarinaAdmin marinaAdmin)
+    {
+        _context.MarinaAdmins.Update(marinaAdmin);
+        await _context.SaveChangesAsync();
+    }
+
     public async Task<bool> ExistsAsync(Guid marinaId, string userId)
     {
         return await _context.MarinaAdmins
-            .AnyAsync(ma => ma.MarinaId == marinaId && ma.UserId == userId);
+            .AnyAsync(ma => ma.MarinaId == marinaId && ma.UserId == userId && ma.RevokedAt == null);
     }
 }

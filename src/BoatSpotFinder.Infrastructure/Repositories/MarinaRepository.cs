@@ -25,7 +25,7 @@ public class MarinaRepository : IMarinaRepository
     {
         return await _context.Marinas
             .Include(m => m.Spots)
-            .Where(m => m.Admins.Any(a => a.UserId == userId))
+            .Where(m => m.Admins.Any(a => a.UserId == userId && a.RevokedAt == null))
             .ToListAsync();
     }
 

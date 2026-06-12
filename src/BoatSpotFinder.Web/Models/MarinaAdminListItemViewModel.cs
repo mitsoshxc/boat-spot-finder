@@ -6,4 +6,5 @@ public record MarinaAdminListItemViewModel
     public string Email { get; init; } = string.Empty;
     public DateTimeOffset InvitedAt { get; init; }
     public string InvitedBy { get; init; } = string.Empty;
+    public bool IsRevoked { get; init; }
 }

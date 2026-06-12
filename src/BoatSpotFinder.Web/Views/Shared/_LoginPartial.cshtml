@@ -43,27 +43,30 @@
                     </button>
                 </div>
                 <ul class="user-menu__list">
-                    <li class="user-menu__item">
-                        <a class="user-menu__action" href="#" role="menuitem">
-                            <span class="user-menu__label">My Bookings</span>
-                            <span class="user-menu__caret" aria-hidden="true">
-                                <svg viewBox="0 0 6 10">
-                                    <path d="M1 1 L5 5 L1 9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                            </span>
-                        </a>
-                    </li>
-                    <li class="user-menu__item">
-                        <a class="user-menu__action" href="#" role="menuitem">
-                            <span class="user-menu__label">Favorites</span>
-                            <span class="user-menu__caret" aria-hidden="true">
-                                <svg viewBox="0 0 6 10">
-                                    <path d="M1 1 L5 5 L1 9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                            </span>
-                        </a>
-                    </li>
-                    <li class="user-menu__divider" role="separator" aria-hidden="true"></li>
+                    @if (!User.IsInRole("Admin"))
+                    {
+                        <li class="user-menu__item">
+                            <a class="user-menu__action" href="#" role="menuitem">
+                                <span class="user-menu__label">My Bookings</span>
+                                <span class="user-menu__caret" aria-hidden="true">
+                                    <svg viewBox="0 0 6 10">
+                                        <path d="M1 1 L5 5 L1 9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </span>
+                            </a>
+                        </li>
+                        <li class="user-menu__item">
+                            <a class="user-menu__action" href="#" role="menuitem">
+                                <span class="user-menu__label">Favorites</span>
+                                <span class="user-menu__caret" aria-hidden="true">
+                                    <svg viewBox="0 0 6 10">
+                                        <path d="M1 1 L5 5 L1 9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </span>
+                            </a>
+                        </li>
+                        <li class="user-menu__divider" role="separator" aria-hidden="true"></li>
+                    }
                     <li class="user-menu__item">
                         <form asp-controller="Account" asp-action="Logout" method="post" class="user-menu__form">
                             <button type="submit" class="user-menu__action user-menu__action--destructive" role="menuitem">

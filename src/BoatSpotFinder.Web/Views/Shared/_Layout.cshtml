@@ -29,10 +29,13 @@
             </a>
             <nav class="site-nav" aria-label="Primary">
                 <ul class="site-nav__list">
-                    <li><a class="site-nav__link" asp-area="" asp-controller="Home" asp-action="Index">Home</a></li>
+                    @if (!User.IsInRole("Admin"))
+                    {
+                        <li><a class="site-nav__link" asp-area="" asp-controller="Home" asp-action="Index">Home</a></li>
+                    }
                     @if (User.IsInRole("Admin"))
                     {
-                        <li><a class="site-nav__link" href="/admin/dashboard">Admin panel</a></li>
+                        <li><a class="site-nav__link" href="/admin/jobs">Hangfire</a></li>
                     }
                     @if (User.IsInRole("PlaceOwner"))
                     {
@@ -53,7 +56,7 @@
         </div>
     </header>
 
-    <main role="main" class="site-main">
+    <main role="main" class="site-main @(ViewData["MainModifier"])">
         @RenderBody()
     </main>
 

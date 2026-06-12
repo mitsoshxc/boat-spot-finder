@@ -62,6 +62,12 @@ public class AdminController : Controller
         return View();
     }
 
+    [HttpGet("jobs")]
+    public IActionResult Jobs()
+    {
+        return View();
+    }
+
     [HttpGet("users")]
     public async Task<IActionResult> Users()
     {
@@ -123,7 +129,7 @@ public class AdminController : Controller
 
         foreach (var m in marinas)
         {
-            var adminCount = (await _marinaAdminRepository.GetByMarinaIdAsync(m.Id)).Count;
+            var adminCount = (await _marinaAdminRepository.GetByMarinaIdAsync(m.Id)).Count(a => a.RevokedAt == null);
             var spotCount = (await _spotRepository.GetByMarinaIdAsync(m.Id, includeInactive: true)).Count;
             var vm = new AdminMarinaListItemViewModel
             {
@@ -202,11 +208,12 @@ public class AdminController : Controller
                 Email = user?.Email ?? user?.UserName ?? "",
                 InvitedAt = ma.InvitedAt,
                 InvitedBy = invitedByUser?.Email ?? invitedByUser?.UserName ?? "",
+                IsRevoked = ma.IsRevoked,
             };
             viewModels.Add(vm);
         }
 
-        var ordered = viewModels.OrderBy(a => a.InvitedAt).ToList();
+        var ordered = viewModels.OrderBy(a => a.IsRevoked).ThenBy(a => a.InvitedAt).ToList();
         return View(ordered);
     }
 
@@ -511,10 +518,11 @@ public class AdminController : Controller
         }
 
         var actingUserId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        await _marinaAdminRepository.RemoveAsync(record);
+        record.Revoke();
+        await _marinaAdminRepository.UpdateAsync(record);
 
-        var remaining = await _marinaAdminRepository.GetByUserIdAsync(userId);
-        if (remaining.Count == 0)
+        var activeRemaining = (await _marinaAdminRepository.GetByUserIdAsync(userId)).Count(a => a.RevokedAt == null);
+        if (activeRemaining == 0)
         {
             var user = await _userManager.FindByIdAsync(userId);
             if (user != null)
@@ -524,6 +532,30 @@ public class AdminController : Controller
         }
 
         _auditLogger.Log(actingUserId, User.Identity!.Name ?? "", action: "AdminRevoked", entityType: "MarinaAdmin", entityId: userId, marinaId: marinaId.ToString(), details: null);
+        return RedirectToAction(nameof(MarinaAdmins), new { marinaId });
+    }
+
+    [HttpPost("marinas/{marinaId:guid}/admins/{userId}/reenable")]
+    public async Task<IActionResult> ReEnableAdmin(Guid marinaId, string userId)
+    {
+        var admins = await _marinaAdminRepository.GetByMarinaIdAsync(marinaId);
+        var record = admins.FirstOrDefault(a => a.UserId == userId);
+        if (record == null)
+        {
+            return NotFound();
+        }
+
+        var actingUserId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        record.Reinstate();
+        await _marinaAdminRepository.UpdateAsync(record);
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user != null && !await _userManager.IsInRoleAsync(user, "PlaceOwner"))
+        {
+            await _userManager.AddToRoleAsync(user, "PlaceOwner");
+        }
+
+        _auditLogger.Log(actingUserId, User.Identity!.Name ?? "", action: "AdminReinstated", entityType: "MarinaAdmin", entityId: userId, marinaId: marinaId.ToString(), details: null);
         return RedirectToAction(nameof(MarinaAdmins), new { marinaId });
     }
 

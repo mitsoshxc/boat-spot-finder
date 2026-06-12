@@ -7,6 +7,12 @@
 
 <section class="workspace">
     <header class="workspace__head">
+        <a class="workspace__back" href="/admin/marinas">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <path d="M10 3 L5 8 L10 13" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            Back to marinas
+        </a>
         <span class="workspace__eyebrow">Admin &middot; Access</span>
         <h1 class="workspace__title">Marina admins</h1>
         <p class="workspace__lede">
@@ -43,13 +49,14 @@
                         <th class="ledger__th" scope="col">Email</th>
                         <th class="ledger__th" scope="col">Invited At</th>
                         <th class="ledger__th" scope="col">Invited By</th>
+                        <th class="ledger__th" scope="col">Status</th>
                         <th class="ledger__th ledger__th--actions" scope="col">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="ledger__body">
                     @foreach (var a in Model)
                     {
-                        <tr class="ledger__row">
+                        <tr class="ledger__row @(a.IsRevoked ? "ledger__row--inactive" : "")">
                             <td class="ledger__cell ledger__cell--primary" data-label="Email">
                                 <span class="ledger__value">@a.Email</span>
                             </td>
@@ -59,12 +66,25 @@
                             <td class="ledger__cell" data-label="Invited By">
                                 <span class="ledger__value">@a.InvitedBy</span>
                             </td>
+                            <td class="ledger__cell" data-label="Status">
+                                <span class="pill @(a.IsRevoked ? "pill--inactive" : "pill--active")"><span class="pill__dot" aria-hidden="true"></span>@(a.IsRevoked ? "Revoked" : "Active")</span>
+                            </td>
                             <td class="ledger__cell ledger__cell--actions" data-label="Actions">
                                 <span class="ledger__actions">
-                                    <form method="post" action="/admin/marinas/@marinaId/admins/@a.UserId/revoke" onsubmit="return confirm('Revoke this place owner&rsquo;s access to the marina?');" style="display:inline;">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn--danger btn--sm">Revoke</button>
-                                    </form>
+                                    @if (a.IsRevoked)
+                                    {
+                                        <form method="post" action="/admin/marinas/@marinaId/admins/@a.UserId/reenable" onsubmit="return confirm('Re-enable this place owner&rsquo;s access to the marina?');" style="display:inline;">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn--sm">Re-enable</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form method="post" action="/admin/marinas/@marinaId/admins/@a.UserId/revoke" onsubmit="return confirm('Revoke this place owner&rsquo;s access to the marina?');" style="display:inline;">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn--danger btn--sm">Revoke</button>
+                                        </form>
+                                    }
                                 </span>
                             </td>
                         </tr>
