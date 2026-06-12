@@ -39,7 +39,10 @@ public class AccountController : Controller
     }
 
     [HttpGet]
-    public IActionResult Login() => View();
+    public IActionResult Login(string? returnUrl = null)
+    {
+        return View(new LoginViewModel { ReturnUrl = returnUrl });
+    }
 
     [HttpPost]
     public async Task<IActionResult> Login(LoginViewModel model)
@@ -69,6 +72,11 @@ public class AccountController : Controller
                 marinaId: null,
                 details: null);
 
+            if (!string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
+            {
+                return LocalRedirect(model.ReturnUrl);
+            }
+
             var roles = await _userManager.GetRolesAsync(user);
 
             if (roles.Contains("Admin"))
@@ -79,8 +87,12 @@ public class AccountController : Controller
             {
                 return Redirect("/placeowner/marinas");
             }
+            if (roles.Contains("BoatOwner"))
+            {
+                return Redirect("/browse");
+            }
 
-            return Redirect("/browse");
+            return RedirectToAction("Index", "Home");
         }
 
         if (result.IsNotAllowed)

@@ -14,4 +14,6 @@ public record LoginViewModel
 
     [Display(Name = "Remember me")]
     public bool RememberMe { get; init; }
+
+    public string? ReturnUrl { get; init; }
 }
