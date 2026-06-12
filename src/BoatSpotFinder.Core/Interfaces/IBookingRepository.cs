@@ -13,4 +13,5 @@ public interface IBookingRepository
     Task AddAsync(Booking booking);
     Task UpdateAsync(Booking booking);
     Task<bool> IsSpotAvailableAsync(Guid spotId, DateOnly start, DateOnly end, Guid? excludeBookingId);
+    Task<IEnumerable<Guid>> GetOccupiedSpotIdsAsync(Guid marinaId, DateOnly onDate);
 }

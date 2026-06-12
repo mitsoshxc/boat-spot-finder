@@ -80,4 +80,16 @@ public class BookingRepository : IBookingRepository
             start < b.EndDate &&
             end > b.StartDate);
     }
+
+    public async Task<IEnumerable<Guid>> GetOccupiedSpotIdsAsync(Guid marinaId, DateOnly onDate)
+    {
+        return await _context.Bookings
+            .Where(b => b.Spot.MarinaId == marinaId
+                && (b.Status == BookingStatus.Pending || b.Status == BookingStatus.Confirmed)
+                && b.StartDate <= onDate
+                && b.EndDate >= onDate)
+            .Select(b => b.SpotId)
+            .Distinct()
+            .ToListAsync();
+    }
 }

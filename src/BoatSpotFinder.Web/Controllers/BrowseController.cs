@@ -9,11 +9,13 @@ public class BrowseController : Controller
 {
     private readonly IMarinaRepository _marinaRepository;
     private readonly ISpotRepository _spotRepository;
+    private readonly IBookingRepository _bookingRepository;
 
-    public BrowseController(IMarinaRepository marinaRepository, ISpotRepository spotRepository)
+    public BrowseController(IMarinaRepository marinaRepository, ISpotRepository spotRepository, IBookingRepository bookingRepository)
     {
         _marinaRepository = marinaRepository;
         _spotRepository = spotRepository;
+        _bookingRepository = bookingRepository;
     }
 
     [HttpGet("marina/{id:guid}/layout-data")]
@@ -50,5 +52,25 @@ public class BrowseController : Controller
         };
 
         return Json(viewModel);
+    }
+
+    [HttpGet("marina/{id:guid}/spot-statuses")]
+    public async Task<IActionResult> SpotStatuses(Guid id)
+    {
+        var marina = await _marinaRepository.GetByIdAsync(id);
+        if (marina is null)
+        {
+            return NotFound();
+        }
+
+        var spots = await _spotRepository.GetByMarinaIdAsync(id, includeInactive: true);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var occupied = (await _bookingRepository.GetOccupiedSpotIdsAsync(id, today)).ToHashSet();
+
+        var statuses = spots.Select(s => new SpotStatusViewModel(
+            s.Id,
+            !s.IsActive ? "Unavailable" : occupied.Contains(s.Id) ? "Booked" : "Free"));
+
+        return Json(statuses);
     }
 }
