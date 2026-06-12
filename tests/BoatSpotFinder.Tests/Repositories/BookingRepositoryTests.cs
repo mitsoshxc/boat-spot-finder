@@ -231,4 +231,102 @@ public class BookingRepositoryTests
         Assert.Single(results);
         Assert.Equal(bookingOwner1.Id, results[0].Id);
     }
+
+    private static readonly DateOnly OnDate = new(2027, 6, 15);
+
+    [Fact]
+    public async Task GetOccupiedSpotIdsAsync_ReturnsPendingAndConfirmedOverlapping()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (marina, spotPending) = await SeedMarinaAndSpotAsync(db.Context);
+        var spotConfirmed = new Spot("Berth 2", "Desc", 20, 10, 5, 1, VesselType.None, marina.Id, 50m);
+        spotConfirmed.Activate();
+        await db.Context.Spots.AddAsync(spotConfirmed);
+        await SeedUserAsync(db.Context, "owner-1", "owner@test.com");
+        await db.Context.SaveChangesAsync();
+
+        var pending = new Booking { SpotId = spotPending.Id, BoatOwnerId = "owner-1", StartDate = new DateOnly(2027, 6, 10), EndDate = new DateOnly(2027, 6, 20), TotalPrice = 100m };
+        var confirmed = new Booking { SpotId = spotConfirmed.Id, BoatOwnerId = "owner-1", StartDate = new DateOnly(2027, 6, 14), EndDate = new DateOnly(2027, 6, 16), TotalPrice = 100m };
+        confirmed.Confirm();
+        await db.Context.Bookings.AddRangeAsync(pending, confirmed);
+        await db.Context.SaveChangesAsync();
+
+        var repo = new BookingRepository(db.Context);
+        var occupied = (await repo.GetOccupiedSpotIdsAsync(marina.Id, OnDate)).ToList();
+
+        Assert.Equal(2, occupied.Count);
+        Assert.Contains(spotPending.Id, occupied);
+        Assert.Contains(spotConfirmed.Id, occupied);
+    }
+
+    [Fact]
+    public async Task GetOccupiedSpotIdsAsync_ExcludesCancelledAndNonOverlapping()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (marina, spotCancelled) = await SeedMarinaAndSpotAsync(db.Context);
+        var spotFuture = new Spot("Berth 2", "Desc", 20, 10, 5, 1, VesselType.None, marina.Id, 50m);
+        spotFuture.Activate();
+        await db.Context.Spots.AddAsync(spotFuture);
+        await SeedUserAsync(db.Context, "owner-1", "owner@test.com");
+        await db.Context.SaveChangesAsync();
+
+        var cancelled = new Booking { SpotId = spotCancelled.Id, BoatOwnerId = "owner-1", StartDate = new DateOnly(2027, 6, 10), EndDate = new DateOnly(2027, 6, 20), TotalPrice = 100m };
+        cancelled.Cancel();
+        var future = new Booking { SpotId = spotFuture.Id, BoatOwnerId = "owner-1", StartDate = new DateOnly(2027, 6, 20), EndDate = new DateOnly(2027, 6, 25), TotalPrice = 100m };
+        future.Confirm();
+        await db.Context.Bookings.AddRangeAsync(cancelled, future);
+        await db.Context.SaveChangesAsync();
+
+        var repo = new BookingRepository(db.Context);
+        var occupied = (await repo.GetOccupiedSpotIdsAsync(marina.Id, OnDate)).ToList();
+
+        Assert.Empty(occupied);
+    }
+
+    [Fact]
+    public async Task GetOccupiedSpotIdsAsync_ScopedToMarina()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var marinaA = new Marina("Marina A", "Desc", "Addr", "Region", "000", 0, 0, 50m);
+        var marinaB = new Marina("Marina B", "Desc", "Addr", "Region", "000", 0, 0, 50m);
+        await db.Context.Marinas.AddRangeAsync(marinaA, marinaB);
+        await db.Context.SaveChangesAsync();
+        var spotB = new Spot("Berth B", "Desc", 20, 10, 5, 1, VesselType.None, marinaB.Id, 50m);
+        spotB.Activate();
+        await db.Context.Spots.AddAsync(spotB);
+        await SeedUserAsync(db.Context, "owner-1", "owner@test.com");
+        await db.Context.SaveChangesAsync();
+
+        var booking = new Booking { SpotId = spotB.Id, BoatOwnerId = "owner-1", StartDate = new DateOnly(2027, 6, 10), EndDate = new DateOnly(2027, 6, 20), TotalPrice = 100m };
+        booking.Confirm();
+        await db.Context.Bookings.AddAsync(booking);
+        await db.Context.SaveChangesAsync();
+
+        var repo = new BookingRepository(db.Context);
+        var occupied = (await repo.GetOccupiedSpotIdsAsync(marinaA.Id, OnDate)).ToList();
+
+        Assert.Empty(occupied);
+    }
+
+    [Fact]
+    public async Task GetOccupiedSpotIdsAsync_DistinctPerSpot()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (marina, spot) = await SeedMarinaAndSpotAsync(db.Context);
+        await SeedUserAsync(db.Context, "owner-1", "owner@test.com");
+        await db.Context.SaveChangesAsync();
+
+        var b1 = new Booking { SpotId = spot.Id, BoatOwnerId = "owner-1", StartDate = new DateOnly(2027, 6, 10), EndDate = new DateOnly(2027, 6, 16), TotalPrice = 100m };
+        b1.Confirm();
+        var b2 = new Booking { SpotId = spot.Id, BoatOwnerId = "owner-1", StartDate = new DateOnly(2027, 6, 14), EndDate = new DateOnly(2027, 6, 20), TotalPrice = 100m };
+        b2.Confirm();
+        await db.Context.Bookings.AddRangeAsync(b1, b2);
+        await db.Context.SaveChangesAsync();
+
+        var repo = new BookingRepository(db.Context);
+        var occupied = (await repo.GetOccupiedSpotIdsAsync(marina.Id, OnDate)).ToList();
+
+        Assert.Single(occupied);
+        Assert.Equal(spot.Id, occupied[0]);
+    }
 }

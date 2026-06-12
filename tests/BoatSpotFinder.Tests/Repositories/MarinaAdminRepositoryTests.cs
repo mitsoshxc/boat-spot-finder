@@ -114,4 +114,47 @@ public class MarinaAdminRepositoryTests
         Assert.Equal(2, results.Count);
         Assert.All(results, r => Assert.Equal(marina.Id, r.MarinaId));
     }
+
+    [Fact]
+    public async Task ExistsAsync_RevokedMembership_False()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        await SeedUserAsync(db.Context, "user-1", "user1@test.com");
+        await SeedUserAsync(db.Context, "admin-1", "admin@test.com");
+        await db.Context.SaveChangesAsync();
+        var marina = await SeedMarinaAsync(db.Context);
+
+        var admin = MakeAdmin(marina.Id, "user-1");
+        admin.Revoke();
+        await db.Context.MarinaAdmins.AddAsync(admin);
+        await db.Context.SaveChangesAsync();
+
+        var repo = new MarinaAdminRepository(db.Context);
+        Assert.False(await repo.ExistsAsync(marina.Id, "user-1"));
+    }
+
+    [Fact]
+    public async Task UpdateAsync_RevokeThenReinstate_TogglesExistsAsync()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        await SeedUserAsync(db.Context, "user-1", "user1@test.com");
+        await SeedUserAsync(db.Context, "admin-1", "admin@test.com");
+        await db.Context.SaveChangesAsync();
+        var marina = await SeedMarinaAsync(db.Context);
+
+        await db.Context.MarinaAdmins.AddAsync(MakeAdmin(marina.Id, "user-1"));
+        await db.Context.SaveChangesAsync();
+
+        var repo = new MarinaAdminRepository(db.Context);
+        Assert.True(await repo.ExistsAsync(marina.Id, "user-1"));
+
+        var record = (await repo.GetByMarinaIdAsync(marina.Id))[0];
+        record.Revoke();
+        await repo.UpdateAsync(record);
+        Assert.False(await repo.ExistsAsync(marina.Id, "user-1"));
+
+        record.Reinstate();
+        await repo.UpdateAsync(record);
+        Assert.True(await repo.ExistsAsync(marina.Id, "user-1"));
+    }
 }

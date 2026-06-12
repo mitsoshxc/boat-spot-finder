@@ -148,4 +148,30 @@ public class MarinaRepositoryTests
         Assert.Single(results);
         Assert.Equal(marina.Id, results[0].Id);
     }
+
+    [Fact]
+    public async Task GetByUserIdAsync_ExcludesRevokedMembership()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        await SeedUserAsync(db.Context, "user-1", "user1@test.com");
+        await SeedUserAsync(db.Context, "admin-1", "admin@test.com");
+        await db.Context.SaveChangesAsync();
+
+        var marinaA = CreateActiveMarina("Marina A");
+        var marinaB = CreateActiveMarina("Marina B");
+        await db.Context.Marinas.AddRangeAsync(marinaA, marinaB);
+        await db.Context.SaveChangesAsync();
+
+        var activeOnA = new MarinaAdmin { MarinaId = marinaA.Id, UserId = "user-1", InvitedAt = DateTimeOffset.UtcNow, InvitedById = "admin-1" };
+        var revokedOnB = new MarinaAdmin { MarinaId = marinaB.Id, UserId = "user-1", InvitedAt = DateTimeOffset.UtcNow, InvitedById = "admin-1" };
+        revokedOnB.Revoke();
+        await db.Context.MarinaAdmins.AddRangeAsync(activeOnA, revokedOnB);
+        await db.Context.SaveChangesAsync();
+
+        var repo = new MarinaRepository(db.Context);
+        var results = await repo.GetByUserIdAsync("user-1");
+
+        Assert.Single(results);
+        Assert.Equal(marinaA.Id, results[0].Id);
+    }
 }

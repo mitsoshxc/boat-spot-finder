@@ -371,7 +371,7 @@ Phase 2c (Audit Log Search & Admin Viewer) depends on Phase 2b + Phase 3b + Phas
 | 6b.4 | Soft-revoke + re-enable marina admins | `Core/Entities/MarinaAdmin.cs` (`RevokedAt` + `IsRevoked`/`Revoke()`/`Reinstate()`); migration `AddMarinaAdminRevokedAt`; `IMarinaAdminRepository.UpdateAsync` + `ExistsAsync` active-only; `MarinaRepository.GetByUserIdAsync` active-only; `AdminController` (`RevokeAdmin` soft + new `ReEnableAdmin`, active-only admin count, audit `AdminReinstated`); `Web/Models/MarinaAdminListItemViewModel.cs` (`IsRevoked`); `Admin/MarinaAdmins.cshtml` (Status column + Revoke/Re-enable) | [x] |
 | 6b.5 | AJAX dismiss | `SpotBookingsController.Dismiss` + `BookingsController.Dismiss` (JSON content-negotiation); `Incoming.cshtml` + `MyBookings.cshtml` (`data-dismiss-form`); new `wwwroot/js/booking-dismiss.js` (fetch + remove card in place) | [x] |
 
-**Tests:** unit suite green; no new automated tests added this session — gaps for `GetOccupiedSpotIdsAsync`, the soft-revoke active-only filters, and the login redirect are tracked in [`TESTING.md`](TESTING.md).
+**Tests:** unit suite 99 → **106** — repo tests added for `BookingRepository.GetOccupiedSpotIdsAsync` (×4), `MarinaAdminRepository` active-only `ExistsAsync` + `UpdateAsync` (×2), and `MarinaRepository.GetByUserIdAsync` active-only (×1). The login-redirect and `SpotStatuses`/`RevokeAdmin`/`ReEnableAdmin` controller paths remain smoke-only (no controller harness) — tracked in [`TESTING.md`](TESTING.md).
 
 ---
 

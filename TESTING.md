@@ -13,7 +13,7 @@ Phase 1 (Foundation), Phase 2 + 2b (Auth + Audit Logging, incl. Admin actions 2b
 
 ## Test Project Status
 
-Current state of `tests/BoatSpotFinder.Tests/` — **99 tests, all green as of 2026-06-03**:
+Current state of `tests/BoatSpotFinder.Tests/` — **106 tests, all green as of 2026-06-12**:
 
 | Item | Value |
 |---|---|
@@ -31,7 +31,7 @@ Current state of `tests/BoatSpotFinder.Tests/` — **99 tests, all green as of 2
 
 ## Automated Tests
 
-### Implemented (99 tests)
+### Implemented (106 tests)
 
 Run all: `dotnet test BoatSpotFinder.slnx`.
 
@@ -45,9 +45,9 @@ Run all: `dotnet test BoatSpotFinder.slnx`.
 | `Services/BookingServiceTests.cs` | 45 | 5/5c | **Create** (overlap/strict-adjacency, pricing cascade spot→seasonal→marina-default, vessel fit + type flags, min-days); **Cancel** for BoatOwner/PlaceOwner/Admin (StartDate guard + Admin skip, Forbidden, terminal-status reject); **Confirm/Reject** ownership gate + transition + email + non-Pending reject; **`AutoActionAsync`** (auto-approve/reject + timeout filter) and **`CompleteOverdueAsync`** (overdue→Completed + review-invite email fan-out) — the two Hangfire jobs; **`PreviewPrice`** (no persist); **`DismissAsync`** (owner-only + past/cancelled/elapsed guard, hide-not-delete) and **`DismissByMarinaAsync`** (marina-admin authorization + past/cancelled/elapsed guard) — the Phase 5c per-side dismiss flags |
 | `Services/ReviewServiceTests.cs` | 14 | 5b | `CanReviewAsync` gates (not-found / not-completed / window closed / **14-day boundary inclusive** / BoatOwner / PlaceOwner-via-MarinaAdmin / unrelated / already-reviewed); `CreateReviewAsync` persist + marina & boat-owner rating recompute + averaging + ES `IndexAsync` call + **ES-failure-is-swallowed** |
 | `Repositories/ReviewRepositoryTests.cs` | 5 | 5b | `ExistsAsync` role discrimination; `GetAllByMarinaId`/`GetAllByBoatOwnerId` role+scope filtering; `GetRecentByMarinaId` ordering + count |
-| `Repositories/MarinaRepositoryTests.cs` | 5 | 3/6 | `GetByUserIdAsync` MarinaAdmin join; `GetActiveWithActiveSpotsAsync` excludes empty/inactive, applies id filter, returns marina with an active spot |
-| `Repositories/MarinaAdminRepositoryTests.cs` | 4 | 3/6 | `ExistsAsync` present/absent; `GetByUserId`/`GetByMarinaId` filtering |
-| `Repositories/BookingRepositoryTests.cs` | 6 | 5 | `IsSpotAvailableAsync` overlap / strict-adjacency / Cancelled-ignored / exclude-self; `GetByMarinaOwnerIdAsync` Booking→Spot→MarinaAdmin join; `GetByBoatOwnerIdAsync` filter |
+| `Repositories/MarinaRepositoryTests.cs` | 6 | 3/6/6b | `GetByUserIdAsync` MarinaAdmin join + **excludes revoked membership** (6b); `GetActiveWithActiveSpotsAsync` excludes empty/inactive, applies id filter, returns marina with an active spot |
+| `Repositories/MarinaAdminRepositoryTests.cs` | 6 | 3/6/6b | `ExistsAsync` present/absent + **revoked-excluded** (6b); `UpdateAsync` Revoke→Reinstate round-trip toggles `ExistsAsync` (6b); `GetByUserId`/`GetByMarinaId` filtering |
+| `Repositories/BookingRepositoryTests.cs` | 10 | 5/6b | `IsSpotAvailableAsync` overlap / strict-adjacency / Cancelled-ignored / exclude-self; `GetByMarinaOwnerIdAsync` Booking→Spot→MarinaAdmin join; `GetByBoatOwnerIdAsync` filter; **`GetOccupiedSpotIdsAsync`** ×4 (6b — Pending/Confirmed-overlapping returned, Cancelled/non-overlapping excluded, marina-scoped, distinct-per-spot) |
 | `Repositories/VesselRepositoryTests.cs` | 3 | 4 | `GetByOwnerIdAsync` owner filtering; null-for-missing; delete |
 | `Repositories/AdminSettingsRepositoryTests.cs` | 2 | 6 | Seeded-singleton fetch; `UpdateSettings` round-trip (the config the auto-action job reads) |
 
@@ -60,8 +60,7 @@ High-value units without direct automated coverage, exercised via the smoke sect
 - **Phase 2b** — `NLogAuditLogger` structured-field output. Needs a memory/list NLog sink; verified via smoke §5 / §17 by tailing the log file.
 - **Phase 5 / 6 controllers** — `BookingsController`, `SpotBookingsController`, `AdminController` action wiring + ownership / `Forbid()` paths. Verified via smoke §13 / §16.
 - **Phase 3b** — Elasticsearch marina indexing + search round-trip needs a live ES node (integration test). The null-stub sentinel path and the `GetActiveWithActiveSpotsAsync` query Browse will consume are covered by the repository tests above.
-- **Layout viewer (this session)** — `BookingRepository.GetOccupiedSpotIdsAsync(marinaId, onDate)` (the Booked/Free derivation) and the `BrowseController.SpotStatuses` mapping have no direct test yet; verified via the §16 layout smoke. Add a repo test (Pending/Confirmed overlapping `onDate` → returned; Cancelled/Completed/non-overlapping → excluded).
-- **Soft-revoke (this session)** — `MarinaAdminRepository.ExistsAsync` active-only filter + `UpdateAsync`, and the role-strip-only-when-no-active-membership logic in `RevokeAdmin`/`ReEnableAdmin`, are smoke-only. Add repo tests for `ExistsAsync` excluding a revoked row, and `MarinaRepository.GetByUserIdAsync` excluding a marina where the user's only membership is revoked.
+- **Covered 2026-06-12 (Phase 6b):** `BookingRepository.GetOccupiedSpotIdsAsync`, `MarinaAdminRepository.ExistsAsync` active-only + `UpdateAsync`, and `MarinaRepository.GetByUserIdAsync` active-only now have repo tests (see the table above, +7 → 106). Still smoke-only: the `BrowseController.SpotStatuses` mapping and the `RevokeAdmin`/`ReEnableAdmin` controller orchestration (role-strip-only-when-no-active-membership) — no controller harness in the suite.
 - **Login redirect (this session)** — `AccountController.Login` POST `ReturnUrl` (`Url.IsLocalUrl` guard) and the roleless→Home fallback are controller paths (no Identity harness in the suite); verified via smoke.
 
 ### Test infrastructure notes
