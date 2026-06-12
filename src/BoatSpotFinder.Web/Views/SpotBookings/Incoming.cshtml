@@ -190,7 +190,8 @@
             {
                 <div class="rule-card__actions">
                     <form method="post" action="/placeowner/spot-bookings/@b.Id/dismiss"
-                          onsubmit="return confirm('Remove this booking from your inbox? It stays in our records.');">
+                          data-dismiss-form
+                          data-dismiss-confirm="Remove this booking from your inbox? It stays in our records.">
                         @Html.AntiForgeryToken()
                         <button type="submit" class="btn btn--dismiss btn--sm">Dismiss</button>
                     </form>
@@ -294,6 +295,7 @@
 </section>
 
 @section Scripts {
+    <script src="~/js/booking-dismiss.js" asp-append-version="true"></script>
     <script>
         (() => {
             const formatRemaining = (ms) => {

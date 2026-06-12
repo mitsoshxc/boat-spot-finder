@@ -177,17 +177,24 @@ public class SpotBookingsController : Controller
     public async Task<IActionResult> Dismiss(Guid id)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var isJson = Request.Headers.Accept.ToString().Contains("application/json");
         var result = await _bookingService.DismissByMarinaAsync(id, userId);
 
         if (!result.Success)
         {
+            if (isJson)
+            {
+                return BadRequest(new { error = string.Join(" ", result.Errors) });
+            }
             TempData["Error"] = string.Join(" ", result.Errors);
-        }
-        else
-        {
-            TempData["Success"] = "Booking dismissed.";
+            return RedirectToAction(nameof(Incoming));
         }
 
+        if (isJson)
+        {
+            return Json(new { ok = true });
+        }
+        TempData["Success"] = "Booking dismissed.";
         return RedirectToAction(nameof(Incoming));
     }
 }
