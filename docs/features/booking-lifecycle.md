@@ -126,6 +126,8 @@ These methods remove a terminal booking from a user's list view without deleting
 
 The booking row is **never deleted** by either method — the audit trail and Admin/cross-role visibility are preserved.
 
+Both dismiss endpoints (`POST /bookings/{id}/dismiss`, `POST /placeowner/spot-bookings/{id}/dismiss`) content-negotiate (see `conventions.md` § JSON vs form content-negotiation): an `Accept: application/json` request returns `Json(new { ok = true })` on success / `BadRequest(new { error })` on failure; a plain form post falls back to `TempData` + redirect. `booking-dismiss.js` (loaded on `MyBookings.cshtml` and `Incoming.cshtml`) posts via `fetch` and removes the card in place — decrementing the section count, dropping an emptied section, and reloading to the empty state when the last card goes.
+
 ---
 
 ## Hangfire Recurring Jobs

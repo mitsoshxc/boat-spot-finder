@@ -68,6 +68,9 @@ Composite PK: `(MarinaId, UserId)`.
 | `UserId` | `string` FK → `ApplicationUser` | Cascade delete. |
 | `InvitedAt` | `DateTimeOffset` | |
 | `InvitedById` | `string` FK → `ApplicationUser` | Restrict delete (see FK rules below). |
+| `RevokedAt` | `DateTimeOffset?` | Private set. `null` = active membership. Set via `Revoke()`, cleared via `Reinstate()`. Added by migration `AddMarinaAdminRevokedAt`. |
+
+`IsRevoked => RevokedAt.HasValue`. `Revoke()` sets `RevokedAt = DateTimeOffset.UtcNow`; `Reinstate()` sets `RevokedAt = null`. The row is never deleted — `AdminController.RevokeAdmin` soft-revokes instead of calling `RemoveAsync`. See [`docs/features/admin-and-invitations.md`](features/admin-and-invitations.md) for the full revoke/re-enable lifecycle and the queries that filter on `RevokedAt == null`.
 
 ### Spot
 

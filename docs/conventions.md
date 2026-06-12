@@ -161,6 +161,8 @@ var isJson = Request.Headers.Accept.ToString().Contains("application/json");
 - If `isJson` is true and ModelState is invalid: return `BadRequest(ModelState)`.
 - If `isJson` is false: use the standard redirect-or-view pattern.
 
+The booking **dismiss** endpoints (`BookingsController.Dismiss`, `SpotBookingsController.Dismiss`) follow this pattern: the JSON branch returns `Json(new { ok = true })` / `BadRequest(new { error })`, the form branch keeps `TempData` + redirect. `booking-dismiss.js` posts via fetch and removes the card in place.
+
 The JS caller sets `Accept: application/json` and includes the `RequestVerificationToken` header (read from the hidden `__RequestVerificationToken` form input on the page).
 
 The same pattern applies to Delete actions invoked from a JS modal. On success the JSON branch returns `Json(new { ok = true })`; on a business-rule violation (e.g. "Cannot delete a spot that has bookings") it returns `BadRequest(new { error = "..." })`.

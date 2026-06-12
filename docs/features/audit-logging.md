@@ -43,7 +43,7 @@ Calls are explicit per action — there is no global filter or middleware. Each 
 | `src/BoatSpotFinder.Web/Controllers/BookingsController.cs` | Emits BookingCreated, BookingCancelledByBoatOwner entries |
 | `src/BoatSpotFinder.Web/Controllers/SpotBookingsController.cs` | Emits BookingConfirmed, BookingRejected, BookingCancelledByPlaceOwner entries |
 | `src/BoatSpotFinder.Web/Controllers/PlaceOwnerReviewsController.cs` | Emits ReviewCreated entry |
-| `src/BoatSpotFinder.Web/Controllers/AdminController.cs` | Emits MarinaCreated, MarinaActivated/Deactivated, SpotActivated/Deactivated, AdminInvited, AdminRevoked, BookingCancelledByAdmin, SettingsUpdated entries |
+| `src/BoatSpotFinder.Web/Controllers/AdminController.cs` | Emits MarinaCreated, MarinaActivated/Deactivated, SpotActivated/Deactivated, AdminInvited, AdminRevoked, AdminReinstated, BookingCancelledByAdmin, SettingsUpdated entries |
 
 ---
 
@@ -138,10 +138,11 @@ Audit fires only when both the booking and the newly persisted review are non-nu
 | `SpotDeactivated` | `POST admin/spots/{id}/toggle-active` (new state: inactive) | `Spot` | spot's id | `spot.MarinaId` | `null` |
 | `AdminInvited` | `POST admin/marinas/{id}/invite` | `Invitation` | invitation's id | `invitation.MarinaId` | `{ email }` |
 | `AdminRevoked` | `POST admin/marinas/{marinaId}/admins/{userId}/revoke` | `MarinaAdmin` | revoked user's `userId` (route param) | route `marinaId` | `null` |
+| `AdminReinstated` | `POST admin/marinas/{marinaId}/admins/{userId}/reenable` | `MarinaAdmin` | re-enabled user's `userId` (route param) | route `marinaId` | `null` |
 | `BookingCancelledByAdmin` | `POST admin/bookings/{id}/cancel` | `Booking` | booking's id | `booking.Spot.MarinaId` | `{ previousStatus }` |
 | `SettingsUpdated` | `POST admin/settings` | `AdminSettings` | `"10000000-0000-0000-0000-000000000001"` | `null` | `null` |
 
-**AdminRevoked disambiguation.** The acting admin's id is captured into a local `actingUserId` before the revoke logic runs, because the route also carries a `userId` parameter for the user being revoked. The `Log` call uses `actingUserId` as the `userId` argument (who acted) and the route `userId` as `entityId` (who was affected).
+**AdminRevoked / AdminReinstated disambiguation.** The acting admin's id is captured into a local `actingUserId` before the revoke/re-enable logic runs, because the route also carries a `userId` parameter for the user being affected. The `Log` call uses `actingUserId` as the `userId` argument (who acted) and the route `userId` as `entityId` (who was affected). Both actions follow this pattern.
 
 **BookingCancelledByAdmin previousStatus.** The booking's `Status` is read and captured into `previousStatus` before calling `BookingService.CancelAsync`. Because the service shares the same request-scoped `DbContext`, reading `Status` after the cancel would always yield `Cancelled`. The audit fires inside the `if (result.Success)` block, with `previousStatus` serialized as a string via `.Value.ToString()`.
 

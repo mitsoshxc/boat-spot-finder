@@ -1,6 +1,21 @@
 # Admin Features and PlaceOwner Invitation Lifecycle
 
-Covers the Admin role's management surface (Phase 6) and the invite-based flow through which new PlaceOwners are created and later revoked.
+Covers the Admin role's management surface (Phase 6), the admin-console UX shell, and the invite-based flow through which new PlaceOwners are created, soft-revoked, and re-enabled.
+
+---
+
+## Admin Console UX
+
+The Admin role gets a dedicated console shell layered on top of the shared `_Layout.cshtml`.
+
+| Behaviour | Implementation |
+|---|---|
+| Home redirect | `HomeController.Index` (`src/BoatSpotFinder.Web/Controllers/HomeController.cs`) redirects signed-in Admins to `RedirectToAction("Dashboard", "Admin")` (`/admin/dashboard`) before rendering the public landing view. |
+| Top nav trim | `_Layout.cshtml`: the "Home" link is hidden for Admins (`@if (!User.IsInRole("Admin"))`). The Admin nav section shows a single link, "Hangfire", pointing at `/admin/jobs` (not `/hangfire` directly). |
+| Account dropdown trim | `_LoginPartial.cshtml`: for Admins, the "My Bookings" and "Favorites" items (and their divider) are hidden — the dropdown shows only "Sign out". |
+| Hangfire embed | `AdminController.Jobs()` (`[HttpGet("jobs")]`) returns `Views/Admin/Jobs.cshtml`, which sets `ViewData["MainModifier"] = "site-main--flush"` and renders `<iframe class="embed__frame" src="/hangfire" title="Hangfire dashboard">`. `_Layout.cshtml`'s `<main>` tag appends `@(ViewData["MainModifier"])` to its class list, so this page renders full-bleed (`.site-main--flush { padding: 0; display: flex }`, `.embed__frame { flex: 1; width: 100%; border: 0; min-height: 0 }` in `site.css`). The Hangfire dashboard at `/hangfire` returns `X-Frame-Options: SAMEORIGIN`, which permits this same-origin iframe. |
+| Section back-links | All 11 Admin section views render a `.workspace__back` link as the first child of `<header class="workspace__head">`: `Users.cshtml`, `AllBookings.cshtml`, `AllMarinas.cshtml`, `Settings.cshtml` → "Back to dashboard" (`/admin/dashboard`); `CreateMarina.cshtml`, `EditMarina.cshtml`, `MarinaSpots.cshtml`, `MarinaAdmins.cshtml`, `MarinaInvitations.cshtml`, `MarinaLayout.cshtml`, `InviteAdmin.cshtml` → "Back to marinas" (`/admin/marinas`). `Settings.cshtml` also dropped its redundant bottom "Back to console" link. Styling: `.workspace__back` in `site.css`. |
+| Widened content column | `.site-header__inner`, `.site-main`, and `.site-footer` max-width raised from 1180px to 1320px in `site.css`, kept aligned across header/main/footer. |
 
 ---
 
@@ -13,13 +28,14 @@ Covers the Admin role's management surface (Phase 6) and the invite-based flow t
 | Route | Action | Data source |
 |---|---|---|
 | `GET admin/dashboard` | Dashboard | Static view — no repository call |
+| `GET admin/jobs` | Jobs | Static view — embeds `/hangfire` in a same-origin iframe (see § Admin Console UX above) |
 | `GET admin/users` | Users | `UserManager.Users` (all users); `GetRolesAsync` per user; `AverageRatingAsBoatOwner` shown only for BoatOwner-role users |
 | `GET admin/bookings` | AllBookings | `IBookingRepository.GetAllAsync()`, ordered newest-first; Cancel button rendered for Pending and Confirmed rows |
-| `GET admin/marinas` | AllMarinas | `IMarinaRepository.GetAllAsync(includeInactive: true)` — includes inactive marinas; admin count + spot count computed per marina |
+| `GET admin/marinas` | AllMarinas | `IMarinaRepository.GetAllAsync(includeInactive: true)` — includes inactive marinas; admin count (active memberships only — see § 3 below) + spot count computed per marina |
 | `GET admin/marinas/{id}/spots` | MarinaSpots | `ISpotRepository.GetByMarinaIdAsync(marinaId, includeInactive: true)` — bypasses the global `IsActive` query filter without `IgnoreQueryFilters()` in the controller (the `includeInactive` flag handles it inside the repository) |
-| `GET admin/marinas/{id}/admins` | MarinaAdmins | `IMarinaAdminRepository.GetByMarinaIdAsync`; each member's email resolved via `UserManager.FindByIdAsync` |
+| `GET admin/marinas/{id}/admins` | MarinaAdmins | `IMarinaAdminRepository.GetByMarinaIdAsync`; each member's email resolved via `UserManager.FindByIdAsync`; rows ordered active-first (`OrderBy(a => a.IsRevoked).ThenBy(a => a.InvitedAt)`) |
 | `GET admin/marinas/{id}/invitations` | MarinaInvitations | `IInvitationRepository.GetByMarinaIdAsync`; status derived in controller: `IsUsed` → Accepted, `ExpiresAt < UtcNow` → Expired, else Pending |
-| `GET admin/marinas/{id}/layout` | MarinaLayout | Read-only Konva canvas; `#canvas-container` wired with `data-marina-id` + `data-spot-statuses-url` pointing at `Browse.SpotStatuses`; includes inactive spots; no vessel/date inputs |
+| `GET admin/marinas/{id}/layout` | MarinaLayout | Read-only Konva canvas via `marina-viewer.js`; `#canvas-container` wired with `data-marina-id` + `data-spot-statuses-url` pointing at `Browse.SpotStatuses`; includes inactive spots; no vessel/date inputs. Functional as of this session — see [`architecture.md`](../architecture.md) § Frontend / Design System. |
 | `GET admin/settings` | Settings GET | `IAdminSettingsRepository.GetAsync()` → `AdminSettingsViewModel` |
 
 ### Write actions
@@ -31,7 +47,8 @@ Covers the Admin role's management surface (Phase 6) and the invite-based flow t
 | `POST admin/marinas/{id}/toggle-active` | ToggleMarinaActive | Deactivates → `Deactivate()` + `DeleteAsync(marina.Id)` from ES; activates → `Activate()` + `IndexAsync`; `UpdateAsync`; existing bookings are NOT cancelled; never hard-deletes the marina |
 | `POST admin/spots/{id}/toggle-active` | ToggleSpotActive | `Activate()` / `Deactivate()` on the spot; `UpdateAsync`; redirects to MarinaSpots using `spot.MarinaId` |
 | `GET/POST admin/marinas/{id}/invite` | InviteAdmin | Creates and emails an invite (see Invitation Lifecycle below) |
-| `POST admin/marinas/{id}/admins/{userId}/revoke` | RevokeAdmin | Removes the `MarinaAdmin` record; if the user has zero remaining marina memberships, strips the PlaceOwner Identity role via `UserManager.RemoveFromRoleAsync` |
+| `POST admin/marinas/{marinaId}/admins/{userId}/revoke` | RevokeAdmin | Soft-revokes the `MarinaAdmin` record (`record.Revoke()` + `UpdateAsync`); strips the PlaceOwner Identity role only when the user has zero remaining **active** memberships (see § 3 below) |
+| `POST admin/marinas/{marinaId}/admins/{userId}/reenable` | ReEnableAdmin | Clears `RevokedAt` (`record.Reinstate()` + `UpdateAsync`) and re-grants the PlaceOwner role if the user doesn't already hold it; audit action `AdminReinstated` |
 | `POST admin/bookings/{id}/cancel` | CancelBooking | Delegates to `IBookingService.CancelAsync(bookingId, currentUserId)`; the service resolves the caller as Admin via role check and applies the cancellation rules defined in `booking-lifecycle.md` |
 | `POST admin/settings` | Settings POST | `settings.UpdateSettings(AutoActionType, AutoActionTimeoutHours)`; `UpdateAsync`; `TempData["Success"]` |
 
@@ -66,16 +83,23 @@ POST:
 
 Result: the new user holds the PlaceOwner Identity role and is a member of exactly one marina.
 
-### 3. Admin revokes — `AdminController.RevokeAdmin POST`
+### 3. Admin revokes and re-enables (soft-revoke) — `AdminController.RevokeAdmin` / `ReEnableAdmin`
 
-Route: `POST admin/marinas/{marinaId}/admins/{userId}/revoke`
+Revoke route: `POST admin/marinas/{marinaId}/admins/{userId}/revoke`
 
-1. Load all `MarinaAdmin` records for the marina via `GetByMarinaIdAsync`; find the target record.
-2. `IMarinaAdminRepository.RemoveAsync(record)` — hard-deletes the join row (no soft-delete on `MarinaAdmin`).
-3. Load all remaining memberships for the user via `GetByUserIdAsync`.
-4. If the user has **zero remaining memberships**: `UserManager.RemoveFromRoleAsync(user, "PlaceOwner")` — strips the role so the user can no longer access PlaceOwner routes.
-5. If the user still has memberships for other marinas, the role is preserved.
-6. Redirect to MarinaAdmins for the marina.
+1. Load all `MarinaAdmin` records for the marina via `GetByMarinaIdAsync` (returns active **and** revoked); find the target record.
+2. `record.Revoke()` sets `RevokedAt = UtcNow`; persist via `IMarinaAdminRepository.UpdateAsync`. The join row is **never deleted** — it stays in the admins panel (marked Revoked) so it can be re-enabled later.
+3. Count the user's remaining **active** memberships: `(await GetByUserIdAsync(userId)).Count(a => a.RevokedAt == null)`. If **zero**, `UserManager.RemoveFromRoleAsync(user, "PlaceOwner")` strips the role. If the user still actively administers another marina, the role is preserved.
+4. Redirect to MarinaAdmins. Audit: `AdminRevoked`.
+
+Re-enable route: `POST admin/marinas/{marinaId}/admins/{userId}/reenable`
+
+1. Find the target `MarinaAdmin` record (it still exists, revoked).
+2. `record.Reinstate()` clears `RevokedAt`; persist via `UpdateAsync`.
+3. Re-grant the PlaceOwner role if the user doesn't already hold it (`IsInRoleAsync` guard → `AddToRoleAsync`).
+4. Redirect to MarinaAdmins. Audit: `AdminReinstated`.
+
+**Active-only queries.** Because revoked rows persist, every "is this user an active admin" read filters `RevokedAt == null`: `IMarinaAdminRepository.ExistsAsync` (the ownership gate used by all PlaceOwner controllers and AdminController), `MarinaRepository.GetByUserIdAsync` (the PlaceOwner "My Marinas" list), and the `AllMarinas` admin count. `GetByMarinaIdAsync` deliberately returns all rows — the panel renders revoked members with a "Revoked" pill + Re-enable button, ordered active-first via `OrderBy(a => a.IsRevoked).ThenBy(a => a.InvitedAt)`.
 
 ---
 
@@ -88,7 +112,7 @@ Seven Admin-specific ViewModels live in `src/BoatSpotFinder.Web/Models/`. All ar
 | `UserListItemViewModel` | `Id`, `Email`, `Roles` (List\<string\>), `IsActive`, `AverageRatingAsBoatOwner` (decimal?) | Users |
 | `MarinaCreateViewModel` | `Name`, `Region` | CreateMarina |
 | `InviteAdminViewModel` | `Email`, `MarinaId` | InviteAdmin (MarinaId is a hidden field, never a dropdown) |
-| `MarinaAdminListItemViewModel` | `UserId`, `Email`, `InvitedAt`, `InvitedBy` | MarinaAdmins |
+| `MarinaAdminListItemViewModel` | `UserId`, `Email`, `InvitedAt`, `InvitedBy`, `IsRevoked` | MarinaAdmins |
 | `AdminMarinaListItemViewModel` | `Id`, `Name`, `Region`, `IsActive`, `AdminCount`, `SpotCount` | AllMarinas |
 | `InvitationListItemViewModel` | `Email`, `InvitedAt`, `ExpiresAt`, `IsUsed`, `Status` (derived string) | MarinaInvitations |
 | `AdminSettingsViewModel` | `AutoActionType`, `AutoActionTimeoutHours` | Settings |

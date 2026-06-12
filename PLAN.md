@@ -359,9 +359,27 @@ Phase 2c (Audit Log Search & Admin Viewer) depends on Phase 2b + Phase 3b + Phas
 
 ---
 
+## Phase 6b — Console UX, Soft-Revoke & Layout Viewer (2026-06-12)
+
+**Goal:** Post-Phase-6 refinements surfaced during smoke testing — an admin-console UX shell, a soft-revoke/re-enable lifecycle for marina admins, the read-only layout-viewer slice of Phase 7 pulled forward, two login-redirect fixes, and AJAX dismiss on the booking lists. All shipped via `/dev` → `/verify` → `/doc`. Documented in [`docs/features/admin-and-invitations.md`](docs/features/admin-and-invitations.md), [`docs/features/audit-logging.md`](docs/features/audit-logging.md), [`docs/features/booking-lifecycle.md`](docs/features/booking-lifecycle.md), and [`docs/architecture.md`](docs/architecture.md).
+
+| # | Task | Files | Status |
+|---|------|-------|--------|
+| 6b.1 | Admin console UX | `Web/Controllers/HomeController.cs` (Admin → `/admin/dashboard` redirect); `AdminController.Jobs` (`[HttpGet("jobs")]`) + `Views/Admin/Jobs.cshtml` (Hangfire `<iframe>` embed, `site-main--flush`); `_Layout.cshtml` (Home hidden for Admins, "Hangfire" nav → `/admin/jobs`, content max-width 1180→1320); `_LoginPartial.cshtml` (Admin dropdown = Sign out only); `.workspace__back` back-link on all 11 admin section views; `Settings.cshtml` (dropped duplicate back link); `site.css` (`.embed` / `.site-main--flush` / `.workspace__back`) | [x] |
+| 6b.2 | Login redirect fixes | `Web/Controllers/AccountController.cs` + `Web/Models/LoginViewModel.cs` (`ReturnUrl`) + `Views/Account/Login.cshtml` (hidden field): honor `ReturnUrl` via `LocalRedirect` (`Url.IsLocalUrl` guard) before role redirects; explicit `BoatOwner → /browse` + roleless → `Home/Index` fallback | [x] |
+| 6b.3 | Read-only layout viewer (Phase 7 slice) | `wwwroot/js/marina-viewer.js` (read-only Konva render); `BrowseController.SpotStatuses` (`GET /browse/marina/{id}/spot-statuses` → Free/Booked/Unavailable, today-based, no date/vessel filter); `IBookingRepository.GetOccupiedSpotIdsAsync` + impl; `Web/Models/SpotStatusViewModel.cs`; `Admin/MarinaLayout.cshtml` "Booked" legend + `site.css` swatch. Renders the previously-inert Admin canvas (§16.8). The full Phase 7 viewer (date/vessel filter, click-to-book, `ISpotStatusService`) remains in tasks 7.3/7.4. | [x] |
+| 6b.4 | Soft-revoke + re-enable marina admins | `Core/Entities/MarinaAdmin.cs` (`RevokedAt` + `IsRevoked`/`Revoke()`/`Reinstate()`); migration `AddMarinaAdminRevokedAt`; `IMarinaAdminRepository.UpdateAsync` + `ExistsAsync` active-only; `MarinaRepository.GetByUserIdAsync` active-only; `AdminController` (`RevokeAdmin` soft + new `ReEnableAdmin`, active-only admin count, audit `AdminReinstated`); `Web/Models/MarinaAdminListItemViewModel.cs` (`IsRevoked`); `Admin/MarinaAdmins.cshtml` (Status column + Revoke/Re-enable) | [x] |
+| 6b.5 | AJAX dismiss | `SpotBookingsController.Dismiss` + `BookingsController.Dismiss` (JSON content-negotiation); `Incoming.cshtml` + `MyBookings.cshtml` (`data-dismiss-form`); new `wwwroot/js/booking-dismiss.js` (fetch + remove card in place) | [x] |
+
+**Tests:** unit suite green; no new automated tests added this session — gaps for `GetOccupiedSpotIdsAsync`, the soft-revoke active-only filters, and the login redirect are tracked in [`TESTING.md`](TESTING.md).
+
+---
+
 ## Phase 7 — Browse & Search
 
 **Goal:** Anonymous visitors browse marina list. Authenticated users see the interactive marina canvas with spot status. Clicking a free spot on the canvas navigates directly to the booking form. Date-range filter updates spot statuses on the canvas.
+
+> **Slice shipped (Phase 6b, 2026-06-12):** the read-only Konva viewer (`marina-viewer.js`) + a simplified, today-based `spot-statuses` endpoint now render the **Admin** read-only canvas. Tasks 7.2–7.4 below remain for the full public Browse experience (search box, date/vessel filter, click-to-book, `ISpotStatusService`).
 
 **Spot status colors on canvas:** Free = green, Booked (Confirmed/Pending overlap) = red, Unavailable (IsActive=false) = gray, Incompatible (vessel doesn't fit) = orange. Unplaced spots (no canvas coords) shown in a separate sidebar list.
 

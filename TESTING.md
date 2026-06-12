@@ -5,7 +5,9 @@ Tracks automated tests in `tests/BoatSpotFinder.Tests/` and manual smoke tests, 
 **Scope (refreshed 2026-06-03).** Covers everything implemented through Phase 6 + Phase 5c:
 Phase 1 (Foundation), Phase 2 + 2b (Auth + Audit Logging, incl. Admin actions 2b.5), Phase 3 + 3b (PlaceOwner Marina/Spot/SeasonalRules + Elasticsearch indexing), Phase 4 (Vessels), Phase 5 (Booking lifecycle + Hangfire jobs), Phase 5b (Reviews & Ratings), Phase 6 (Admin surface + invitations), Phase 5c (Booking UX & lifecycle refinements — live price preview, departure-after-arrival validation, per-role audit completion, Pending/Confirmed/Past sections + per-side Dismiss).
 
-**Not covered — not yet implemented:** Phase 7 (Browse public marina list, interactive canvas viewer, ES search UI — only the `/browse/marina/{id}/layout-data` endpoint exists; `marina-viewer.js` is not yet created, so the Admin read-only canvas in §16 does not render yet) and Phase 2c (Audit Log Search & Admin Viewer). See § Out of Scope.
+**Not covered — not yet implemented:** the remainder of Phase 7 (public Browse marina list + ES search UI) and Phase 2c (Audit Log Search & Admin Viewer). The read-only Konva layout viewer slice of Phase 7 (`marina-viewer.js` + `GET /browse/marina/{id}/spot-statuses`) shipped this session, so the Admin read-only canvas in §16 now renders. See § Out of Scope.
+
+**Shipped this session (2026-06-12), verified manually:** admin-console UX (home→dashboard redirect, nav trim, Hangfire embedded at `/admin/jobs`, section back-links, wider layout), login redirect fixes (honor `ReturnUrl`; roleless users → Home not `/browse`), the read-only layout viewer slice, soft-revoke + re-enable marina admins (migration `AddMarinaAdminRevokedAt`), and AJAX dismiss on the booking lists. Unit suite green after the change.
 
 ---
 
@@ -58,6 +60,9 @@ High-value units without direct automated coverage, exercised via the smoke sect
 - **Phase 2b** — `NLogAuditLogger` structured-field output. Needs a memory/list NLog sink; verified via smoke §5 / §17 by tailing the log file.
 - **Phase 5 / 6 controllers** — `BookingsController`, `SpotBookingsController`, `AdminController` action wiring + ownership / `Forbid()` paths. Verified via smoke §13 / §16.
 - **Phase 3b** — Elasticsearch marina indexing + search round-trip needs a live ES node (integration test). The null-stub sentinel path and the `GetActiveWithActiveSpotsAsync` query Browse will consume are covered by the repository tests above.
+- **Layout viewer (this session)** — `BookingRepository.GetOccupiedSpotIdsAsync(marinaId, onDate)` (the Booked/Free derivation) and the `BrowseController.SpotStatuses` mapping have no direct test yet; verified via the §16 layout smoke. Add a repo test (Pending/Confirmed overlapping `onDate` → returned; Cancelled/Completed/non-overlapping → excluded).
+- **Soft-revoke (this session)** — `MarinaAdminRepository.ExistsAsync` active-only filter + `UpdateAsync`, and the role-strip-only-when-no-active-membership logic in `RevokeAdmin`/`ReEnableAdmin`, are smoke-only. Add repo tests for `ExistsAsync` excluding a revoked row, and `MarinaRepository.GetByUserIdAsync` excluding a marina where the user's only membership is revoked.
+- **Login redirect (this session)** — `AccountController.Login` POST `ReturnUrl` (`Url.IsLocalUrl` guard) and the roleless→Home fallback are controller paths (no Identity harness in the suite); verified via smoke.
 
 ### Test infrastructure notes
 
@@ -246,7 +251,7 @@ Log in as the seeded admin (`admin@boatspotfinder.com`).
 - [ ] `/admin/marinas/{id}/edit` → change details → save (ES `IndexAsync` only when the marina is active)
 - [ ] `/admin/marinas/{id}/toggle-active` → deactivate (ES `DeleteAsync`) then reactivate (ES `IndexAsync`); existing bookings are **not** cancelled; marina is never hard-deleted
 - [ ] `/admin/marinas/{id}/spots` → lists spots **including inactive**; toggle a spot via `/admin/spots/{id}/toggle-active`
-- [ ] `/admin/marinas/{id}/layout` → read-only canvas. **Known limitation:** `marina-viewer.js` (Phase 7) is not built, so the canvas does not render yet — the container + script tag are wired but inert. Expected until Phase 7
+- [x] `/admin/marinas/{id}/layout` → read-only canvas now renders via `marina-viewer.js`: placed spots drawn colored by status — **Free** (green), **Booked** (amber: active spot with a Pending/Confirmed booking overlapping today), **Unavailable** (grey: inactive) — with labels + the background image; legend shows Free / Booked / Unavailable. Status from `GET /browse/marina/{id}/spot-statuses`. Verified this session.
 - [ ] Revoke an admin via `/admin/marinas/{marinaId}/admins/{userId}/revoke` → membership removed; if it was the user's **last** membership, the PlaceOwner role is stripped (confirm they can no longer reach `/placeowner/marinas`)
 - [ ] From `/admin/bookings`, Cancel a Pending/Confirmed booking → Cancelled (Admin override **skips** the StartDate guard); `TempData["Success"]` "Booking cancelled."
 - [ ] `/admin/settings` → change `AutoActionType` + `AutoActionTimeoutHours` → save → success flash
@@ -293,6 +298,6 @@ Covers the booking-create + My Bookings + Incoming improvements shipped this ses
 
 ## Out of Scope (not yet implementable)
 
-- **Phase 7 — Browse & Search:** public marina list, ES-backed search box, interactive Konva canvas viewer, spot-status colors, click-to-book. Only the `/browse/marina/{id}/layout-data` endpoint exists; `marina-viewer.js` is not yet created (so the Admin read-only canvas in §16 is wired but inert). Elasticsearch marina **search** is reachable only once Phase 7 ships — indexing-on-write and the startup seed (Phase 3b) are already in place.
+- **Phase 7 — Browse & Search (remainder):** public marina list, ES-backed search box, click-to-book. The read-only Konva canvas viewer + spot-status colors slice shipped this session (`marina-viewer.js`, `GET /browse/marina/{id}/spot-statuses`), so the Admin read-only canvas in §16 now renders. Elasticsearch marina **search** is reachable only once the rest of Phase 7 ships — indexing-on-write and the startup seed (Phase 3b) are already in place.
 - **Phase 2c — Audit Log Search & Admin Viewer:** `eventId` idempotency, file→ES reindex Hangfire jobs, rolling 30-day window, `/admin/audit-log` grid. Planned only.
 - **Phase 8 — Polish:** pagination, error pages, Docker, k8s.
