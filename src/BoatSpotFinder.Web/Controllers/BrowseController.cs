@@ -18,6 +18,12 @@ public class BrowseController : Controller
         _bookingRepository = bookingRepository;
     }
 
+    [HttpGet("")]
+    public IActionResult Index()
+    {
+        return View();
+    }
+
     [HttpGet("marina/{id:guid}/layout-data")]
     public async Task<IActionResult> LayoutData(Guid id)
     {
