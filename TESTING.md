@@ -196,18 +196,18 @@ Requires a second seeded PlaceOwner (Option A above, second invitation for a dif
 
 ## Smoke Tests (Manual) — Phases 4, 5, 5b, 6 (not yet run)
 
-Sections §12–§17 cover everything shipped since the Phase 3 milestone. **Status (recorded from 2026-06-12 session memory):** §13 (lifecycle), §14 (Hangfire jobs), §15 (reviews & ratings), and §16 (admin surface, steps 1–11) passed live and are checked off below. §12 (vessels) is still to run. §17 was verified only piecemeal — individual audit entries (`ReviewCreated`, `MarinaCreated`, `AdminReinstated`, …) seen, no full catalog log-scan — so it stays unchecked. Booking/review/admin flows print email links to the **console** (`ConsoleEmailSender` in Development). Audit entries land in `logs/audit-YYYY-MM-DD.log`.
+Sections §12–§17 cover everything shipped since the Phase 3 milestone. **Status (recorded from 2026-06-12 session memory):** §13 (lifecycle), §14 (Hangfire jobs), §15 (reviews & ratings), and §16 (admin surface, steps 1–11) passed live and are checked off below. §12 (vessels) passed 2026-06-16. §17 fully verified 2026-06-16 via a full audit-log catalog scan across the 06-03 / 06-12 / 06-16 logs — every catalogued action present with the correct `details` payload, and `userRole` never populated. Booking/review/admin flows print email links to the **console** (`ConsoleEmailSender` in Development). Audit entries land in `logs/audit-YYYY-MM-DD.log`.
 
 Setup assumed: one BoatOwner account (§1), one active marina with at least one **active** spot owned by a PlaceOwner (§6–§8 or via §16), and the seeded admin (`admin@boatspotfinder.com`).
 
 ### 12. Vessel management (Phase 4) — BoatOwner
 
-- [ ] Log in as a BoatOwner → `/vessels` → list (empty initially)
-- [ ] `/vessels/create` → the `Type` dropdown lists vessel types **excluding `None`**, with integer `value` attributes (flag-enum binding). Submit name/type/dimensions → redirect to `/vessels`, vessel listed
-- [ ] `/vessels/edit/{id}` → change a field → save → updated values shown
-- [ ] Delete a vessel with **no bookings** → removed from list
-- [ ] Delete a vessel with a `Pending`/`Confirmed` booking → redirected to `/vessels` with `TempData["Error"]` "Cannot delete a vessel with active bookings"; vessel remains
-- [ ] Delete a vessel that has only `Cancelled`/`Completed` bookings → allowed (SQL `SET NULL` cascades `Booking.VesselId` to null; those rows show "Vessel deleted")
+- [x] Log in as a BoatOwner → `/vessels` → list (empty initially)
+- [x] `/vessels/create` → the `Type` dropdown lists vessel types **excluding `None`**, with integer `value` attributes (flag-enum binding). Submit name/type/dimensions → redirect to `/vessels`, vessel listed
+- [x] `/vessels/edit/{id}` → change a field → save → updated values shown
+- [x] Delete a vessel with **no bookings** → removed from list
+- [x] Delete a vessel with a `Pending`/`Confirmed` booking → redirected to `/vessels` with `TempData["Error"]` "Cannot delete a vessel with active bookings"; vessel remains
+- [x] Delete a vessel that has only `Cancelled`/`Completed` bookings → allowed (SQL `SET NULL` cascades `Booking.VesselId` to null; those rows show "Vessel deleted")
 
 ### 13. Booking creation & lifecycle (Phase 5)
 
@@ -262,10 +262,10 @@ Log in as the seeded admin (`admin@boatspotfinder.com`).
 
 Tail `logs/audit-YYYY-MM-DD.log` and confirm structured JSON entries (`action` / `entityType` / `entityId` / `marinaId` / `details`) for:
 
-- [ ] Admin: `MarinaCreated` `{ name }`, `MarinaActivated` / `MarinaDeactivated`, `SpotActivated` / `SpotDeactivated`, `AdminInvited` `{ email }`, `AdminRevoked`, `BookingCancelledByAdmin` `{ previousStatus }`, `SettingsUpdated`
-- [ ] PlaceOwner: `BookingConfirmed` / `BookingRejected` (with `booking.Spot.MarinaId`)
-- [ ] PlaceOwner: `ReviewCreated` `{ score, bookingId }`
-- [ ] `userRole` is always blank (reserved field — documented in `docs/features/audit-logging.md`)
+- [x] Admin: `MarinaCreated` `{ name }`, `MarinaActivated` / `MarinaDeactivated`, `SpotActivated` / `SpotDeactivated`, `AdminInvited` `{ email }`, `AdminRevoked`, `BookingCancelledByAdmin` `{ previousStatus }`, `SettingsUpdated`
+- [x] PlaceOwner: `BookingConfirmed` / `BookingRejected` (with `booking.Spot.MarinaId`)
+- [x] PlaceOwner: `ReviewCreated` `{ score, bookingId }`
+- [x] `userRole` is always blank (reserved field — documented in `docs/features/audit-logging.md`)
 
 ---
 
@@ -293,8 +293,8 @@ Covers the booking-create + My Bookings + Incoming improvements shipped this ses
 
 ### 21. Booking audit trail completion (ties into §13 / §17)
 
-- [ ] Creating a booking writes `BookingCreated` (`details { spotId, startDate, endDate, totalPrice }`)
-- [ ] BoatOwner cancel writes `BookingCancelledByBoatOwner`; PlaceOwner cancel writes `BookingCancelledByPlaceOwner` — both with `entityType:"Booking"` + `marinaId`; dismiss writes NO audit entry (it's a per-side view preference)
+- [x] Creating a booking writes `BookingCreated` (`details { spotId, startDate, endDate, totalPrice }`)
+- [x] BoatOwner cancel writes `BookingCancelledByBoatOwner`; PlaceOwner cancel writes `BookingCancelledByPlaceOwner` — both with `entityType:"Booking"` + `marinaId`; dismiss writes NO audit entry (it's a per-side view preference)
 
 ---
 
