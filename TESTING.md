@@ -13,7 +13,7 @@ Phase 1 (Foundation), Phase 2 + 2b (Auth + Audit Logging, incl. Admin actions 2b
 
 ## Test Project Status
 
-Current state of `tests/BoatSpotFinder.Tests/` — **106 tests, all green as of 2026-06-12**:
+Current state of `tests/BoatSpotFinder.Tests/` — **116 tests, all green as of 2026-06-16**:
 
 | Item | Value |
 |---|---|
@@ -31,7 +31,7 @@ Current state of `tests/BoatSpotFinder.Tests/` — **106 tests, all green as of 
 
 ## Automated Tests
 
-### Implemented (106 tests)
+### Implemented (116 tests)
 
 Run all: `dotnet test BoatSpotFinder.slnx`.
 
@@ -50,6 +50,8 @@ Run all: `dotnet test BoatSpotFinder.slnx`.
 | `Repositories/BookingRepositoryTests.cs` | 10 | 5/6b | `IsSpotAvailableAsync` overlap / strict-adjacency / Cancelled-ignored / exclude-self; `GetByMarinaOwnerIdAsync` Booking→Spot→MarinaAdmin join; `GetByBoatOwnerIdAsync` filter; **`GetOccupiedSpotIdsAsync`** ×4 (6b — Pending/Confirmed-overlapping returned, Cancelled/non-overlapping excluded, marina-scoped, distinct-per-spot) |
 | `Repositories/VesselRepositoryTests.cs` | 3 | 4 | `GetByOwnerIdAsync` owner filtering; null-for-missing; delete |
 | `Repositories/AdminSettingsRepositoryTests.cs` | 2 | 6 | Seeded-singleton fetch; `UpdateSettings` round-trip (the config the auto-action job reads) |
+| `Controllers/BrowseControllerTests.cs` | 4 | 6b/7 | `SpotStatuses` Free/Booked/Unavailable mapping (active+unbooked / active+overlapping-today booking / inactive) + marina-not-found 404; `LayoutData` marina+spots mapping + 404 |
+| `Controllers/AdminControllerTests.cs` | 6 | 6b | `RevokeAdmin` strips PlaceOwner role on last active membership / keeps it when another active membership remains / 404; `ReEnableAdmin` re-adds role when missing / skips when present / 404 — asserts both the `UserManager` role calls and the persisted `RevokedAt` state |
 
 ### Not yet automated (gaps — covered by smoke tests)
 
@@ -60,7 +62,8 @@ High-value units without direct automated coverage, exercised via the smoke sect
 - **Phase 2b** — `NLogAuditLogger` structured-field output. Needs a memory/list NLog sink; verified via smoke §5 / §17 by tailing the log file.
 - **Phase 5 / 6 controllers** — `BookingsController`, `SpotBookingsController`, `AdminController` action wiring + ownership / `Forbid()` paths. Verified via smoke §13 / §16.
 - **Phase 3b** — Elasticsearch marina indexing + search round-trip needs a live ES node (integration test). The null-stub sentinel path and the `GetActiveWithActiveSpotsAsync` query Browse will consume are covered by the repository tests above.
-- **Covered 2026-06-12 (Phase 6b):** `BookingRepository.GetOccupiedSpotIdsAsync`, `MarinaAdminRepository.ExistsAsync` active-only + `UpdateAsync`, and `MarinaRepository.GetByUserIdAsync` active-only now have repo tests (see the table above, +7 → 106). Still smoke-only: the `BrowseController.SpotStatuses` mapping and the `RevokeAdmin`/`ReEnableAdmin` controller orchestration (role-strip-only-when-no-active-membership) — no controller harness in the suite.
+- **Covered 2026-06-12 (Phase 6b):** `BookingRepository.GetOccupiedSpotIdsAsync`, `MarinaAdminRepository.ExistsAsync` active-only + `UpdateAsync`, and `MarinaRepository.GetByUserIdAsync` active-only now have repo tests (see the table above, +7 → 106).
+- **Covered 2026-06-16 (first controller tests):** the project's first controller-level tests landed in a new `Controllers/` folder (+10 → 116). `BrowseController.SpotStatuses`/`LayoutData` JSON mapping + 404s, and `AdminController.RevokeAdmin`/`ReEnableAdmin` role-strip orchestration (asserts the `UserManager` role calls **and** the persisted `RevokedAt` state). A `DefaultHttpContext` + `ClaimsPrincipal` + `TempDataDictionary` harness was introduced for the Admin controller tests. Still smoke-only: `AccountController.Login` `ReturnUrl`/roleless→Home, `CustomSignInManager` inactive-user, and `NLogAuditLogger` structured output — each needs a heavier Identity/logging harness, low ROI over the smoke sections.
 - **Login redirect (this session)** — `AccountController.Login` POST `ReturnUrl` (`Url.IsLocalUrl` guard) and the roleless→Home fallback are controller paths (no Identity harness in the suite); verified via smoke.
 
 ### Test infrastructure notes
