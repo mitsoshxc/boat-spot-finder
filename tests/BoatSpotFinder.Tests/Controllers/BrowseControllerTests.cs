@@ -1,5 +1,8 @@
 using BoatSpotFinder.Core.Entities;
+using BoatSpotFinder.Core.Enums;
+using BoatSpotFinder.Core.Services;
 using BoatSpotFinder.Infrastructure.Repositories;
+using BoatSpotFinder.Infrastructure.Search;
 using BoatSpotFinder.Tests.Infrastructure;
 using BoatSpotFinder.Web.Controllers;
 using BoatSpotFinder.Web.Models;
@@ -61,20 +64,27 @@ public class BrowseControllerTests
         using var db = TestDbContextFactory.CreateSqliteInMemory();
         var (marina, active, booked, inactive) = await SeedThreeSpotsAsync(db.Context);
 
+        var spotRepo = new SpotRepository(db.Context);
+        var bookingRepo = new BookingRepository(db.Context);
+        var vesselRepo = new VesselRepository(db.Context);
+        var statusService = new SpotStatusService(spotRepo, vesselRepo, bookingRepo);
         var controller = new BrowseController(
             new MarinaRepository(db.Context),
-            new SpotRepository(db.Context),
-            new BookingRepository(db.Context));
+            spotRepo,
+            new NullMarinaSearchService(),
+            vesselRepo,
+            statusService);
 
-        var result = await controller.SpotStatuses(marina.Id);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var result = await controller.SpotStatuses(marina.Id, today, today.AddDays(1), null);
 
         var json = Assert.IsType<JsonResult>(result);
         var statuses = Assert.IsAssignableFrom<IEnumerable<SpotStatusViewModel>>(json.Value);
         var dict = statuses.ToDictionary(s => s.Id, s => s.Status);
 
-        Assert.Equal("Free", dict[active.Id]);
-        Assert.Equal("Booked", dict[booked.Id]);
-        Assert.Equal("Unavailable", dict[inactive.Id]);
+        Assert.Equal(SpotAvailabilityStatus.Free, dict[active.Id]);
+        Assert.Equal(SpotAvailabilityStatus.Booked, dict[booked.Id]);
+        Assert.Equal(SpotAvailabilityStatus.Unavailable, dict[inactive.Id]);
     }
 
     [Fact]
@@ -82,12 +92,18 @@ public class BrowseControllerTests
     {
         using var db = TestDbContextFactory.CreateSqliteInMemory();
 
+        var spotRepo = new SpotRepository(db.Context);
+        var bookingRepo = new BookingRepository(db.Context);
+        var vesselRepo = new VesselRepository(db.Context);
+        var statusService = new SpotStatusService(spotRepo, vesselRepo, bookingRepo);
         var controller = new BrowseController(
             new MarinaRepository(db.Context),
-            new SpotRepository(db.Context),
-            new BookingRepository(db.Context));
+            spotRepo,
+            new NullMarinaSearchService(),
+            vesselRepo,
+            statusService);
 
-        var result = await controller.SpotStatuses(Guid.NewGuid());
+        var result = await controller.SpotStatuses(Guid.NewGuid(), null, null, null);
 
         Assert.IsType<NotFoundResult>(result);
     }
@@ -107,10 +123,16 @@ public class BrowseControllerTests
         await db.Context.Spots.AddAsync(spot);
         await db.Context.SaveChangesAsync();
 
+        var spotRepo = new SpotRepository(db.Context);
+        var bookingRepo = new BookingRepository(db.Context);
+        var vesselRepo = new VesselRepository(db.Context);
+        var statusService = new SpotStatusService(spotRepo, vesselRepo, bookingRepo);
         var controller = new BrowseController(
             new MarinaRepository(db.Context),
-            new SpotRepository(db.Context),
-            new BookingRepository(db.Context));
+            spotRepo,
+            new NullMarinaSearchService(),
+            vesselRepo,
+            statusService);
 
         var result = await controller.LayoutData(marina.Id);
 
@@ -131,13 +153,130 @@ public class BrowseControllerTests
     {
         using var db = TestDbContextFactory.CreateSqliteInMemory();
 
+        var spotRepo = new SpotRepository(db.Context);
+        var bookingRepo = new BookingRepository(db.Context);
+        var vesselRepo = new VesselRepository(db.Context);
+        var statusService = new SpotStatusService(spotRepo, vesselRepo, bookingRepo);
         var controller = new BrowseController(
             new MarinaRepository(db.Context),
-            new SpotRepository(db.Context),
-            new BookingRepository(db.Context));
+            spotRepo,
+            new NullMarinaSearchService(),
+            vesselRepo,
+            statusService);
 
         var result = await controller.LayoutData(Guid.NewGuid());
 
         Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
+    public async Task SpotStatuses_NoDates_BookedSpotShowsFree()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (marina, active, booked, inactive) = await SeedThreeSpotsAsync(db.Context);
+
+        var spotRepo = new SpotRepository(db.Context);
+        var bookingRepo = new BookingRepository(db.Context);
+        var vesselRepo = new VesselRepository(db.Context);
+        var statusService = new SpotStatusService(spotRepo, vesselRepo, bookingRepo);
+        var controller = new BrowseController(
+            new MarinaRepository(db.Context),
+            spotRepo,
+            new NullMarinaSearchService(),
+            vesselRepo,
+            statusService);
+
+        var result = await controller.SpotStatuses(marina.Id, null, null, null);
+
+        var json = Assert.IsType<JsonResult>(result);
+        var statuses = Assert.IsAssignableFrom<IEnumerable<SpotStatusViewModel>>(json.Value);
+        var dict = statuses.ToDictionary(s => s.Id, s => s.Status);
+
+        Assert.Equal(SpotAvailabilityStatus.Free, dict[booked.Id]);
+        Assert.Equal(SpotAvailabilityStatus.Unavailable, dict[inactive.Id]);
+    }
+
+    private sealed class EmptyResultMarinaSearchService : BoatSpotFinder.Core.Interfaces.IMarinaSearchService
+    {
+        public Task IndexAsync(Marina marina) => Task.CompletedTask;
+        public Task DeleteAsync(Guid id) => Task.CompletedTask;
+        public Task<IEnumerable<Guid>?> SearchAsync(string? query) =>
+            Task.FromResult<IEnumerable<Guid>?>(Array.Empty<Guid>());
+    }
+
+    [Fact]
+    public async Task SpotStatuses_VesselExceedsSpot_ReturnsIncompatible()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var (marina, active, booked, inactive) = await SeedThreeSpotsAsync(db.Context);
+
+        var vessel = new Vessel("Big Yacht", VesselType.Yacht, 999, 999, 999, "owner-1");
+        await db.Context.Vessels.AddAsync(vessel);
+        await db.Context.SaveChangesAsync();
+
+        var spotRepo = new SpotRepository(db.Context);
+        var bookingRepo = new BookingRepository(db.Context);
+        var vesselRepo = new VesselRepository(db.Context);
+        var statusService = new SpotStatusService(spotRepo, vesselRepo, bookingRepo);
+        var controller = new BrowseController(
+            new MarinaRepository(db.Context),
+            spotRepo,
+            new NullMarinaSearchService(),
+            vesselRepo,
+            statusService);
+
+        var result = await controller.SpotStatuses(marina.Id, null, null, vessel.Id);
+
+        var json = Assert.IsType<JsonResult>(result);
+        var statuses = Assert.IsAssignableFrom<IEnumerable<SpotStatusViewModel>>(json.Value);
+        var dict = statuses.ToDictionary(s => s.Id, s => s.Status);
+
+        Assert.Equal(SpotAvailabilityStatus.Incompatible, dict[active.Id]);
+    }
+
+    [Fact]
+    public async Task Index_BlankQuery_IgnoresEmptyEsResult_ReturnsAllMarinas()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        await SeedThreeSpotsAsync(db.Context);
+
+        var spotRepo = new SpotRepository(db.Context);
+        var vesselRepo = new VesselRepository(db.Context);
+        var statusService = new SpotStatusService(spotRepo, vesselRepo, new BookingRepository(db.Context));
+        var controller = new BrowseController(
+            new MarinaRepository(db.Context),
+            spotRepo,
+            new EmptyResultMarinaSearchService(),
+            vesselRepo,
+            statusService);
+
+        var result = await controller.Index(new MarinaSearchFilterViewModel { Query = null });
+
+        var view = Assert.IsType<ViewResult>(result);
+        var vm = Assert.IsType<BrowseMarinaListViewModel>(view.Model);
+        Assert.Single(vm.Marinas);
+    }
+
+    [Fact]
+    public async Task Index_WithSearchTerm_EmptyEsResult_ReturnsNoMarinas()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        await SeedThreeSpotsAsync(db.Context);
+
+        var spotRepo = new SpotRepository(db.Context);
+        var vesselRepo = new VesselRepository(db.Context);
+        var statusService = new SpotStatusService(spotRepo, vesselRepo, new BookingRepository(db.Context));
+        var controller = new BrowseController(
+            new MarinaRepository(db.Context),
+            spotRepo,
+            new EmptyResultMarinaSearchService(),
+            vesselRepo,
+            statusService);
+
+        var result = await controller.Index(new MarinaSearchFilterViewModel { Query = "no-match" });
+
+        var view = Assert.IsType<ViewResult>(result);
+        var vm = Assert.IsType<BrowseMarinaListViewModel>(view.Model);
+        Assert.Empty(vm.Marinas);
     }
 }

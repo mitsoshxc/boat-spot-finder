@@ -1,0 +1,149 @@
+@model BrowseMarinaDetailsViewModel
+@{
+    ViewData["Title"] = $"Browse · {Model.Name}";
+    var hasRating = Model.AverageRating.HasValue && Model.ReviewCount > 0;
+    var rounded = hasRating
+        ? (int)Math.Clamp(Math.Round(Model.AverageRating!.Value, MidpointRounding.AwayFromZero), 0, 5)
+        : 0;
+}
+
+<section class="workspace workspace--editor">
+    <header class="workspace__head workspace__head--editor">
+        <a class="workspace__back" href="/browse">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <path d="M10 3 L5 8 L10 13" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            Back to marinas
+        </a>
+        <div class="workspace__head-titles">
+            <span class="workspace__mark" aria-hidden="true">
+                <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="0.9">
+                    <circle cx="16" cy="16" r="12" />
+                    <circle cx="16" cy="16" r="4" />
+                    <path d="M16 4 L16 8 M16 24 L16 28 M4 16 L8 16 M24 16 L28 16" />
+                </svg>
+            </span>
+            <span class="workspace__eyebrow">Browse &middot; Marina</span>
+            <h1 class="workspace__title">@Model.Name</h1>
+            @if (!string.IsNullOrWhiteSpace(Model.Region))
+            {
+                <p class="workspace__subtitle">@Model.Region</p>
+            }
+            @if (hasRating)
+            {
+                <span class="star-rating">
+                    <span class="star-rating__stars" role="img" aria-label="Rated @Model.AverageRating!.Value.ToString("0.0") out of 5">
+                        @for (var i = 1; i <= 5; i++)
+                        {
+                            <svg class="star-rating__star @(i <= rounded ? "star-rating__star--on" : "star-rating__star--off")" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                            </svg>
+                        }
+                    </span>
+                    <span class="star-rating__value">@Model.AverageRating!.Value.ToString("0.0")</span>
+                    <span class="star-rating__count">(@Model.ReviewCount @(Model.ReviewCount == 1 ? "review" : "reviews"))</span>
+                </span>
+            }
+            else
+            {
+                <span class="star-rating star-rating--empty">No reviews yet</span>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.Description))
+            {
+                <p class="workspace__lede">@Model.Description</p>
+            }
+        </div>
+    </header>
+
+    <div class="editor-grid">
+        <article class="canvas-shell">
+            <header class="canvas-shell__caption">
+                <span class="canvas-shell__caption-label">Marina plan</span>
+                <span class="canvas-shell__caption-meta">@(Model.LayoutWidth) &times; @(Model.LayoutHeight) <span class="canvas-shell__caption-unit">u</span></span>
+            </header>
+            <div class="canvas-shell__frame">
+                <span class="canvas-shell__corner canvas-shell__corner--tl" aria-hidden="true"></span>
+                <span class="canvas-shell__corner canvas-shell__corner--tr" aria-hidden="true"></span>
+                <span class="canvas-shell__corner canvas-shell__corner--bl" aria-hidden="true"></span>
+                <span class="canvas-shell__corner canvas-shell__corner--br" aria-hidden="true"></span>
+                <div class="canvas-shell__viewport">
+                    <div id="canvas-container"
+                         data-marina-id="@Model.Id"
+                         data-spot-statuses-url="@Url.Action("SpotStatuses", "Browse", new { id = Model.Id })"
+                         data-bookable="true"
+                         style="width:@(Model.LayoutWidth)px; height:@(Model.LayoutHeight)px;">
+                        @if (string.IsNullOrEmpty(Model.BackgroundImagePath))
+                        {
+                            <div class="canvas-placeholder">
+                                <span class="vignette vignette--muted" aria-hidden="true">
+                                    <svg viewBox="0 0 64 48" fill="none" stroke="currentColor" stroke-width="0.7">
+                                        <rect x="6" y="6" width="52" height="36" rx="1" />
+                                        <circle cx="22" cy="20" r="3" />
+                                        <path d="M6 36 L24 22 L36 32 L58 14" />
+                                    </svg>
+                                </span>
+                                <p class="canvas-placeholder__text">No background image set for this marina.</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <aside class="spot-sidebar">
+            <div class="filter-panel">
+                <header class="filter-panel__head">
+                    <h2 class="filter-panel__title">Check availability</h2>
+                </header>
+                <div class="filter-panel__fields">
+                    @if (Model.IsBoatOwner)
+                    {
+                        <div class="field">
+                            <label class="field__label" for="vessel-select">Vessel</label>
+                            <select class="field__input" id="vessel-select">
+                                <option value="">All vessels</option>
+                                @foreach (var v in Model.Vessels)
+                                {
+                                    <option value="@v.Id">@v.Name</option>
+                                }
+                            </select>
+                        </div>
+                    }
+                    <div class="filter-panel__dates">
+                        <div class="field">
+                            <label class="field__label" for="start-date">Arrival</label>
+                            <input class="field__input" id="start-date" type="date" />
+                        </div>
+                        <div class="field">
+                            <label class="field__label" for="end-date">Departure</label>
+                            <input class="field__input" id="end-date" type="date" />
+                        </div>
+                    </div>
+                    <button class="btn btn--primary btn--block" id="apply-filter" type="button">Check availability</button>
+                </div>
+            </div>
+
+            <div class="canvas-legend" aria-label="Canvas status key">
+                <span class="canvas-legend__item">
+                    <span class="canvas-legend__swatch canvas-legend__swatch--free" aria-hidden="true"></span>Free
+                </span>
+                <span class="canvas-legend__item">
+                    <span class="canvas-legend__swatch canvas-legend__swatch--booked" aria-hidden="true"></span>Booked
+                </span>
+                <span class="canvas-legend__item">
+                    <span class="canvas-legend__swatch canvas-legend__swatch--incompatible" aria-hidden="true"></span>Incompatible
+                </span>
+                <span class="canvas-legend__item">
+                    <span class="canvas-legend__swatch canvas-legend__swatch--unavailable" aria-hidden="true"></span>Unavailable
+                </span>
+            </div>
+
+            <p class="spot-sidebar__hint">Pick your dates @(Model.IsBoatOwner ? "and vessel " : "")then select a green spot on the plan to start a booking.</p>
+        </aside>
+    </div>
+</section>
+
+@section Scripts {
+    <script src="https://unpkg.com/konva@9/konva.min.js"></script>
+    <script src="~/js/marina-viewer.js" asp-append-version="true"></script>
+}

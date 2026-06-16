@@ -44,6 +44,7 @@ public class MarinaRepository : IMarinaRepository
     public async Task<IReadOnlyList<Marina>> GetActiveWithActiveSpotsAsync(IReadOnlyCollection<Guid>? marinaIds = null)
     {
         var query = _context.Marinas
+            .Include(m => m.Spots)
             .Where(m => m.IsActive && m.Spots.Any());
 
         if (marinaIds != null)

@@ -3091,3 +3091,147 @@ body.body--fullscreen-editor {
     border: 0;
     min-height: 0;
 }
+
+/* ============================================================
+   Phase 7 — Browse & Search
+   ============================================================ */
+
+/* --- Browse search bar --- */
+.browse-search {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 28px;
+}
+.browse-search__field {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1;
+}
+.browse-search__icon {
+    position: absolute;
+    left: 14px;
+    width: 18px;
+    height: 18px;
+    color: var(--slate-muted);
+    pointer-events: none;
+}
+.browse-search__input {
+    width: 100%;
+    padding: 13px 14px 13px 42px;
+    font-family: var(--font-body);
+    font-size: 0.9375rem;
+    color: var(--ink);
+    background: #FFFEFB;
+    border: 1px solid var(--hairline-ink);
+    border-radius: var(--r-sm);
+    transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+.browse-search__input::placeholder { color: var(--slate-muted); }
+.browse-search__input:hover { border-color: var(--hairline); }
+.browse-search__input:focus {
+    outline: none;
+    border-color: var(--brass);
+    box-shadow: 0 0 0 3px rgba(176, 141, 87, 0.16);
+    background: #FFFFFF;
+}
+.browse-search__input::-webkit-search-cancel-button { -webkit-appearance: none; }
+.browse-search__submit { min-height: 46px; }
+
+@media (min-width: 640px) {
+    .browse-search { flex-direction: row; align-items: stretch; }
+    .browse-search__submit { flex-shrink: 0; }
+}
+
+/* --- Star rating --- */
+.star-rating {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8125rem;
+    color: var(--slate-soft);
+    letter-spacing: 0.02em;
+}
+.star-rating__stars {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+.star-rating__star { width: 15px; height: 15px; }
+.star-rating__star--on { fill: var(--brass); }
+.star-rating__star--off {
+    fill: none;
+    stroke: var(--slate-muted);
+    stroke-width: 1.4;
+    opacity: 0.6;
+}
+.star-rating__value { font-weight: 600; color: var(--slate); }
+.star-rating__count { color: var(--slate-muted); }
+.star-rating--empty { font-style: italic; color: var(--slate-muted); }
+
+/* --- Marina card: browse extras --- */
+.marina-card .star-rating { margin-bottom: 14px; }
+.marina-card__desc {
+    margin: 0 0 16px;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--slate-soft);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.marina-card--link .marina-card__cta::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: var(--r-md);
+    z-index: 1;
+}
+
+/* --- Browse filter panel --- */
+.filter-panel {
+    padding-bottom: 16px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--hairline-ink);
+}
+.filter-panel__head { margin-bottom: 12px; }
+.filter-panel__title {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 1.0625rem;
+    color: var(--ink);
+    margin: 0;
+}
+.filter-panel__fields {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.filter-panel__dates {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+select.field__input {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 38px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%236B7684' stroke-width='1.4'%3E%3Cpath d='M4 6 L8 10 L12 6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    cursor: pointer;
+}
+
+/* --- Sidebar hint --- */
+.spot-sidebar__hint {
+    margin: 4px 0 0;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--slate-soft);
+}
+
+/* --- Incompatible legend swatch --- */
+.canvas-legend__swatch--incompatible { background: rgba(201, 121, 46, 0.62); }

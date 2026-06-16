@@ -1,5 +1,6 @@
+@model BrowseMarinaListViewModel
 @{
-    ViewData["Title"] = "Browse";
+    ViewData["Title"] = "Browse marinas";
 }
 
 <section class="workspace workspace--narrow">
@@ -17,14 +18,93 @@
         <p class="workspace__lede">Find a marina and book the right spot for your vessel.</p>
     </header>
 
-    <div class="empty-state">
-        <span class="vignette vignette--muted" aria-hidden="true">
-            <svg viewBox="0 0 64 48" fill="none" stroke="currentColor" stroke-width="0.7">
-                <circle cx="28" cy="22" r="11" />
-                <line x1="36" y1="30" x2="46" y2="40" stroke-linecap="round" />
+    <form class="browse-search" method="get" action="/browse" role="search">
+        <span class="browse-search__field">
+            <svg class="browse-search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <line x1="16.5" y1="16.5" x2="21" y2="21" stroke-linecap="round" />
             </svg>
+            <input class="browse-search__input" name="Query" type="search"
+                   value="@Model.Filter?.Query"
+                   placeholder="Search by marina name or region"
+                   aria-label="Search marinas" />
         </span>
-        <p class="empty-state__title">Browse is coming soon.</p>
-        <p class="empty-state__body">Marina search and the interactive map are on the way. In the meantime, use the menu to reach your bookings and vessels.</p>
-    </div>
+        <button class="btn btn--primary browse-search__submit" type="submit">Search</button>
+    </form>
+
+    @if (!Model.Marinas.Any())
+    {
+        <div class="empty-state">
+            <span class="vignette vignette--muted" aria-hidden="true">
+                <svg viewBox="0 0 64 48" fill="none" stroke="currentColor" stroke-width="0.7">
+                    <circle cx="28" cy="22" r="11" />
+                    <line x1="36" y1="30" x2="46" y2="40" stroke-linecap="round" />
+                </svg>
+            </span>
+            <p class="empty-state__title">No marinas found.</p>
+            <p class="empty-state__body">
+                @if (!string.IsNullOrWhiteSpace(Model.Filter?.Query))
+                {
+                    <text>Nothing matched &ldquo;@Model.Filter.Query&rdquo;. Try a different name or </text>
+                    <a class="field__hint-link" href="/browse">clear the search</a><text>.</text>
+                }
+                else
+                {
+                    <text>There are no marinas available to browse yet. Please check back soon.</text>
+                }
+            </p>
+        </div>
+    }
+    else
+    {
+        <ul class="marina-grid">
+            @foreach (var m in Model.Marinas)
+            {
+                var hasRating = m.AverageRating.HasValue && m.ReviewCount > 0;
+                var rounded = hasRating
+                    ? (int)Math.Clamp(Math.Round(m.AverageRating!.Value, MidpointRounding.AwayFromZero), 0, 5)
+                    : 0;
+                <li class="marina-card marina-card--link">
+                    <div class="marina-card__head">
+                        <span class="marina-card__region">@m.Region</span>
+                    </div>
+                    <h2 class="marina-card__name">@m.Name</h2>
+
+                    @if (hasRating)
+                    {
+                        <span class="star-rating">
+                            <span class="star-rating__stars" role="img" aria-label="Rated @m.AverageRating!.Value.ToString("0.0") out of 5">
+                                @for (var i = 1; i <= 5; i++)
+                                {
+                                    <svg class="star-rating__star @(i <= rounded ? "star-rating__star--on" : "star-rating__star--off")" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                                    </svg>
+                                }
+                            </span>
+                            <span class="star-rating__value">@m.AverageRating!.Value.ToString("0.0")</span>
+                            <span class="star-rating__count">(@m.ReviewCount @(m.ReviewCount == 1 ? "review" : "reviews"))</span>
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="star-rating star-rating--empty">No reviews yet</span>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(m.Description))
+                    {
+                        <p class="marina-card__desc">@m.Description</p>
+                    }
+
+                    <p class="marina-card__meta">
+                        <span class="marina-card__metric">@m.SpotCount</span>
+                        <span class="marina-card__metric-label">@(m.SpotCount == 1 ? "spot" : "spots")</span>
+                    </p>
+
+                    <div class="marina-card__actions">
+                        <a class="btn btn--primary btn--sm marina-card__cta" href="/browse/marina/@m.Id">View marina</a>
+                    </div>
+                </li>
+            }
+        </ul>
+    }
 </section>
