@@ -12,7 +12,14 @@ public class HomeController : Controller
         {
             return RedirectToAction("Dashboard", "Admin");
         }
-
+        if (User.IsInRole("PlaceOwner"))
+        {
+            return RedirectToAction("Index", "Marinas");
+        }
+        if (User.IsInRole("BoatOwner"))
+        {
+            return Redirect("/browse");
+        }
         return View();
     }
 

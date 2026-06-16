@@ -29,10 +29,6 @@
             </a>
             <nav class="site-nav" aria-label="Primary">
                 <ul class="site-nav__list">
-                    @if (!User.IsInRole("Admin"))
-                    {
-                        <li><a class="site-nav__link" asp-area="" asp-controller="Home" asp-action="Index">Home</a></li>
-                    }
                     @if (User.IsInRole("Admin"))
                     {
                         <li><a class="site-nav__link" href="/admin/settings">Settings</a></li>
@@ -40,12 +36,10 @@
                     }
                     @if (User.IsInRole("PlaceOwner"))
                     {
-                        <li><a class="site-nav__link" href="/placeowner/marinas">My Marinas</a></li>
                         <li><a class="site-nav__link" href="/placeowner/spot-bookings">Incoming Bookings</a></li>
                     }
                     @if (User.IsInRole("BoatOwner"))
                     {
-                        <li><a class="site-nav__link" href="/browse">Browse</a></li>
                         <li><a class="site-nav__link" href="/bookings">My Bookings</a></li>
                         <li><a class="site-nav__link" href="/vessels">My Vessels</a></li>
                     }
