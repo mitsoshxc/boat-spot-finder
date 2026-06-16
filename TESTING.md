@@ -193,7 +193,7 @@ Requires a second seeded PlaceOwner (Option A above, second invitation for a dif
 
 ## Smoke Tests (Manual) — Phases 4, 5, 5b, 6 (not yet run)
 
-Sections §12–§17 cover everything shipped since the Phase 3 milestone. **All unchecked — to be run together.** Booking/review/admin flows print email links to the **console** (`ConsoleEmailSender` in Development). Audit entries land in `logs/audit-YYYY-MM-DD.log`.
+Sections §12–§17 cover everything shipped since the Phase 3 milestone. **Status (recorded from 2026-06-12 session memory):** §13 (lifecycle), §14 (Hangfire jobs), §15 (reviews & ratings), and §16 (admin surface, steps 1–11) passed live and are checked off below. §12 (vessels) is still to run. §17 was verified only piecemeal — individual audit entries (`ReviewCreated`, `MarinaCreated`, `AdminReinstated`, …) seen, no full catalog log-scan — so it stays unchecked. Booking/review/admin flows print email links to the **console** (`ConsoleEmailSender` in Development). Audit entries land in `logs/audit-YYYY-MM-DD.log`.
 
 Setup assumed: one BoatOwner account (§1), one active marina with at least one **active** spot owned by a PlaceOwner (§6–§8 or via §16), and the seeded admin (`admin@boatspotfinder.com`).
 
@@ -210,50 +210,50 @@ Setup assumed: one BoatOwner account (§1), one active marina with at least one 
 
 Booking create is reached directly at `/bookings/create?spotId={id}` (the Browse canvas that normally links here is Phase 7, not built — use the URL).
 
-- [ ] BoatOwner with **no vessel** visits `/bookings/create?spotId={activeSpotId}` → redirect to `/vessels/create` with `TempData["Error"]` "Please register a vessel before making a booking"
-- [ ] `/bookings/create?spotId={activeSpotId}` with a vessel → form renders; selecting vessel + start + end shows the **price preview** block (only when vesselId+start+end are all present and the vessel belongs to the current user)
-- [ ] Submit a valid booking → status `Pending`; redirect to `/bookings`; row listed as Pending. Console shows a "New booking request for {spot}" email to the marina admins
-- [ ] Create a second booking overlapping the first → rejected, ModelState error contains "not available" (adjacent back-to-back dates, where one ends the day the next starts, are **allowed**)
-- [ ] Vessel larger than the spot, or a type not in `AllowedVesselTypes` → rejected with a dimensions/type error
-- [ ] Booking shorter than the resolved min-booking-days → rejected ("minimum")
-- [ ] Deactivate the spot, then `/bookings/create?spotId={inactiveSpotId}` → `NotFound` (uses `GetActiveByIdAsync`)
-- [ ] As PlaceOwner, `/placeowner/spot-bookings` (Incoming) lists the Pending booking → **Confirm** → status Confirmed; console email to BoatOwner. On another booking → **Reject** → Cancelled; console email to BoatOwner
-- [ ] BoatOwner cancels a future Pending/Confirmed booking via the Cancel button (`POST /bookings/{id}/cancel`) → Cancelled. Cancelling a booking whose `StartDate` is today/past → rejected with `TempData["Error"]`
-- [ ] PlaceOwner cancels a future booking via `/placeowner/spot-bookings/{id}/cancel` → Cancelled; console email to BoatOwner
+- [x] BoatOwner with **no vessel** visits `/bookings/create?spotId={activeSpotId}` → redirect to `/vessels/create` with `TempData["Error"]` "Please register a vessel before making a booking"
+- [x] `/bookings/create?spotId={activeSpotId}` with a vessel → form renders; selecting vessel + start + end shows the **price preview** block (only when vesselId+start+end are all present and the vessel belongs to the current user)
+- [x] Submit a valid booking → status `Pending`; redirect to `/bookings`; row listed as Pending. Console shows a "New booking request for {spot}" email to the marina admins
+- [x] Create a second booking overlapping the first → rejected, ModelState error contains "not available" (adjacent back-to-back dates, where one ends the day the next starts, are **allowed**)
+- [x] Vessel larger than the spot, or a type not in `AllowedVesselTypes` → rejected with a dimensions/type error
+- [x] Booking shorter than the resolved min-booking-days → rejected ("minimum")
+- [x] Deactivate the spot, then `/bookings/create?spotId={inactiveSpotId}` → `NotFound` (uses `GetActiveByIdAsync`)
+- [x] As PlaceOwner, `/placeowner/spot-bookings` (Incoming) lists the Pending booking → **Confirm** → status Confirmed; console email to BoatOwner. On another booking → **Reject** → Cancelled; console email to BoatOwner
+- [x] BoatOwner cancels a future Pending/Confirmed booking via the Cancel button (`POST /bookings/{id}/cancel`) → Cancelled. Cancelling a booking whose `StartDate` is today/past → rejected with `TempData["Error"]`
+- [x] PlaceOwner cancels a future booking via `/placeowner/spot-bookings/{id}/cancel` → Cancelled; console email to BoatOwner
 
 ### 14. Hangfire recurring jobs (Phase 5 / 5b)
 
-- [ ] `/hangfire` opens **only as Admin** (other roles redirect to login / are denied). Two recurring jobs are registered: `booking-auto-action` (`*/5 * * * *`) and `booking-complete-overdue` (`0 2 * * *`)
-- [ ] **Auto-action:** in Admin → Settings set `AutoActionTimeoutHours` low; create a Pending booking older than the timeout (or wait); "Trigger now" `booking-auto-action` → booking auto-Confirms or auto-Cancels per `AutoActionType`; console email fires
-- [ ] **Complete-overdue:** set a `Confirmed` booking's `EndDate` to yesterday (SQL), "Trigger now" `booking-complete-overdue` → status → `Completed`; console shows **two** review-invite emails — BoatOwner (`/reviews/create?bookingId=…`) and each marina admin (`/placeowner/reviews/create?bookingId=…`), each noting a 14-day deadline (`EndDate + 14`)
+- [x] `/hangfire` opens **only as Admin** (other roles redirect to login / are denied). Two recurring jobs are registered: `booking-auto-action` (`*/5 * * * *`) and `booking-complete-overdue` (`0 2 * * *`)
+- [x] **Auto-action:** in Admin → Settings set `AutoActionTimeoutHours` low; create a Pending booking older than the timeout (or wait); "Trigger now" `booking-auto-action` → booking auto-Confirms or auto-Cancels per `AutoActionType`; console email fires
+- [x] **Complete-overdue:** set a `Confirmed` booking's `EndDate` to yesterday (SQL), "Trigger now" `booking-complete-overdue` → status → `Completed`; console shows **two** review-invite emails — BoatOwner (`/reviews/create?bookingId=…`) and each marina admin (`/placeowner/reviews/create?bookingId=…`), each noting a 14-day deadline (`EndDate + 14`)
 
 ### 15. Reviews & ratings (Phase 5b)
 
 Prereq: a `Completed` booking (from §14).
 
-- [ ] BoatOwner opens `/reviews/create?bookingId={id}` → star form + booking summary, "Rate the marina". Submit score 1–5 (+ optional comment) → redirect to `/bookings`; the completed row now shows the submitted score instead of the CTA
-- [ ] After the BoatOwner review, the marina's `AverageRating` / `ReviewCount` update (verify in SQL; the public marina page is Phase 7)
-- [ ] PlaceOwner opens `/placeowner/reviews/create?bookingId={id}` → "Rate the boat owner". Submit → redirect to `/placeowner/spot-bookings`; the BoatOwner's `AverageRatingAsBoatOwner` / `ReviewCountAsBoatOwner` update; Incoming rows show the BoatOwner rating
-- [ ] A booking whose `EndDate` is more than 14 days ago → `/reviews/create?bookingId={id}` returns **404** (window closed)
-- [ ] Revisit the same review link after submitting → **404** (already reviewed). A second marina admin clicking their invite after the first already reviewed → 404 (benign first-to-submit race)
-- [ ] `logs/audit-*.log` gains a `ReviewCreated` entry (PlaceOwner review) with `details` `{ score, bookingId }`
+- [x] BoatOwner opens `/reviews/create?bookingId={id}` → star form + booking summary, "Rate the marina". Submit score 1–5 (+ optional comment) → redirect to `/bookings`; the completed row now shows the submitted score instead of the CTA
+- [x] After the BoatOwner review, the marina's `AverageRating` / `ReviewCount` update (verify in SQL; the public marina page is Phase 7)
+- [x] PlaceOwner opens `/placeowner/reviews/create?bookingId={id}` → "Rate the boat owner". Submit → redirect to `/placeowner/spot-bookings`; the BoatOwner's `AverageRatingAsBoatOwner` / `ReviewCountAsBoatOwner` update; Incoming rows show the BoatOwner rating
+- [x] A booking whose `EndDate` is more than 14 days ago → `/reviews/create?bookingId={id}` returns **404** (window closed)
+- [x] Revisit the same review link after submitting → **404** (already reviewed). A second marina admin clicking their invite after the first already reviewed → 404 (benign first-to-submit race)
+- [x] `logs/audit-*.log` gains a `ReviewCreated` entry (PlaceOwner review) with `details` `{ score, bookingId }`
 
 ### 16. Admin surface (Phase 6) — Admin
 
 Log in as the seeded admin (`admin@boatspotfinder.com`).
 
-- [ ] `/admin/dashboard` → console grid of navigation cards
-- [ ] `/admin/users` → all users; BoatOwner rows show `AverageRatingAsBoatOwner`
-- [ ] `/admin/marinas` → all marinas **including inactive** (status pill, admin count, spot count)
-- [ ] `/admin/marinas/create` (name + region) → on save redirects to the **InviteAdmin** form for the new marina (new marina is **not** indexed in ES at creation)
-- [ ] On the invite form enter an email → POST → redirect to MarinaInvitations; console shows the invite email with `/account/invite-register?token=…`. Register via that link → new PlaceOwner appears under `/admin/marinas/{id}/admins`
-- [ ] `/admin/marinas/{id}/edit` → change details → save (ES `IndexAsync` only when the marina is active)
-- [ ] `/admin/marinas/{id}/toggle-active` → deactivate (ES `DeleteAsync`) then reactivate (ES `IndexAsync`); existing bookings are **not** cancelled; marina is never hard-deleted
-- [ ] `/admin/marinas/{id}/spots` → lists spots **including inactive**; toggle a spot via `/admin/spots/{id}/toggle-active`
+- [x] `/admin/dashboard` → console grid of navigation cards
+- [x] `/admin/users` → all users; BoatOwner rows show `AverageRatingAsBoatOwner`
+- [x] `/admin/marinas` → all marinas **including inactive** (status pill, admin count, spot count)
+- [x] `/admin/marinas/create` (name + region) → on save redirects to the **InviteAdmin** form for the new marina (new marina is **not** indexed in ES at creation)
+- [x] On the invite form enter an email → POST → redirect to MarinaInvitations; console shows the invite email with `/account/invite-register?token=…`. Register via that link → new PlaceOwner appears under `/admin/marinas/{id}/admins`
+- [x] `/admin/marinas/{id}/edit` → change details → save (ES `IndexAsync` only when the marina is active)
+- [x] `/admin/marinas/{id}/toggle-active` → deactivate (ES `DeleteAsync`) then reactivate (ES `IndexAsync`); existing bookings are **not** cancelled; marina is never hard-deleted
+- [x] `/admin/marinas/{id}/spots` → lists spots **including inactive**; toggle a spot via `/admin/spots/{id}/toggle-active`
 - [x] `/admin/marinas/{id}/layout` → read-only canvas now renders via `marina-viewer.js`: placed spots drawn colored by status — **Free** (green), **Booked** (amber: active spot with a Pending/Confirmed booking overlapping today), **Unavailable** (grey: inactive) — with labels + the background image; legend shows Free / Booked / Unavailable. Status from `GET /browse/marina/{id}/spot-statuses`. Verified this session.
-- [ ] Revoke an admin via `/admin/marinas/{marinaId}/admins/{userId}/revoke` → membership removed; if it was the user's **last** membership, the PlaceOwner role is stripped (confirm they can no longer reach `/placeowner/marinas`)
-- [ ] From `/admin/bookings`, Cancel a Pending/Confirmed booking → Cancelled (Admin override **skips** the StartDate guard); `TempData["Success"]` "Booking cancelled."
-- [ ] `/admin/settings` → change `AutoActionType` + `AutoActionTimeoutHours` → save → success flash
+- [x] Revoke an admin via `/admin/marinas/{marinaId}/admins/{userId}/revoke` → membership removed; if it was the user's **last** membership, the PlaceOwner role is stripped (confirm they can no longer reach `/placeowner/marinas`)
+- [x] From `/admin/bookings`, Cancel a Pending/Confirmed booking → Cancelled (Admin override **skips** the StartDate guard); `TempData["Success"]` "Booking cancelled."
+- [x] `/admin/settings` → change `AutoActionType` + `AutoActionTimeoutHours` → save → success flash
 
 ### 17. Audit log — Admin & state-changing actions (Phase 2b full)
 
@@ -284,9 +284,9 @@ Covers the booking-create + My Bookings + Incoming improvements shipped this ses
 
 ### 20. Incoming — sections + marina-wide Dismiss + nav (PlaceOwner)
 
-- [ ] The PlaceOwner nav menu now shows **Incoming Bookings** (`/placeowner/spot-bookings`) alongside My Marinas
-- [ ] Incoming renders the same three sections (Pending → Confirmed → Past), sorted by arrival; the richer card (requester, boat-owner rating, auto-decision countdown, Confirm/Reject/Cancel) is preserved
-- [ ] **Dismiss** on a Past/Cancelled card → marina-wide: hidden for every admin of that marina (`DismissedByMarina = 1`); row not deleted; a non-admin of the marina cannot dismiss (service `Forbidden`)
+- [x] The PlaceOwner nav menu now shows **Incoming Bookings** (`/placeowner/spot-bookings`) alongside My Marinas
+- [x] Incoming renders the same three sections (Pending → Confirmed → Past), sorted by arrival; the richer card (requester, boat-owner rating, auto-decision countdown, Confirm/Reject/Cancel) is preserved
+- [x] **Dismiss** on a Past/Cancelled card → marina-wide: hidden for every admin of that marina (`DismissedByMarina = 1`); row not deleted; a non-admin of the marina cannot dismiss (service `Forbidden`)
 
 ### 21. Booking audit trail completion (ties into §13 / §17)
 
