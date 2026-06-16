@@ -35,6 +35,7 @@
                     }
                     @if (User.IsInRole("Admin"))
                     {
+                        <li><a class="site-nav__link" href="/admin/settings">Settings</a></li>
                         <li><a class="site-nav__link" href="/admin/jobs">Hangfire</a></li>
                     }
                     @if (User.IsInRole("PlaceOwner"))
