@@ -2347,6 +2347,9 @@ body.body--fullscreen-editor {
         justify-content: space-between;
         gap: 28px;
     }
+    .workspace__head--editor > .workspace__back {
+        flex-basis: 100%;
+    }
     .workspace__head-titles {
         flex: 1 1 320px;
     }
