@@ -29,7 +29,6 @@
             </a>
             <nav class="site-nav" aria-label="Primary">
                 <ul class="site-nav__list">
-                    <li><a class="site-nav__link" href="/browse">Browse Marinas</a></li>
                     @if (User.IsInRole("Admin"))
                     {
                         <li><a class="site-nav__link" href="/admin/settings">Settings</a></li>
@@ -41,6 +40,7 @@
                     }
                     @if (User.IsInRole("BoatOwner"))
                     {
+                        <li><a class="site-nav__link" href="/browse">Browse Marinas</a></li>
                         <li><a class="site-nav__link" href="/bookings">My Bookings</a></li>
                         <li><a class="site-nav__link" href="/vessels">My Vessels</a></li>
                     }
@@ -59,7 +59,7 @@
     <footer class="site-footer">
         <div class="site-footer__inner">
             <span class="site-footer__rule" aria-hidden="true"></span>
-            <p class="site-footer__copy">&copy; 2026 Boat Spot Finder &middot; <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a></p>
+            <p class="site-footer__copy">&copy; 2026 Boat Spot Finder &middot; <a asp-area="" asp-controller="Home" asp-action="About">About</a> &middot; <a asp-area="" asp-controller="Home" asp-action="Contact">Contact</a> &middot; <a asp-area="" asp-controller="Home" asp-action="Terms">Terms</a> &middot; <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a></p>
         </div>
     </footer>
 

@@ -3,10 +3,12 @@ using BoatSpotFinder.Core.Entities;
 using BoatSpotFinder.Core.Enums;
 using BoatSpotFinder.Core.Interfaces;
 using BoatSpotFinder.Web.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BoatSpotFinder.Web.Controllers;
 
+[Authorize(Roles = "BoatOwner")]
 [Route("browse")]
 public class BrowseController : Controller
 {
