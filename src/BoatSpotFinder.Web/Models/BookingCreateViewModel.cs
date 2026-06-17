@@ -6,6 +6,7 @@ namespace BoatSpotFinder.Web.Models;
 public class BookingCreateViewModel : IValidatableObject
 {
     public Guid SpotId { get; set; }
+    public Guid MarinaId { get; set; }
     public DateOnly StartDate { get; set; }
     public DateOnly EndDate { get; set; }
     public Guid? VesselId { get; set; }

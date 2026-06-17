@@ -23,6 +23,7 @@
         <form asp-action="Create" method="post" class="plate-form" novalidate>
             <div asp-validation-summary="ModelOnly" class="auth-errors"></div>
             <input type="hidden" asp-for="SpotId" />
+            <input type="hidden" asp-for="MarinaId" />
 
             <section class="plate-section">
                 <h2 class="plate-section__title">
@@ -81,7 +82,7 @@
             </aside>
 
             <div class="plate-form__actions">
-                <a class="link--quiet" href="/browse">&larr; Back to browse</a>
+                <a class="link--quiet" href="/browse/marina/@Model.MarinaId">&larr; Back to marina</a>
                 <button type="submit" class="btn btn--primary">Request booking</button>
             </div>
         </form>

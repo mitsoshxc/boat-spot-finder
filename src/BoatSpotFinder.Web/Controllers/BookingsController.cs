@@ -146,6 +146,7 @@ public class BookingsController : Controller
         var model = new BookingCreateViewModel
         {
             SpotId = spotId.Value,
+            MarinaId = spot.MarinaId,
             StartDate = startDate ?? DateOnly.FromDateTime(DateTime.UtcNow.Date),
             EndDate = endDate ?? DateOnly.FromDateTime(DateTime.UtcNow.Date.AddDays(1)),
             VesselId = vesselId,
