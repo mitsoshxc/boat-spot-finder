@@ -1,4 +1,5 @@
 @model BrowseMarinaListViewModel
+@using BoatSpotFinder.Core.Enums
 @{
     ViewData["Title"] = "Browse marinas";
 }
@@ -18,18 +19,47 @@
         <p class="workspace__lede">Find a marina and book the right spot for your vessel.</p>
     </header>
 
-    <form class="browse-search" method="get" action="/browse" role="search">
-        <span class="browse-search__field">
-            <svg class="browse-search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
-                <circle cx="11" cy="11" r="7" />
-                <line x1="16.5" y1="16.5" x2="21" y2="21" stroke-linecap="round" />
-            </svg>
-            <input class="browse-search__input" name="Query" type="search"
-                   value="@Model.Filter?.Query"
-                   placeholder="Search by marina name or region"
-                   aria-label="Search marinas" />
-        </span>
-        <button class="btn btn--primary browse-search__submit" type="submit">Search</button>
+    <form class="browse-form" method="get" action="/browse" role="search">
+        <div class="browse-search">
+            <span class="browse-search__field">
+                <svg class="browse-search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+                    <circle cx="11" cy="11" r="7" />
+                    <line x1="16.5" y1="16.5" x2="21" y2="21" stroke-linecap="round" />
+                </svg>
+                <input class="browse-search__input" name="Query" type="search"
+                       value="@Model.Filter.Query"
+                       placeholder="Search by marina name or region"
+                       aria-label="Search marinas" />
+            </span>
+            <button class="btn btn--primary browse-search__submit" type="submit">Search</button>
+        </div>
+
+        @if (Model.Marinas.Any())
+        {
+            <div class="browse-controls">
+                @{
+                    var from = Model.TotalCount == 0 ? 0 : (Model.Page - 1) * Model.PageSize + 1;
+                    var to = Math.Min(Model.Page * Model.PageSize, Model.TotalCount);
+                }
+                <p class="browse-controls__count">Showing @from–@to of @Model.TotalCount @(Model.TotalCount == 1 ? "marina" : "marinas")</p>
+                <label class="browse-controls__sort">
+                    <span class="browse-controls__label">Sort by</span>
+                    <span class="browse-controls__select-wrap">
+                        <select class="browse-controls__select" name="Sort">
+                            @if (Model.ShowRelevanceOption)
+                            {
+                                <option value="Relevance" selected="@(Model.Sort == MarinaSortOption.Relevance)">Relevance</option>
+                            }
+                            <option value="TopRated" selected="@(Model.Sort == MarinaSortOption.TopRated)">Top rated</option>
+                            <option value="Alphabetical" selected="@(Model.Sort == MarinaSortOption.Alphabetical)">A–Z</option>
+                        </select>
+                        <svg class="browse-controls__chevron" viewBox="0 0 16 16" aria-hidden="true">
+                            <path d="M4 6 L8 10 L12 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                </label>
+            </div>
+        }
     </form>
 
     @if (!Model.Marinas.Any())
@@ -106,5 +136,56 @@
                 </li>
             }
         </ul>
+
+        @if (Model.TotalPages > 1)
+        {
+            Func<int, string> pageUrl = p =>
+                $"/browse?Query={Uri.EscapeDataString(Model.Filter.Query ?? "")}&Sort={Model.Sort}&Page={p}";
+
+            <nav class="pager" aria-label="Marina list pagination">
+                @if (Model.HasPreviousPage)
+                {
+                    <a class="pager__link" href="@pageUrl(Model.Page - 1)" rel="prev">
+                        <svg class="pager__icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 L5 8 L10 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <span class="pager__text">Previous</span>
+                    </a>
+                }
+                else
+                {
+                    <span class="pager__link pager__link--disabled" aria-disabled="true">
+                        <svg class="pager__icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 L5 8 L10 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <span class="pager__text">Previous</span>
+                    </span>
+                }
+
+                <span class="pager__status">Page @Model.Page of @Model.TotalPages</span>
+
+                @if (Model.HasNextPage)
+                {
+                    <a class="pager__link" href="@pageUrl(Model.Page + 1)" rel="next">
+                        <span class="pager__text">Next</span>
+                        <svg class="pager__icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3 L11 8 L6 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </a>
+                }
+                else
+                {
+                    <span class="pager__link pager__link--disabled" aria-disabled="true">
+                        <span class="pager__text">Next</span>
+                        <svg class="pager__icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3 L11 8 L6 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </span>
+                }
+            </nav>
+        }
     }
 </section>
+
+@section Scripts {
+    <script>
+        const sortSelect = document.querySelector('.browse-controls__select');
+        if (sortSelect) {
+            sortSelect.addEventListener('change', function () {
+                sortSelect.form.submit();
+            });
+        }
+    </script>
+}

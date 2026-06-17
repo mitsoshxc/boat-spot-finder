@@ -14,20 +14,22 @@ public class BrowseController : Controller
 {
     private readonly IMarinaRepository _marinaRepository;
     private readonly ISpotRepository _spotRepository;
-    private readonly IMarinaSearchService _marinaSearchService;
+    private readonly IMarinaBrowseService _marinaBrowseService;
     private readonly IVesselRepository _vesselRepository;
     private readonly ISpotStatusService _spotStatusService;
+
+    private const int PageSize = 20;
 
     public BrowseController(
         IMarinaRepository marinaRepository,
         ISpotRepository spotRepository,
-        IMarinaSearchService marinaSearchService,
+        IMarinaBrowseService marinaBrowseService,
         IVesselRepository vesselRepository,
         ISpotStatusService spotStatusService)
     {
         _marinaRepository = marinaRepository;
         _spotRepository = spotRepository;
-        _marinaSearchService = marinaSearchService;
+        _marinaBrowseService = marinaBrowseService;
         _vesselRepository = vesselRepository;
         _spotStatusService = spotStatusService;
     }
@@ -35,21 +37,12 @@ public class BrowseController : Controller
     [HttpGet("")]
     public async Task<IActionResult> Index([FromQuery] MarinaSearchFilterViewModel filter)
     {
-        IReadOnlyList<Marina> marinas;
-        if (string.IsNullOrWhiteSpace(filter.Query))
-        {
-            marinas = await _marinaRepository.GetActiveWithActiveSpotsAsync();
-        }
-        else
-        {
-            var ids = await _marinaSearchService.SearchAsync(filter.Query);
-            marinas = ids is null
-                ? await _marinaRepository.GetActiveWithActiveSpotsAsync()
-                : await _marinaRepository.GetActiveWithActiveSpotsAsync(ids.ToList());
-        }
+        var hasQuery = !string.IsNullOrWhiteSpace(filter.Query);
+        var sort = filter.Sort ?? (hasQuery ? MarinaSortOption.Relevance : MarinaSortOption.TopRated);
 
-        var cards = marinas
-            .OrderBy(m => m.Name)
+        var page = await _marinaBrowseService.GetPageAsync(filter.Query, sort, filter.Page, PageSize);
+
+        var cards = page.Items
             .Select(m => new BrowseMarinaCardViewModel
             {
                 Id = m.Id,
@@ -62,7 +55,19 @@ public class BrowseController : Controller
             })
             .ToList();
 
-        return View(new BrowseMarinaListViewModel { Filter = filter, Marinas = cards });
+        return View(new BrowseMarinaListViewModel
+        {
+            Filter = filter,
+            Marinas = cards,
+            Sort = sort,
+            ShowRelevanceOption = hasQuery,
+            Page = page.PageIndex,
+            PageSize = PageSize,
+            TotalPages = page.TotalPages,
+            TotalCount = page.TotalCount,
+            HasPreviousPage = page.HasPreviousPage,
+            HasNextPage = page.HasNextPage
+        });
     }
 
     [HttpGet("marina/{id:guid}")]

@@ -122,16 +122,53 @@ public class AdminController : Controller
     }
 
     [HttpGet("marinas")]
-    public async Task<IActionResult> AllMarinas()
+    public async Task<IActionResult> AllMarinas(string? q)
     {
-        var marinas = await _marinaRepository.GetAllAsync(includeInactive: true);
-        var viewModels = new List<AdminMarinaListItemViewModel>();
+        var list = await GetMarinaListAsync(q);
+        ViewData["MarinaQuery"] = q;
+        return View(list);
+    }
 
-        foreach (var m in marinas)
+    [HttpGet("marinas/search")]
+    public async Task<IActionResult> SearchMarinas(string? q)
+    {
+        var list = await GetMarinaListAsync(q);
+        return PartialView("_MarinaListRows", list);
+    }
+
+    private async Task<List<AdminMarinaListItemViewModel>> GetMarinaListAsync(string? q)
+    {
+        var all = await _marinaRepository.GetAllAsync(includeInactive: true);
+
+        IEnumerable<Marina> matched;
+        if (string.IsNullOrWhiteSpace(q))
+        {
+            matched = all;
+        }
+        else
+        {
+            var term = q.Trim();
+            var esIds = await _marinaSearchService.SearchAsync(term);
+            if (esIds is null)
+            {
+                matched = all.Where(m => MatchesTerm(m, term));
+            }
+            else
+            {
+                var idSet = esIds.ToHashSet();
+                matched = all.Where(m =>
+                    (m.IsActive && idSet.Contains(m.Id)) ||
+                    (!m.IsActive && MatchesTerm(m, term)));
+            }
+        }
+
+        var ordered = matched.OrderBy(m => m.Name).ToList();
+        var viewModels = new List<AdminMarinaListItemViewModel>();
+        foreach (var m in ordered)
         {
             var adminCount = (await _marinaAdminRepository.GetByMarinaIdAsync(m.Id)).Count(a => a.RevokedAt == null);
             var spotCount = (await _spotRepository.GetByMarinaIdAsync(m.Id, includeInactive: true)).Count;
-            var vm = new AdminMarinaListItemViewModel
+            viewModels.Add(new AdminMarinaListItemViewModel
             {
                 Id = m.Id,
                 Name = m.Name,
@@ -139,13 +176,14 @@ public class AdminController : Controller
                 IsActive = m.IsActive,
                 AdminCount = adminCount,
                 SpotCount = spotCount,
-            };
-            viewModels.Add(vm);
+            });
         }
-
-        var ordered = viewModels.OrderBy(m => m.Name).ToList();
-        return View(ordered);
+        return viewModels;
     }
+
+    private static bool MatchesTerm(Marina m, string term) =>
+        m.Name.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+        m.Region.Contains(term, StringComparison.OrdinalIgnoreCase);
 
     [HttpGet("marinas/{marinaId:guid}/spots")]
     public async Task<IActionResult> MarinaSpots(Guid marinaId)

@@ -2,6 +2,8 @@ using BoatSpotFinder.Core.Entities;
 using BoatSpotFinder.Core.Interfaces;
 using Elastic.Clients.Elasticsearch;
 using Elastic.Clients.Elasticsearch.QueryDsl;
+using Elastic.Transport;
+using Elastic.Transport.Products.Elasticsearch;
 using Microsoft.Extensions.Logging;
 
 namespace BoatSpotFinder.Infrastructure.Search;
@@ -13,6 +15,8 @@ public class ElasticsearchMarinaSearchService : IMarinaSearchService
     private readonly ElasticsearchClient _client;
     private readonly ILogger<ElasticsearchMarinaSearchService> _logger;
 
+    private bool _indexEnsured;
+
     private record MarinaDocument(Guid Id, string Name, string Region, string Phone, string Address, string Description, decimal? AverageRating, int ReviewCount);
 
     public ElasticsearchMarinaSearchService(
@@ -23,10 +27,83 @@ public class ElasticsearchMarinaSearchService : IMarinaSearchService
         _logger = logger;
     }
 
+    private async Task EnsureIndexAsync()
+    {
+        if (_indexEnsured)
+        {
+            return;
+        }
+
+        var exists = await _client.Indices.ExistsAsync(IndexName);
+        if (!exists.Exists)
+        {
+            // Raw JSON is used here because the typed fluent API does not expose
+            // NGramTokenizer or the analysis block under IndexSettings.
+            const string indexDefinition = """
+                {
+                  "settings": {
+                    "index": { "max_ngram_diff": 13 },
+                    "analysis": {
+                      "tokenizer": {
+                        "marina_ngram_tokenizer": {
+                          "type": "ngram",
+                          "min_gram": 2,
+                          "max_gram": 15,
+                          "token_chars": ["letter", "digit"]
+                        }
+                      },
+                      "analyzer": {
+                        "marina_ngram_analyzer": {
+                          "type": "custom",
+                          "tokenizer": "marina_ngram_tokenizer",
+                          "filter": ["lowercase"]
+                        },
+                        "marina_ngram_search_analyzer": {
+                          "type": "custom",
+                          "tokenizer": "standard",
+                          "filter": ["lowercase"]
+                        }
+                      }
+                    }
+                  },
+                  "mappings": {
+                    "properties": {
+                      "name": {
+                        "type": "text",
+                        "analyzer": "standard",
+                        "fields": {
+                          "ngram":   { "type": "text", "analyzer": "marina_ngram_analyzer", "search_analyzer": "marina_ngram_search_analyzer" },
+                          "keyword": { "type": "keyword" }
+                        }
+                      },
+                      "region": {
+                        "type": "text",
+                        "analyzer": "standard",
+                        "fields": {
+                          "ngram":   { "type": "text", "analyzer": "marina_ngram_analyzer", "search_analyzer": "marina_ngram_search_analyzer" },
+                          "keyword": { "type": "keyword" }
+                        }
+                      }
+                    }
+                  }
+                }
+                """;
+
+            await _client.Transport.RequestAsync<ElasticsearchStringResponse>(
+                Elastic.Transport.HttpMethod.PUT,
+                $"/{IndexName}",
+                PostData.String(indexDefinition));
+        }
+
+        _indexEnsured = true;
+    }
+
     public async Task IndexAsync(Marina marina)
     {
         try
         {
+            await EnsureIndexAsync();
+
             var doc = new MarinaDocument(
                 marina.Id,
                 marina.Name,
@@ -75,10 +152,18 @@ public class ElasticsearchMarinaSearchService : IMarinaSearchService
                 response = await _client.SearchAsync<MarinaDocument>(s => s
                     .Indices(IndexName)
                     .Size(10000)
-                    .Query(q => q.MultiMatch(m => m
-                        .Fields(new[] { "name", "region", "phone", "address", "description" })
-                        .Query(query)
-                        .Fuzziness(new Fuzziness("AUTO")))));
+                    .Query(q => q.Bool(b => b
+                        // search_analyzer on the .ngram sub-field uses standard+lowercase so
+                        // the query text itself is not n-grammed, preventing over-matching
+                        .MinimumShouldMatch(1)
+                        .Should(
+                            mm => mm.MultiMatch(m => m
+                                .Fields(new[] { "name^3", "region^2", "address", "description", "phone" })
+                                .Query(query)
+                                .Fuzziness(new Fuzziness("AUTO"))),
+                            mm => mm.MultiMatch(m => m
+                                .Fields(new[] { "name.ngram^2", "region.ngram" })
+                                .Query(query))))));
             }
 
             return response.Hits

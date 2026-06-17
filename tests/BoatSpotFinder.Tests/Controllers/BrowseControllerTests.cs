@@ -71,7 +71,7 @@ public class BrowseControllerTests
         var controller = new BrowseController(
             new MarinaRepository(db.Context),
             spotRepo,
-            new NullMarinaSearchService(),
+            new MarinaBrowseService(new NullMarinaSearchService(), new MarinaRepository(db.Context)),
             vesselRepo,
             statusService);
 
@@ -99,7 +99,7 @@ public class BrowseControllerTests
         var controller = new BrowseController(
             new MarinaRepository(db.Context),
             spotRepo,
-            new NullMarinaSearchService(),
+            new MarinaBrowseService(new NullMarinaSearchService(), new MarinaRepository(db.Context)),
             vesselRepo,
             statusService);
 
@@ -130,7 +130,7 @@ public class BrowseControllerTests
         var controller = new BrowseController(
             new MarinaRepository(db.Context),
             spotRepo,
-            new NullMarinaSearchService(),
+            new MarinaBrowseService(new NullMarinaSearchService(), new MarinaRepository(db.Context)),
             vesselRepo,
             statusService);
 
@@ -160,7 +160,7 @@ public class BrowseControllerTests
         var controller = new BrowseController(
             new MarinaRepository(db.Context),
             spotRepo,
-            new NullMarinaSearchService(),
+            new MarinaBrowseService(new NullMarinaSearchService(), new MarinaRepository(db.Context)),
             vesselRepo,
             statusService);
 
@@ -182,7 +182,7 @@ public class BrowseControllerTests
         var controller = new BrowseController(
             new MarinaRepository(db.Context),
             spotRepo,
-            new NullMarinaSearchService(),
+            new MarinaBrowseService(new NullMarinaSearchService(), new MarinaRepository(db.Context)),
             vesselRepo,
             statusService);
 
@@ -221,7 +221,7 @@ public class BrowseControllerTests
         var controller = new BrowseController(
             new MarinaRepository(db.Context),
             spotRepo,
-            new NullMarinaSearchService(),
+            new MarinaBrowseService(new NullMarinaSearchService(), new MarinaRepository(db.Context)),
             vesselRepo,
             statusService);
 
@@ -246,7 +246,7 @@ public class BrowseControllerTests
         var controller = new BrowseController(
             new MarinaRepository(db.Context),
             spotRepo,
-            new EmptyResultMarinaSearchService(),
+            new MarinaBrowseService(new EmptyResultMarinaSearchService(), new MarinaRepository(db.Context)),
             vesselRepo,
             statusService);
 
@@ -269,7 +269,7 @@ public class BrowseControllerTests
         var controller = new BrowseController(
             new MarinaRepository(db.Context),
             spotRepo,
-            new EmptyResultMarinaSearchService(),
+            new MarinaBrowseService(new EmptyResultMarinaSearchService(), new MarinaRepository(db.Context)),
             vesselRepo,
             statusService);
 
@@ -278,5 +278,79 @@ public class BrowseControllerTests
         var view = Assert.IsType<ViewResult>(result);
         var vm = Assert.IsType<BrowseMarinaListViewModel>(view.Model);
         Assert.Empty(vm.Marinas);
+    }
+
+    [Fact]
+    public async Task Index_NoQuery_DefaultsToTopRatedSort()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        await SeedThreeSpotsAsync(db.Context);
+
+        var spotRepo = new SpotRepository(db.Context);
+        var vesselRepo = new VesselRepository(db.Context);
+        var statusService = new SpotStatusService(spotRepo, vesselRepo, new BookingRepository(db.Context));
+        var controller = new BrowseController(
+            new MarinaRepository(db.Context),
+            spotRepo,
+            new MarinaBrowseService(new NullMarinaSearchService(), new MarinaRepository(db.Context)),
+            vesselRepo,
+            statusService);
+
+        var result = await controller.Index(new MarinaSearchFilterViewModel { Query = null });
+
+        var view = Assert.IsType<ViewResult>(result);
+        var vm = Assert.IsType<BrowseMarinaListViewModel>(view.Model);
+        Assert.Equal(MarinaSortOption.TopRated, vm.Sort);
+        Assert.False(vm.ShowRelevanceOption);
+    }
+
+    [Fact]
+    public async Task Index_WithQuery_DefaultsToRelevanceSort()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        await SeedThreeSpotsAsync(db.Context);
+
+        var spotRepo = new SpotRepository(db.Context);
+        var vesselRepo = new VesselRepository(db.Context);
+        var statusService = new SpotStatusService(spotRepo, vesselRepo, new BookingRepository(db.Context));
+        var controller = new BrowseController(
+            new MarinaRepository(db.Context),
+            spotRepo,
+            new MarinaBrowseService(new NullMarinaSearchService(), new MarinaRepository(db.Context)),
+            vesselRepo,
+            statusService);
+
+        var result = await controller.Index(new MarinaSearchFilterViewModel { Query = "test" });
+
+        var view = Assert.IsType<ViewResult>(result);
+        var vm = Assert.IsType<BrowseMarinaListViewModel>(view.Model);
+        Assert.Equal(MarinaSortOption.Relevance, vm.Sort);
+        Assert.True(vm.ShowRelevanceOption);
+    }
+
+    [Fact]
+    public async Task Index_PopulatesPagingFields()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        await SeedThreeSpotsAsync(db.Context);
+
+        var spotRepo = new SpotRepository(db.Context);
+        var vesselRepo = new VesselRepository(db.Context);
+        var statusService = new SpotStatusService(spotRepo, vesselRepo, new BookingRepository(db.Context));
+        var controller = new BrowseController(
+            new MarinaRepository(db.Context),
+            spotRepo,
+            new MarinaBrowseService(new NullMarinaSearchService(), new MarinaRepository(db.Context)),
+            vesselRepo,
+            statusService);
+
+        var result = await controller.Index(new MarinaSearchFilterViewModel { Query = null });
+
+        var view = Assert.IsType<ViewResult>(result);
+        var vm = Assert.IsType<BrowseMarinaListViewModel>(view.Model);
+        Assert.Equal(20, vm.PageSize);
+        Assert.Equal(1, vm.Page);
+        Assert.True(vm.TotalPages >= 1);
+        Assert.True(vm.TotalCount >= 1);
     }
 }

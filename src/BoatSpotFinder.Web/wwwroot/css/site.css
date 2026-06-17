@@ -2968,6 +2968,13 @@ body.body--fullscreen-editor {
 }
 .ledger__actions form { margin: 0; }
 
+.ledger__empty {
+    padding: 28px 4px;
+    text-align: center;
+    color: var(--slate-muted);
+    font-size: 0.9375rem;
+}
+
 .ledger-rating { display: inline-flex; align-items: center; gap: 6px; }
 .ledger-rating__star { width: 14px; height: 14px; fill: var(--brass); flex-shrink: 0; }
 .ledger-rating__value {
@@ -3238,3 +3245,140 @@ select.field__input {
 
 /* --- Incompatible legend swatch --- */
 .canvas-legend__swatch--incompatible { background: rgba(201, 121, 46, 0.62); }
+
+/* --- Browse controls (result count + sort) --- */
+.browse-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 22px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--hairline-ink);
+}
+.browse-controls__count {
+    margin: 0;
+    font-size: 0.8125rem;
+    letter-spacing: 0.04em;
+    color: var(--slate-soft);
+}
+.browse-controls__sort {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.browse-controls__label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--slate-muted);
+    white-space: nowrap;
+}
+.browse-controls__select-wrap {
+    position: relative;
+    flex: 1;
+    display: flex;
+}
+.browse-controls__select {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    min-height: 44px;
+    padding: 12px 38px 12px 14px;
+    font-family: var(--font-body);
+    font-size: 0.875rem;
+    color: var(--ink);
+    background: #FFFEFB;
+    border: 1px solid var(--hairline-ink);
+    border-radius: var(--r-sm);
+    cursor: pointer;
+    transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+.browse-controls__select:hover { border-color: var(--hairline); }
+.browse-controls__select:focus-visible {
+    outline: none;
+    border-color: var(--brass);
+    box-shadow: 0 0 0 3px rgba(176, 141, 87, 0.16);
+    background: #FFFFFF;
+}
+.browse-controls__chevron {
+    position: absolute;
+    top: 50%;
+    right: 13px;
+    width: 14px;
+    height: 14px;
+    transform: translateY(-50%);
+    color: var(--brass);
+    pointer-events: none;
+}
+
+@media (min-width: 720px) {
+    .browse-controls {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .browse-controls__select-wrap { flex: 0 0 auto; min-width: 184px; }
+}
+
+/* --- Pager --- */
+.pager {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--hairline-ink);
+}
+.pager__link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 44px;
+    padding: 10px 16px;
+    font-family: var(--font-body);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: var(--ink);
+    text-decoration: none;
+    background: transparent;
+    border: 1px solid var(--brass);
+    border-radius: var(--r-sm);
+    transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+.pager__link:hover {
+    background: rgba(176, 141, 87, 0.10);
+    border-color: var(--brass-deep);
+    transform: translateY(-1px);
+}
+.pager__link:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(176, 141, 87, 0.30);
+}
+.pager__link--disabled {
+    color: var(--slate-muted);
+    border-color: var(--hairline-ink);
+    pointer-events: none;
+    cursor: default;
+    transform: none;
+}
+.pager__icon { width: 13px; height: 13px; flex-shrink: 0; }
+.pager__text { display: none; }
+.pager__status {
+    padding: 0 6px;
+    font-family: var(--font-display);
+    font-size: 0.9375rem;
+    color: var(--slate-soft);
+    white-space: nowrap;
+}
+
+@media (min-width: 720px) {
+    .pager { gap: 14px; }
+    .pager__link { padding: 11px 22px; }
+    .pager__text { display: inline; }
+    .pager__status { padding: 0 16px; font-size: 1rem; }
+}

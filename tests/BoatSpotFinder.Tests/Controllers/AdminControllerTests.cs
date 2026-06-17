@@ -4,6 +4,7 @@ using BoatSpotFinder.Core.Settings;
 using BoatSpotFinder.Infrastructure.Repositories;
 using BoatSpotFinder.Tests.Infrastructure;
 using BoatSpotFinder.Web.Controllers;
+using BoatSpotFinder.Web.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -56,6 +57,14 @@ public class AdminControllerTests
         BoatSpotFinder.Infrastructure.Data.AppDbContext context,
         UserManager<ApplicationUser> userManager)
     {
+        return BuildController(context, userManager, Substitute.For<IMarinaSearchService>());
+    }
+
+    private static AdminController BuildController(
+        BoatSpotFinder.Infrastructure.Data.AppDbContext context,
+        UserManager<ApplicationUser> userManager,
+        IMarinaSearchService searchService)
+    {
         return new AdminController(
             userManager,
             new BookingRepository(context),
@@ -64,7 +73,7 @@ public class AdminControllerTests
             new SpotRepository(context),
             new InvitationRepository(context),
             new AdminSettingsRepository(context),
-            Substitute.For<IMarinaSearchService>(),
+            searchService,
             Substitute.For<IEmailSender>(),
             Substitute.For<IBookingService>(),
             Options.Create(new AppSettings()),
@@ -262,5 +271,94 @@ public class AdminControllerTests
         var result = await controller.ReEnableAdmin(marina.Id, "nonexistent-user");
 
         Assert.IsType<NotFoundResult>(result);
+    }
+
+    // ── SearchMarinas ─────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task SearchMarinas_BlankQuery_ReturnsAllMarinasIncludingInactive()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var active = await SeedMarinaAsync(db.Context, "Active Marina");
+        var inactive = new Marina("Inactive Marina", "Desc", "Addr", "Region", "000", 0, 0, 50m);
+        inactive.Deactivate();
+        await db.Context.Marinas.AddAsync(inactive);
+        await db.Context.SaveChangesAsync();
+
+        var controller = BuildController(db.Context, BuildUserManager());
+        SetControllerContext(controller);
+
+        var result = await controller.SearchMarinas(null);
+
+        var partial = Assert.IsType<PartialViewResult>(result);
+        var model = Assert.IsAssignableFrom<IEnumerable<AdminMarinaListItemViewModel>>(partial.Model);
+        var ids = model.Select(m => m.Id).ToList();
+        Assert.Contains(active.Id, ids);
+        Assert.Contains(inactive.Id, ids);
+    }
+
+    [Fact]
+    public async Task SearchMarinas_EsOff_FiltersByNameOrRegion_IncludingInactive()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var activePorto = new Marina("Porto Vell", "Desc", "Addr", "Mediterranean", "000", 0, 0, 50m);
+        await db.Context.Marinas.AddAsync(activePorto);
+        await db.Context.SaveChangesAsync();
+
+        var inactivePorto = new Marina("Old Harbour", "Desc", "Addr", "Porto Region", "000", 0, 0, 50m);
+        inactivePorto.Deactivate();
+        await db.Context.Marinas.AddAsync(inactivePorto);
+        await db.Context.SaveChangesAsync();
+
+        var noMatch = new Marina("Sunny Bay", "Desc", "Addr", "Atlantic", "000", 0, 0, 50m);
+        await db.Context.Marinas.AddAsync(noMatch);
+        await db.Context.SaveChangesAsync();
+
+        var searchService = Substitute.For<IMarinaSearchService>();
+        searchService.SearchAsync(Arg.Any<string>()).Returns(Task.FromResult<IEnumerable<Guid>?>(null));
+
+        var controller = BuildController(db.Context, BuildUserManager(), searchService);
+        SetControllerContext(controller);
+
+        var result = await controller.SearchMarinas("porto");
+
+        var partial = Assert.IsType<PartialViewResult>(result);
+        var model = Assert.IsAssignableFrom<IEnumerable<AdminMarinaListItemViewModel>>(partial.Model).ToList();
+        Assert.Contains(model, m => m.Id == activePorto.Id);
+        Assert.Contains(model, m => m.Id == inactivePorto.Id);
+        Assert.DoesNotContain(model, m => m.Id == noMatch.Id);
+    }
+
+    [Fact]
+    public async Task SearchMarinas_EsOn_ReturnsActiveEsMatchesPlusInactiveSqlMatches()
+    {
+        using var db = TestDbContextFactory.CreateSqliteInMemory();
+        var esMatchedActive = new Marina("Porto Vell", "Desc", "Addr", "Mediterranean", "000", 0, 0, 50m);
+        await db.Context.Marinas.AddAsync(esMatchedActive);
+        await db.Context.SaveChangesAsync();
+
+        var inactiveSqlMatch = new Marina("Old Porto", "Desc", "Addr", "Porto Region", "000", 0, 0, 50m);
+        inactiveSqlMatch.Deactivate();
+        await db.Context.Marinas.AddAsync(inactiveSqlMatch);
+        await db.Context.SaveChangesAsync();
+
+        var activeNotReturned = new Marina("Sunny Bay", "Desc", "Addr", "Atlantic", "000", 0, 0, 50m);
+        await db.Context.Marinas.AddAsync(activeNotReturned);
+        await db.Context.SaveChangesAsync();
+
+        var searchService = Substitute.For<IMarinaSearchService>();
+        searchService.SearchAsync(Arg.Any<string>())
+            .Returns(Task.FromResult<IEnumerable<Guid>?>(new[] { esMatchedActive.Id }));
+
+        var controller = BuildController(db.Context, BuildUserManager(), searchService);
+        SetControllerContext(controller);
+
+        var result = await controller.SearchMarinas("porto");
+
+        var partial = Assert.IsType<PartialViewResult>(result);
+        var model = Assert.IsAssignableFrom<IEnumerable<AdminMarinaListItemViewModel>>(partial.Model).ToList();
+        Assert.Contains(model, m => m.Id == esMatchedActive.Id);
+        Assert.Contains(model, m => m.Id == inactiveSqlMatch.Id);
+        Assert.DoesNotContain(model, m => m.Id == activeNotReturned.Id);
     }
 }
